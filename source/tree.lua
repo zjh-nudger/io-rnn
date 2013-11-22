@@ -182,9 +182,9 @@ function Tree:to_torch_matrices(word2id, nCat)
 		category[{{},i}]:copy(cat)
 		
 		if #node.childId == 0 then
-			label_id = get_word_id(node.label)
+			label_id[i] = get_word_id(node.label)
 		else 
-			label_id = -1
+			label_id[i] = -1
 		end
 	end
 

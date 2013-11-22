@@ -48,7 +48,7 @@ function tanh( X )
 end
 
 function tanhPrime(tanhX)
-	return torch.diag((-torch.pow(tanhX,2)+1):resize(tanhX:size(1)))
+	return -torch.pow(tanhX,2)+1
 end
 
 --************************* construction ********************--
@@ -181,49 +181,35 @@ function RNN:forward(tree)
 	local nCat = self.nCat
 
 	tree.feature = torch.Tensor(dim, tree.n_nodes)
-	tree.predict = torch.Tensor(nCat, tree.n_nodes)
-	tree.ecat = torch.Tensor(tree.n_nodes)
 
 	-- process
 	for i = tree.n_nodes,1,-1 do 
-		local predict
-		local feature
-		local ecat
-
 		-- for leaves
 		if tree.n_children[i] == 0 then
-			feature = L[{{},{node.label}}]:clone()
-
-			-- classify on single words
-			predict = normalize((WCat*node.feature):add(bCat):exp(), 1 )
-			ecat = (-torch.cmul(node.cat, torch.log(node.predict))):sum() 
+			tree.feature[{{},{i}}]:copy(L[{{},{tree.label_id[i]}}])
 
 		-- for internal nodes
 		else
 			local input
 			if tree.n_children[i] == 2 then
-				local c1feature = tree.feature[{{},{tree.children_id[{1,i}}}]
-				local c2feature = tree.feature[{{},{tree.children_id[{2,i}}}]
+				local c1feature = tree.feature[{{},{tree.children_id[{1,i}]}}]
+				local c2feature = tree.feature[{{},{tree.children_id[{2,i}]}}]
 				input = (Wb1*c1feature):add(Wb2*c2feature):add(bb)
 
 			elseif tree.n_children[i] == 1 then
-				local cfeature = tree.feature[{{},{tree.children_id[{1,i}}}]
+				local cfeature = tree.feature[{{},{tree.children_id[{1,i}]}}]
 				input = (Wu*cfeature):add(bu)
 
 			else error('accept only binary trees') end
 		
-			-- cal parent feature
-			local feature = func(input) 
-
-			-- compute classification error
-			local predict = normalize((WCat*feature):add(bCat):exp(), 1)
-			local ecat = (-torch.cmul(node.cat, torch.log(predict))):sum()
-
-			node.feature = feature
-			node.predict = predict
-			node.ecat = ecat
+			tree.feature[{{},{i}}] = func(input) 
 		end
 	end
+
+	-- compute classification error
+	tree.predict = normalize((WCat*tree.feature):add(bCat):exp(), 1)
+	tree.ecat = (-torch.cmul(tree.cat, torch.log(tree.predict))):sum(1)
+	
 end
 
 --*********************** backpropagate *********************--
@@ -252,68 +238,63 @@ function RNN:backpropagate(tree, grad)
 	local func = self.func
 	local funcPrime = self.funcPrime
 
+	local cost = tree.ecat:sum()
+	local gradZCat = tree.predict - tree.cat
+
 	local support = {}
 	support[1] = {
 		W = torch.zeros(dim,dim),
 		b = torch.zeros(dim,1),
 		gradZp = torch.zeros(dim,1) }
 
-	local nNode = #tree
-
-	for i = 1,nNode do
-		local node = tree[i]
+	for i = 1,tree.n_nodes do
 		local W = support[i].W
 		local b = support[i].b
 		local gradZp = support[i].gradZp
 
+		gradZCat_i = gradZCat[{{},{i}}]
+		feature_i = tree.feature[{{},{i}}]
+
 		-- for internal node
-		if #node.childId > 0 then
-			-- compute cost
-			cost = cost + node.ecat
-			
+		if tree.n_children[i] > 0 then	
 			-- compute gradZ
-			local gradZCat = node.predict - node.cat
-			local gradZ = 	funcPrime(node.feature):t() * 
-							(WCat:t() * gradZCat):add(W:t()* gradZp)
+			local gradZ = 	funcPrime(feature_i):cmul(
+							(WCat:t() * gradZCat_i):add(W:t()* gradZp))
 
 			-- compute gradient
-			gradWCat:add(gradZCat * node.feature:t())
-			gradbCat:add(gradZCat)
+			gradWCat:add(gradZCat_i * feature_i:t())
+			gradbCat:add(gradZCat_i)
 
-			if #node.childId == 2 then
-				local child1 = tree[node.childId[1]]
-				local child2 = tree[node.childId[2]]
-				gradWb1:add(gradZ * child1.feature:t())
-				gradWb2:add(gradZ * child2.feature:t())
+			if tree.n_children[i] == 2 then
+				local c1id = tree.children_id[{1,i}]
+				local c2id = tree.children_id[{2,i}]
+				gradWb1:add(gradZ * tree.feature[{{},{c1id}}]:t())
+				gradWb2:add(gradZ * tree.feature[{{},{c2id}}]:t())
 				gradbb:add(gradZ)
 			
 				-- propagate to its children
-				support[node.childId[1]] = {W = Wb1, gradZp = gradZ}
-				support[node.childId[2]] = {W = Wb2, gradZp = gradZ}
+				support[c1id] = {W = Wb1, gradZp = gradZ}
+				support[c2id] = {W = Wb2, gradZp = gradZ}
 
 
-			elseif #node.childId == 1 then
-				local child = tree[node.childId[1]]
-				gradWu:add(gradZ * child.feature:t())
+			elseif tree.n_children[i] == 1 then
+				local cid = tree.children_id[{1,i}]
+				gradWu:add(gradZ * tree.feature[{{},{cid}}]:t())
 				gradbu:add(gradZ)
 	
 				-- propagate to its children
-				support[node.childId[1]] = {W = Wu, gradZp = gradZ}
+				support[cid] = {W = Wu, gradZp = gradZ}
 
 			else error('accept only binary trees') end
 
 		else -- leaf
-			-- compute cost
-			cost = cost + node.ecat
-
 			-- compute gradZ
-			local gradZCat = node.predict - node.cat
-			local gradZ = (W:t() * gradZp):add(WCat:t() * gradZCat)
+			local gradZ = (W:t() * gradZp):add(WCat:t() * gradZCat_i)
 
 			-- compute gradient
-			gradWCat:add(gradZCat * node.feature:t())
-			gradbCat:add(gradZCat)
-			gradL[{{},{node.label}}]:add(gradZ)
+			gradWCat:add(gradZCat_i * feature_i:t())
+			gradbCat:add(gradZCat_i)
+			gradL[{{},{tree.label_id[i]}}]:add(gradZ)
 		end
 	end
 	
@@ -331,9 +312,8 @@ function worker()
 	require 'rnn'
 	local data = parallel.parent:receive()
 
-	local raw_treebank = data.raw_treebank
+	local treebank = data.treebank
 	local net = data.net
-	local nSample = #raw_treebank
 	local config = data.config
 	local fw_only = data.fw_only
 
@@ -350,13 +330,11 @@ function worker()
 	local cost = 0
 	local timer = torch.Timer()
 	treebank = {}
-	for i = 1, nSample do
-		local tree = Tree:create_from_string(raw_treebank[i])
+	for i,tree in ipairs(treebank) do
 		RNN.forward(net, tree)
 		if not fw_only then
 			cost = cost + RNN.backpropagate(net, tree, grad)
 		end
-		treebank[#treebank+1] = tree
 	end
 	print('time for child running ' .. timer:time().real) io.flush()
 
@@ -364,32 +342,21 @@ function worker()
 	if not fw_only then treebank = nil
 	else
 --[[
-		trueCatCount = torch.zeros(treebank[1][1].nCat)
-		correctCatCount = torch.zeros(trueCatCount:nElement())
-
-		for i = 1,nSample do
-			local tree = treebank[i]
-			for _,node in ipairs(tree) do
-				trueCatCount:add(node:cat)
-				if (node:cat - node:ecat):sum() == 0 then
-				end
-			end
-		end
 ]]
 	end
 
 	parallel.parent:send({
 			cost = cost, 
 			grad = rnn.fold(net, grad), 
-			treebank = treebank, 
+			treebank = treebank,
 			stats = stats})
 end
 	
 -- parent call
 function parent(param)
 
-	local raw_treebank = param.raw_treebank
-	local nSample = #raw_treebank
+	local treebank = param.treebank
+	local nSample = #treebank
 	local net = param.net
 	local fw_only = param.fw_only
 
@@ -405,7 +372,7 @@ function parent(param)
 		for j = 1,size do
 			local id = (i-1)*size+j
 			if id > nSample then break end
-			data.raw_treebank[j] = raw_treebank[id]
+			data.treebank[j] = treebank[id]
 		end
 		children[i]:send(data)
 	end
@@ -441,13 +408,13 @@ function parent(param)
 	param.totalGrad:div(nSample):add(M * param.config.lambda)
 end
 
-function RNN:computeCostAndGrad(raw_treebank, config, fw_only)
+function RNN:computeCostAndGrad(treebank, config, fw_only)
 	
 if NPROCESS > 1 then
 	local param = {
 		net = self,
 		config = config,
-		raw_treebank = raw_treebank,
+		treebank = treebank,
 		totalCost = 0,
 		totalGrad = nil,
 		fw_only = fw_only or false
@@ -473,13 +440,11 @@ else
 	}
 
 	local cost = 0
-	local nSample = #raw_treebank
+	local nSample = #treebank
 	local treebank = {} 
-	for i = 1,nSample  do
-		local tree = Tree:create_from_string(raw_treebank[i])
+	for i, tree in ipairs(treebank)  do
 		self:forward(tree)
 		cost = cost + self:backpropagate(tree, grad)
-		treebank[#treebank+1] = tree
 	end
 
 	return cost/nSample, self:fold(grad):div(nSample), treebank
@@ -487,7 +452,7 @@ end
 end
 
 -- check gradient
-function RNN:checkGradient(raw_treebank, config)
+function RNN:checkGradient(treebank, config)
 	local epsilon = 1e-4
 	local theta = 1e-8
 
@@ -496,18 +461,18 @@ function RNN:checkGradient(raw_treebank, config)
 	local nCat = self.nCat
 
 	local Theta = self:fold()
-	local _, gradTheta = self:computeCostAndGrad(raw_treebank, config)
+	local _, gradTheta = self:computeCostAndGrad(treebank, config)
 
 	local n = Theta:nElement()
 	for i = 1,n do
 		local index = {{i}}
 		Theta[index]:add(epsilon)
 		self:unfold(Theta)
-		local costPlus,_ = self:computeCostAndGrad(raw_treebank, config)
+		local costPlus,_ = self:computeCostAndGrad(treebank, config)
 		
 		Theta[index]:add(-2*epsilon)
 		self:unfold(Theta)
-		local costMinus,_ = self:computeCostAndGrad(raw_treebank, config)
+		local costMinus,_ = self:computeCostAndGrad(treebank, config)
 		Theta[index]:add(epsilon)
 		self:unfold(Theta)
 
@@ -517,20 +482,20 @@ function RNN:checkGradient(raw_treebank, config)
 end
 
 --***************************** eval **************************
-function RNN:eval(raw_treebank)
+function RNN:eval(treebank)
 	return 0
 end
 
 --******************************* train networks *************************
 ---- optFunc from 'optim' package
-function RNN:train(raw_traintreebank, raw_testtreebank, batchSize, optFunc, optFuncState, config)
-	local nSample = #raw_traintreebank
+function RNN:train(traintreebank, testtreebank, batchSize, optFunc, optFuncState, config)
+	local nSample = #traintreebank
 	local j = 0
 
 	local iter = 1
 	local timer = torch.Timer()
 	
-	print('accuracy = ' .. self:eval(raw_testtreebank)) io.flush()
+	print('accuracy = ' .. self:eval(testtreebank)) io.flush()
 
 	local function func(M)
 		print('time for optim ' .. timer:time().real) io.flush()
@@ -542,12 +507,12 @@ function RNN:train(raw_traintreebank, raw_testtreebank, batchSize, optFunc, optF
 		if j > nSample/batchSize then j = 1 end
 		local raw_subtreebank = {}
 		for k = 1,batchSize do
-			raw_subtreebank[k] = raw_traintreebank[k+(j-1)*batchSize]
+			subtreebank[k] = traintreebank[k+(j-1)*batchSize]
 		end
 		print('time to extract data ' .. timer1:time().real) io.flush()
 
 		timer1 = torch.Timer()
-		local cost, Grad = self:computeCostAndGrad(raw_subtreebank, config)
+		local cost, Grad = self:computeCostAndGrad(subtreebank, config)
 		print('time to compute cost & grad ' .. timer1:time().real) io.flush()
 
 		-- for visualization
@@ -557,7 +522,7 @@ function RNN:train(raw_traintreebank, raw_testtreebank, batchSize, optFunc, optF
 			io.flush()
 		end
 		if math.mod(iter,10) == 0 then
-			print('accuracy = ' .. self:eval(raw_testtreebank))
+			print('accuracy = ' .. self:eval(testtreebank))
 			self:save('model.head.' .. math.floor(iter / 10))
 			io.flush()
 		end
@@ -576,13 +541,34 @@ end
 
 --*********************************** main ******************************--
 function test ()
-	local struct = 
-	local net = RNN:new()
-	local t1 = '(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))'
-	local t2 = '(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))'
+	word2id = {
+		['Yet'] = 1,
+		['the'] = 2,
+		['act'] = 3,
+		['is'] = 4,
+		['still'] = 5,
+		['charming'] = 6,
+		['here'] = 7,
+		['.'] = 8,
+		['a'] = 9,
+		['screenplay'] = 10,
+		['more'] = 11,
+		['ingeniously'] = 12,
+		['constructed'] = 13, 
+		['than'] = 14, 
+		['``'] = 15,
+		['Memento'] = 16,
+		["''"] = 17 }
 
-	local config = {lambda = 1e-4, alpha = 0.2}
-	net:checkGradient({t1},config)
+	local struct = {Lookup = torch.randn(5, 17), nCat = 5}
+	local net = RNN:new(struct)
+	local t1 = "(X#3 Yet#2 (X#3 (X#2 the#2 act#2) (X#3 (X#4 (X#3 is#2 (X#3 still#2 charming#4)) here#2) .#2)))"
+	local t2 = "(X#4 (X#2 a#2 (X#2 screenplay#2 more#2)) (X#3 ingeniously#4 (X#2 constructed#2 (X#2 (X#2 (X#2 than#2 ``#2) Memento#2) ''#2))))"
+
+	t1 = t1:to_torch_matrices()
+	t2 = t2:to_torch_matrices()
+	local config = {lambda = 1e-333}
+	--net:checkGradient({t1},config)
 end
 
 -- WARNING: donot uncomment the line below!!!
