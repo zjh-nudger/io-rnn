@@ -30,4 +30,9 @@ function get_word_id(word2id, word)
 	end
 end
 
-
+function safe_compute_softmax(A)
+	maxA,_ = A:max(1)
+	maxA = torch.repeatTensor(maxA, A:size(1), 1)
+	local B = torch.repeatTensor((A - maxA):exp():sum(1):log(), A:size(1), 1)
+	return (A - maxA - B):exp()
+end

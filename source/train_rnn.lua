@@ -39,10 +39,14 @@ if #arg == 2 then
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
 						func = tanh, funcPrime = tanhPrime }
 	local rnn = RNN:new(struct)
+
+	maxit = 100000
+	learn_rate = 0.1
+	lambda = 1e-8
+	batchsize = 50
 	
-	rnn:train(traintreebank, devtreebank, 50, optim.lbfgs,
-                {maxIter=1000, learningRate=0.1},
-                {lambda = 1e-3})	
+	rnn:train_with_adagrad(traintreebank, devtreebank, batchsize,
+			                maxit, learn_rate, lambda)
 
 
 else

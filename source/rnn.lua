@@ -1,4 +1,5 @@
 require 'tree'
+require 'utils'
 
 NPROCESS = 1
 
@@ -207,11 +208,10 @@ function RNN:forward(tree)
 	end
 
 	-- compute classification error
-	tree.predict = normalize(
+	tree.predict = safe_compute_softmax(
 						(WCat*tree.feature)
-						:add(torch.repeatTensor(bCat, 1, tree.n_nodes)):exp(), 
-					1)
-	tree.ecat = (-torch.cmul(tree.category, torch.log(tree.predict))):sum(1)	
+						:add(torch.repeatTensor(bCat, 1, tree.n_nodes)))
+	tree.ecat = (-torch.cmul(tree.category, torch.log(tree.predict))):sum(1)
 end
 
 --*********************** backpropagate *********************--
@@ -303,7 +303,7 @@ function RNN:backpropagate(tree, grad)
 	return cost
 end
 
---************************ compute cost and gradient *****************--
+--[[************************ compute cost and gradient *****************--
 --input:
 --output:
 require 'parallel'
@@ -405,11 +405,12 @@ function parent(param)
 	param.totalCost = param.totalCost / nSample + param.config.lambda/2 * torch.pow(M,2):sum()
 	param.totalGrad:div(nSample):add(M * param.config.lambda)
 end
+]]
 
 function RNN:computeCostAndGrad(treebank, config, fw_only)
 	
 if NPROCESS > 1 then
-	local param = {
+--[[	local param = {
 		net = self,
 		config = config,
 		treebank = treebank,
@@ -423,7 +424,7 @@ if NPROCESS > 1 then
 	if not ok then 	print(err) parallel.close() end
 	
 	return param.totalCost, param.totalGrad, param.treebank
-
+]]
 else
 -- for single process
 	local grad = {
@@ -503,7 +504,7 @@ function RNN:eval(treebank)
 end
 
 --******************************* train networks *************************
----- optFunc from 'optim' package
+--[[-- optFunc from 'optim' package
 function RNN:train(traintreebank, validtreebank, batchSize, optFunc, optFuncState, config)
 	local nSample = #traintreebank
 	local j = 0
@@ -539,7 +540,7 @@ function RNN:train(traintreebank, validtreebank, batchSize, optFunc, optFuncStat
 		end
 		if math.mod(iter,10) == 0 then
 			print('accuracy = ' .. self:eval(validtreebank))
-			self:save('model/model.' .. math.floor(iter / 10))
+			--self:save('model/model.' .. math.floor(iter / 10))
 			io.flush()
 		end
 
@@ -553,7 +554,65 @@ function RNN:train(traintreebank, validtreebank, batchSize, optFunc, optFuncStat
 	local M = optFunc(func, self:fold(), optFuncState, optFuncState)
 	self:unfold(M)
 end
+]]
 
+require 'optim'
+require 'xlua'
+p = xlua.Profiler()
+
+function RNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
+								maxit, learn_rate, lambda)
+	local nSample = #traintreebank
+	local j = 0
+
+	print('accuracy = ' .. self:eval(devtreebank)) io.flush()
+	local adagrad_config = {}
+	local adagrad_state = {}
+
+	for iter = 1,maxit do
+		local function func(M)
+			self:unfold(M)
+
+			-- extract data
+			j = j + 1
+			if j > nSample/batchSize then j = 1 end
+			local subtreebank = {}
+			for k = 1,batchSize do
+				subtreebank[k] = traintreebank[k+(j-1)*batchSize]
+			end
+			p:start("compute grad")
+			cost, Grad = self:computeCostAndGrad(subtreebank, {lambda = lambda})
+			p:lap("compute grad")
+
+			-- for visualization
+			if math.mod(iter,1) == 0 then
+				print('--- iter: ' .. iter)
+				print('cost: ' .. cost)
+				io.flush()
+			end
+			
+			return cost, Grad
+		end
+	
+		p:start("optim")
+		M,_ = optim.adagrad(func, self:fold(), adagrad_config, adagrad_state)
+		self:unfold(M)
+		p:lap("optim")
+
+		p:printAll()
+
+		if math.mod(iter,100) == 0 then
+			print('accuracy = ' .. self:eval(devtreebank))
+			io.flush()
+		end
+
+		if math.mod(iter, 1000) == 0 then
+			self:save('model/model.' .. math.floor(iter / 1000))
+		end
+
+		collectgarbage()
+	end
+end
 
 --*********************************** test ******************************--
 --[[
