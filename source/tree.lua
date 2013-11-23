@@ -4,11 +4,10 @@ Tree = {}
 Tree_mt = {__index = Tree}
 
 --*************** construction **************
-function Tree:new(label, cat, cover)
+function Tree:new(label, cover)
 	local t = {}
 
 	t.label = label
-	t.cat = cat
 	t.children = {}
 	t.cover = cover or {}
 
@@ -16,21 +15,20 @@ function Tree:new(label, cat, cover)
 	return t
 end
 
-function Tree:create_from_string( input , leafId )
+function Tree:create_from_string(input , leafId)
 	local str = input:sub(2,input:len()-1)
 	local leafId = leafId or 1
 
 	-- read label
 	local i = str:find(' ')
-	local lc = split_string(str:sub(1,i-1), "[^#]+")
-	local t = Tree:new(lc[1], lc[2])
+	local t = Tree:new(str:sub(1,i-1))
 
 	-- read children
 	i = i + 1
 	
-	-- check if this is POS
+	-- check if a leaf
 	if str:sub(i,i) ~= '(' then
-		t.children[1] = Tree:new( str:sub(i)  )
+		t.children[1] = Tree:new(str:sub(i))
 		t.children[1].cover = {leafId, leafId}
 		t.cover = {leafId, leafId}
 		leafId = leafId + 1
@@ -159,16 +157,35 @@ function Tree:load_treebank(filename)
 	return treebank
 end
 
+function Tree:to_stanford_sa_form()
+	if #self.children > 0 then
+		self.cat = tonumber(self.label)
+		self.label = "X"
+		
+		-- merge leaf
+		if #self.children == 1 and #self.children[1].children == 0 then
+			self.label = self.children[1].label
+			self.children = {}
+		else 
+			for _,child in ipairs(self.children) do
+				child:to_stanford_sa_form()
+			end
+		end
+	end
+end
+
 function Tree:to_torch_matrices(word2id, nCat)
 	require "utils"
 
-	local nodes = self:to_flat_from()
+	self:to_stanford_sa_form()
+
+	local nodes = self:to_flat_form()
 	local nnodes = #nodes
 
 	local n_children = torch.Tensor(nnodes)
-	local children_id = torch.Tensor(2, nodes)
+	local children_id = torch.Tensor(2, nnodes)
 	local category = torch.Tensor(nCat, nnodes)
-	local label_id = torch.Tensor(nnodes)
+	local word_id = torch.Tensor(nnodes)
 	
 	for i,node in ipairs(nodes) do
 		n_children[i] = #node.childId
@@ -182,9 +199,9 @@ function Tree:to_torch_matrices(word2id, nCat)
 		category[{{},i}]:copy(cat)
 		
 		if #node.childId == 0 then
-			label_id[i] = get_word_id(node.label)
+			word_id[i] = get_word_id(word2id, node.label)
 		else 
-			label_id[i] = -1
+			word_id[i] = -1
 		end
 	end
 
@@ -193,6 +210,6 @@ function Tree:to_torch_matrices(word2id, nCat)
 				n_children = n_children, 
 				children_id = children_id, 
 				category = category,
-				label_id = label_id 
+				word_id = word_id 
 			}
 end

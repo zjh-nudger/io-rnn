@@ -186,7 +186,7 @@ function RNN:forward(tree)
 	for i = tree.n_nodes,1,-1 do 
 		-- for leaves
 		if tree.n_children[i] == 0 then
-			tree.feature[{{},{i}}]:copy(L[{{},{tree.label_id[i]}}])
+			tree.feature[{{},{i}}]:copy(L[{{},{tree.word_id[i]}}])
 
 		-- for internal nodes
 		else
@@ -207,9 +207,11 @@ function RNN:forward(tree)
 	end
 
 	-- compute classification error
-	tree.predict = normalize((WCat*tree.feature):add(bCat):exp(), 1)
-	tree.ecat = (-torch.cmul(tree.cat, torch.log(tree.predict))):sum(1)
-	
+	tree.predict = normalize(
+						(WCat*tree.feature)
+						:add(torch.repeatTensor(bCat, 1, tree.n_nodes)):exp(), 
+					1)
+	tree.ecat = (-torch.cmul(tree.category, torch.log(tree.predict))):sum(1)	
 end
 
 --*********************** backpropagate *********************--
@@ -239,7 +241,7 @@ function RNN:backpropagate(tree, grad)
 	local funcPrime = self.funcPrime
 
 	local cost = tree.ecat:sum()
-	local gradZCat = tree.predict - tree.cat
+	local gradZCat = tree.predict - tree.category
 
 	local support = {}
 	support[1] = {
@@ -294,7 +296,7 @@ function RNN:backpropagate(tree, grad)
 			-- compute gradient
 			gradWCat:add(gradZCat_i * feature_i:t())
 			gradbCat:add(gradZCat_i)
-			gradL[{{},{tree.label_id[i]}}]:add(gradZ)
+			gradL[{{},{tree.word_id[i]}}]:add(gradZ)
 		end
 	end
 	
@@ -339,17 +341,13 @@ function worker()
 	print('time for child running ' .. timer:time().real) io.flush()
 
 	local stats = nil
-	if not fw_only then treebank = nil
-	else
---[[
-]]
-	end
+	if not fw_only then treebank = nil end
 
 	parallel.parent:send({
 			cost = cost, 
 			grad = rnn.fold(net, grad), 
-			treebank = treebank,
-			stats = stats})
+			treebank = treebank
+		})
 end
 	
 -- parent call
@@ -424,7 +422,7 @@ if NPROCESS > 1 then
 	local ok,err = pcall(parent, param)
 	if not ok then 	print(err) parallel.close() end
 	
-	return param.totalCost, param.totalGrad, param.treebank, param.stats
+	return param.totalCost, param.totalGrad, param.treebank
 
 else
 -- for single process
@@ -441,20 +439,24 @@ else
 
 	local cost = 0
 	local nSample = #treebank
-	local treebank = {} 
 	for i, tree in ipairs(treebank)  do
 		self:forward(tree)
 		cost = cost + self:backpropagate(tree, grad)
 	end
 
-	return cost/nSample, self:fold(grad):div(nSample), treebank
+	local M = self:fold()
+	grad = self:fold(grad)
+
+	cost = cost / nSample + config.lambda/2 * torch.pow(M,2):sum()
+	grad:div(nSample):add(M * config.lambda)
+
+	return cost, grad, treebank
 end
 end
 
 -- check gradient
 function RNN:checkGradient(treebank, config)
 	local epsilon = 1e-4
-	local theta = 1e-8
 
 	local dim = self.dim
 	local wrdDicLen = self.wrdDicLen
@@ -483,19 +485,33 @@ end
 
 --***************************** eval **************************
 function RNN:eval(treebank)
-	return 0
+	_, _, treebank = self:computeCostAndGrad(treebank, {lambda = 0})
+	local total = 0
+	local correct = 0
+
+	for i,tree in ipairs(treebank) do
+		total = total + tree.n_nodes
+		local m,_ = tree.predict:max(1)
+		pred = 	torch.eq(
+					tree.predict, 
+					torch.repeatTensor(torch.reshape(m,1,tree.n_nodes), self.nCat,1))
+				:double()
+		correct = correct + torch.cmul(pred, tree.category):sum()
+	end
+
+	return correct / total
 end
 
 --******************************* train networks *************************
 ---- optFunc from 'optim' package
-function RNN:train(traintreebank, testtreebank, batchSize, optFunc, optFuncState, config)
+function RNN:train(traintreebank, validtreebank, batchSize, optFunc, optFuncState, config)
 	local nSample = #traintreebank
 	local j = 0
 
 	local iter = 1
 	local timer = torch.Timer()
-	
-	print('accuracy = ' .. self:eval(testtreebank)) io.flush()
+
+	print('accuracy = ' .. self:eval(validtreebank)) io.flush()
 
 	local function func(M)
 		print('time for optim ' .. timer:time().real) io.flush()
@@ -505,7 +521,7 @@ function RNN:train(traintreebank, testtreebank, batchSize, optFunc, optFuncState
 		local timer1 = torch.Timer()
 		j = j + 1
 		if j > nSample/batchSize then j = 1 end
-		local raw_subtreebank = {}
+		local subtreebank = {}
 		for k = 1,batchSize do
 			subtreebank[k] = traintreebank[k+(j-1)*batchSize]
 		end
@@ -522,8 +538,8 @@ function RNN:train(traintreebank, testtreebank, batchSize, optFunc, optFuncState
 			io.flush()
 		end
 		if math.mod(iter,10) == 0 then
-			print('accuracy = ' .. self:eval(testtreebank))
-			self:save('model.head.' .. math.floor(iter / 10))
+			print('accuracy = ' .. self:eval(validtreebank))
+			self:save('model/model.' .. math.floor(iter / 10))
 			io.flush()
 		end
 
@@ -539,10 +555,10 @@ function RNN:train(traintreebank, testtreebank, batchSize, optFunc, optFuncState
 end
 
 
---*********************************** main ******************************--
-function test ()
+--*********************************** test ******************************--
+--[[
 	word2id = {
-		['Yet'] = 1,
+		['yet'] = 1,
 		['the'] = 2,
 		['act'] = 3,
 		['is'] = 4,
@@ -557,19 +573,20 @@ function test ()
 		['constructed'] = 13, 
 		['than'] = 14, 
 		['``'] = 15,
-		['Memento'] = 16,
+		['memento'] = 16,
 		["''"] = 17 }
 
-	local struct = {Lookup = torch.randn(5, 17), nCat = 5}
-	local net = RNN:new(struct)
-	local t1 = "(X#3 Yet#2 (X#3 (X#2 the#2 act#2) (X#3 (X#4 (X#3 is#2 (X#3 still#2 charming#4)) here#2) .#2)))"
-	local t2 = "(X#4 (X#2 a#2 (X#2 screenplay#2 more#2)) (X#3 ingeniously#4 (X#2 constructed#2 (X#2 (X#2 (X#2 than#2 ``#2) Memento#2) ''#2))))"
+	struct = {Lookup = torch.randn(3,17), nCategory = 5, func = tanh, funcPrime = tanhPrime}
+	net = RNN:new(struct)
+	t1 = Tree:create_from_string("(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))")
+	t2 = Tree:create_from_string("(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))")
+	
+	t1 = t1:to_torch_matrices(word2id, 5)
+	t2 = t2:to_torch_matrices(word2id, 5)
 
-	t1 = t1:to_torch_matrices()
-	t2 = t2:to_torch_matrices()
-	local config = {lambda = 1e-333}
-	--net:checkGradient({t1},config)
-end
+	config = {lambda = 1e-3}
+	net:checkGradient({t1,t2},config)
+]]
 
--- WARNING: donot uncomment the line below!!!
-test()
+
+
