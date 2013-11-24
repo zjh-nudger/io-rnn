@@ -22,14 +22,14 @@ if #arg == 2 then
 	local traintreebank = {}
 	for line in io.lines(treebank_dir .. '/train.txt') do
 		tree = Tree:create_from_string(line)
-		tree = tree:to_torch_matrices(dic.word2id, n_categories)
+		tree = tree:to_torch_matrices(dic, n_categories)
 		traintreebank[#traintreebank + 1] = tree
 	end
 
 	local devtreebank = {}
 	for line in io.lines(treebank_dir .. '/dev.txt') do
 		tree = Tree:create_from_string(line)
-		tree = tree:to_torch_matrices(dic.word2id, n_categories)
+		tree = tree:to_torch_matrices(dic, n_categories)
 		devtreebank[#devtreebank + 1] = tree
 	end
 

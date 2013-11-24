@@ -15,21 +15,6 @@ function get_all_filenames( dir )
 	return split_string(files, "[^\n]+")
 end
 
-function get_word_id(word2id, word)
-	if word == nil then 
-		return word2id['NULL']
-	else
-		word = string.lower(word)
-		if tonumber(word) ~= nil then 
-			return word2id['0']
-		elseif word2id[word] == nil then 
-			return word2id['UNKNOWN']
-		else 
-			return word2id[word]
-		end
-	end
-end
-
 function safe_compute_softmax(A)
 	maxA,_ = A:max(1)
 	maxA = torch.repeatTensor(maxA, A:size(1), 1)

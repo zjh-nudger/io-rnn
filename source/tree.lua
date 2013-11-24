@@ -1,4 +1,5 @@
 require 'utils'
+require 'dict'
 
 Tree = {}
 Tree_mt = {__index = Tree}
@@ -174,7 +175,7 @@ function Tree:to_stanford_sa_form()
 	end
 end
 
-function Tree:to_torch_matrices(word2id, nCat)
+function Tree:to_torch_matrices(dic, nCat)
 	require "utils"
 
 	self:to_stanford_sa_form()
@@ -199,7 +200,7 @@ function Tree:to_torch_matrices(word2id, nCat)
 		category[{{},i}]:copy(cat)
 		
 		if #node.childId == 0 then
-			word_id[i] = get_word_id(word2id, node.label)
+			word_id[i] = dic:get_id(node.label)
 		else 
 			word_id[i] = -1
 		end
