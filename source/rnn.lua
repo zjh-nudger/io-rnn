@@ -65,20 +65,20 @@ function RNN:new(struct)
 	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat}
 	
 	-- unary branch
-	net.Wu = uniform(dim, dim, -1, 1):mul(0.1)
-	net.bu = uniform(dim, 1, -1, 1):mul(0.1)
+	net.Wu = uniform(dim, dim, -1, 1):mul(0.01)
+	net.bu = uniform(dim, 1, -1, 1):mul(0)
 
 	-- binary branch
-	net.Wb1 = uniform(dim, dim, -1, 1):mul(0.1)
-	net.Wb2 = uniform(dim, dim, -1, 1):mul(0.1)
-	net.bb = uniform(dim, 1, -1, 1):mul(0.1)
+	net.Wb1 = uniform(dim, dim, -1, 1):mul(0.01)
+	net.Wb2 = uniform(dim, dim, -1, 1):mul(0.01)
+	net.bb = uniform(dim, 1, -1, 1):mul(0)
 
 	-- classification
-	net.WCat = uniform(nCat, dim, -1, 1):mul(0.1)
-	net.bCat = uniform(nCat, 1, -1, 1):mul(0.1)
+	net.WCat = uniform(nCat, dim, -1, 1):mul(0.01)
+	net.bCat = uniform(nCat, 1, -1, 1):mul(0)
 
 	-- wordembedding
-	net.L = normalize(struct.Lookup, 2)
+	net.L = torch.randn(struct.Lookup:size()) * 0.001
 	net.func = struct.func
 	net.funcPrime = struct.funcPrime
 	
@@ -566,7 +566,7 @@ function RNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	local j = 0
 
 	print('accuracy = ' .. self:eval(devtreebank)) io.flush()
-	local adagrad_config = {}
+	local adagrad_config = {learningRate = learn_rate}
 	local adagrad_state = {}
 
 	for iter = 1,maxit do

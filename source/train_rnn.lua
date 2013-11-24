@@ -41,9 +41,9 @@ if #arg == 2 then
 	local rnn = RNN:new(struct)
 
 	maxit = 100000
-	learn_rate = 0.1
-	lambda = 1e-8
-	batchsize = 50
+	learn_rate = 1e-1
+	lambda = 1e-4
+	batchsize = 27
 	
 	rnn:train_with_adagrad(traintreebank, devtreebank, batchsize,
 			                maxit, learn_rate, lambda)
@@ -51,5 +51,4 @@ if #arg == 2 then
 
 else
 	print("invalid arugments: [wordemb path] [treebank dir]")
-
 end
