@@ -5,6 +5,7 @@ require 'dict'
 require 'optim'
 
 if #arg == 2 then
+	torch.setnumthreads(1)
 
 	we_path = arg[1]
 	treebank_dir = arg[2]

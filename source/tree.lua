@@ -183,16 +183,27 @@ function Tree:to_torch_matrices(dic, nCat)
 	local nodes = self:to_flat_form()
 	local nnodes = #nodes
 
-	local n_children = torch.Tensor(nnodes)
-	local children_id = torch.Tensor(2, nnodes)
-	local category = torch.Tensor(nCat, nnodes)
-	local word_id = torch.Tensor(nnodes)
+	local n_children = torch.zeros(nnodes)
+	local children_id = torch.zeros(2, nnodes)
+	local parent_id = torch.zeros(nnodes)
+	local left_sister_id = torch.zeros(nnodes)
+	local right_sister_id = torch.zeros(nnodes)
+	local category = torch.zeros(nCat, nnodes)
+	local word_id = torch.zeros(nnodes)
 	
 	for i,node in ipairs(nodes) do
 		n_children[i] = #node.childId
 
 		for j,cid in ipairs(node.childId) do
 			children_id[{j,i}] = cid
+			parent_id[cid] = i
+			if j == 1 then
+				right_sister_id[cid] = node.childId[2] or 0
+			elseif j == 2 then
+				left_sister_id[cid] = node.childId[1]
+			else 
+				error("accept only binary trees")
+			end
 		end
 
 		cat = torch.zeros(nCat)
@@ -210,6 +221,9 @@ function Tree:to_torch_matrices(dic, nCat)
 				n_nodes = nnodes,
 				n_children = n_children, 
 				children_id = children_id, 
+				parent_id = parent_id,
+				left_sister_id = left_sister_id,
+				right_sister_id = right_sister_id,
 				category = category,
 				word_id = word_id 
 			}
