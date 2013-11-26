@@ -1,0 +1,161 @@
+\begin{thebibliography}{}
+
+\bibitem[Baroni et~al., 2012]{baroni_frege_2012}
+Baroni, M., Bernardi, R., and Zamparelli, R. (2012).
+\newblock Frege in space: A program for compositional distributional semantics.
+
+\bibitem[Brown et~al., 1992]{brown1992class}
+Brown, P.~F., Desouza, P.~V., Mercer, R.~L., Pietra, V. J.~D., and Lai, J.~C.
+  (1992).
+\newblock Class-based n-gram models of natural language.
+\newblock {\em Computational linguistics}, 18(4):467--479.
+
+\bibitem[Collobert et~al., 2011]{collobert_natural_2011}
+Collobert, R., Weston, J., Bottou, L., Karlen, M., Kavukcuoglu, K., and Kuksa,
+  P. (2011).
+\newblock Natural language processing (almost) from scratch.
+\newblock {\em The Journal of Machine Learning Research}, 12:2493–2537.
+
+\bibitem[Dhillon et~al., 2012]{dhillon2012two}
+Dhillon, P., Rodu, J., Foster, D., and Ungar, L. (2012).
+\newblock Two step cca: A new spectral method for estimating vector models of
+  words.
+\newblock {\em arXiv preprint arXiv:1206.6403}.
+
+\bibitem[Dinu and Lapata, 2010]{dinu2010measuring}
+Dinu, G. and Lapata, M. (2010).
+\newblock Measuring distributional similarity in context.
+\newblock In {\em Proceedings of the 2010 Conference on Empirical Methods in
+  Natural Language Processing}, pages 1162--1172. Association for Computational
+  Linguistics.
+
+\bibitem[Dinu et~al., 2012]{dinu2012comparison}
+Dinu, G., Thater, S., and Laue, S. (2012).
+\newblock A comparison of models of word meaning in context.
+\newblock In {\em Proceedings of the 2012 Conference of the North American
+  Chapter of the Association for Computational Linguistics: Human Language
+  Technologies}, pages 611--615. Association for Computational Linguistics.
+
+\bibitem[Erk and Pad{\'o}, 2008]{erk2008structured}
+Erk, K. and Pad{\'o}, S. (2008).
+\newblock A structured vector space model for word meaning in context.
+\newblock In {\em Proceedings of the Conference on Empirical Methods in Natural
+  Language Processing}, pages 897--906. Association for Computational
+  Linguistics.
+
+\bibitem[Goller and Kuchler, 1996]{goller_learning_1996}
+Goller, C. and Kuchler, A. (1996).
+\newblock Learning task-dependent distributed representations by
+  backpropagation through structure.
+\newblock In {\em Neural Networks, 1996., {IEEE} International Conference on},
+  volume~1, page 347–352.
+
+\bibitem[Grefenstette et~al., 2013]{grefenstette_multi-step_2013}
+Grefenstette, E., Dinu, G., Zhang, Y.-Z., Sadrzadeh, M., and Baroni, M. (2013).
+\newblock Multi-step regression learning for compositional distributional
+  semantics.
+\newblock {\em {arXiv} preprint {arXiv:1301.6939}}.
+
+\bibitem[Huang et~al., 2012]{huang2012improving}
+Huang, E.~H., Socher, R., Manning, C.~D., and Ng, A.~Y. (2012).
+\newblock Improving word representations via global context and multiple word
+  prototypes.
+\newblock In {\em Proceedings of the 50th Annual Meeting of the Association for
+  Computational Linguistics: Long Papers-Volume 1}, pages 873--882. Association
+  for Computational Linguistics.
+
+\bibitem[Korkontzelos et~al., 2013]{korkontzelos2013semeval}
+Korkontzelos, I., Zesch, T., Zanzotto, F.~M., and Biemann, C. (2013).
+\newblock Semeval-2013 task 5: Evaluating phrasal semantics.
+\newblock In {\em Proceedings of the 7th International Workshop on Semantic
+  Evaluation (SemEval 2013)}.
+
+\bibitem[Landauer et~al., 1998]{landauer1998introduction}
+Landauer, T.~K., Foltz, P.~W., and Laham, D. (1998).
+\newblock An introduction to latent semantic analysis.
+\newblock {\em Discourse processes}, 25(2-3):259--284.
+
+\bibitem[Lazaridou et~al., 2013]{lazaridou2013fish}
+Lazaridou, A., Vecchi, E.~M., and Baroni, M. (2013).
+\newblock Fish transporters and miracle homes: How compositional distributional
+  semantics can help np parsing.
+\newblock {\em Proceedings of EMNLP, Seattle, WA}.
+
+\bibitem[Le et~al., 2013]{le2013learning}
+Le, P., Zuidema, W., and Scha, R. (2013).
+\newblock Learning from errors: Using vector-based compositional semantics for
+  parse reranking.
+\newblock In {\em Proceedings of the 1st ACL Workshop on Continuous Vector
+  Space Models and their Compositionality}, page~11.
+
+\bibitem[Lenci, 2008]{lenci_distributional_2008}
+Lenci, A. (2008).
+\newblock Distributional semantics in linguistic and cognitive research.
+\newblock {\em Italian journal of linguistics}, 20(1):1–31.
+
+\bibitem[Mitchell and Lapata, 2008]{mitchell_vector-based_2008}
+Mitchell, J. and Lapata, M. (2008).
+\newblock Vector-based models of semantic composition.
+\newblock {\em proceedings of {ACL-08:} {HLT}}, page 236–244.
+
+\bibitem[Partee, 1995]{partee_lexical_1995}
+Partee, B. (1995).
+\newblock Lexical semantics and compositionality.
+\newblock {\em An invitation to cognitive science: Language}, 1:311–360.
+
+\bibitem[Socher et~al., 2013a]{socher2013parsing}
+Socher, R., Bauer, J., Manning, C.~D., and Ng, A.~Y. (2013a).
+\newblock Parsing with compositional vector grammars.
+\newblock In {\em Annual Meeting of the Association for Computational
+  Linguistics (ACL)}.
+
+\bibitem[Socher et~al., 2011a]{socher_dynamic_2011}
+Socher, R., Huang, E.~H., Pennington, J., Ng, A.~Y., and Manning, C.~D.
+  (2011a).
+\newblock Dynamic pooling and unfolding recursive autoencoders for paraphrase
+  detection.
+\newblock {\em Advances in Neural Information Processing Systems},
+  24:801–809.
+
+\bibitem[Socher et~al., 2012a]{socher_semantic_2012}
+Socher, R., Huval, B., Manning, C.~D., and Ng, A.~Y. (2012a).
+\newblock Semantic compositionality through recursive matrix-vector spaces.
+\newblock In {\em Proceedings of the 2012 Joint Conference on Empirical Methods
+  in Natural Language Processing and Computational Natural Language Learning},
+  page 1201–1211.
+
+\bibitem[Socher et~al., 2012b]{socher2012semantic}
+Socher, R., Huval, B., Manning, C.~D., and Ng, A.~Y. (2012b).
+\newblock Semantic compositionality through recursive matrix-vector spaces.
+\newblock In {\em Proceedings of the 2012 Joint Conference on Empirical Methods
+  in Natural Language Processing and Computational Natural Language Learning},
+  pages 1201--1211. Association for Computational Linguistics.
+
+\bibitem[Socher et~al., 2010]{socher_learning_2010}
+Socher, R., Manning, C.~D., and Ng, A.~Y. (2010).
+\newblock Learning continuous phrase representations and syntactic parsing with
+  recursive neural networks.
+\newblock In {\em Proceedings of the {NIPS-2010} Deep Learning and Unsupervised
+  Feature Learning Workshop}.
+
+\bibitem[Socher et~al., 2011b]{socher_semi-supervised_2011}
+Socher, R., Pennington, J., Huang, E.~H., Ng, A.~Y., and Manning, C.~D.
+  (2011b).
+\newblock Semi-supervised recursive autoencoders for predicting sentiment
+  distributions.
+\newblock In {\em Proceedings of the Conference on Empirical Methods in Natural
+  Language Processing}, page 151–161.
+
+\bibitem[Socher et~al., 2013b]{socher2013recursive}
+Socher, R., Perelygin, A., Wu, J.~Y., Chuang, J., Manning, C.~D., Ng, A.~Y.,
+  and Potts, C. (2013b).
+\newblock Recursive deep models for semantic compositionality over a sentiment
+  treebank.
+\newblock EMNLP.
+
+\bibitem[Thater et~al., 2011]{thater2011word}
+Thater, S., F{\"u}rstenau, H., and Pinkal, M. (2011).
+\newblock Word meaning in context: A simple and effective vector model.
+\newblock In {\em IJCNLP}, pages 1134--1143.
+
+\end{thebibliography}

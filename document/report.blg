@@ -1,0 +1,48 @@
+This is BibTeX, Version 0.99c (Web2C 7.5.4)
+The top-level auxiliary file: report.aux
+The style file: apalike.bst
+Database file #1: ref.bib
+Warning--empty journal in baroni_frege_2012
+Warning--empty booktitle in socher2013recursive
+You've used 25 entries,
+            1935 wiz_defined-function locations,
+            602 strings with 8932 characters,
+and the built_in function-call counts, 11992 in all, are:
+= -- 1191
+> -- 513
+< -- 18
++ -- 185
+- -- 176
+* -- 911
+:= -- 1930
+add.period$ -- 79
+call.type$ -- 25
+change.case$ -- 213
+chr.to.int$ -- 22
+cite$ -- 27
+duplicate$ -- 546
+empty$ -- 823
+format.name$ -- 209
+if$ -- 2495
+int.to.chr$ -- 4
+int.to.str$ -- 0
+missing$ -- 25
+newline$ -- 127
+num.names$ -- 75
+pop$ -- 256
+preamble$ -- 1
+purify$ -- 213
+quote$ -- 0
+skip$ -- 434
+stack$ -- 0
+substring$ -- 757
+swap$ -- 169
+text.length$ -- 12
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 150
+warning$ -- 2
+while$ -- 81
+width$ -- 0
+write$ -- 323
+(There were 2 warnings)

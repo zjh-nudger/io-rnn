@@ -66,11 +66,10 @@ function IORNN:new(struct)
 	net.bbor = uniform(dim, 1, -1, 1):mul(0)
 
 	-- word ranking
-	net.Wwi = uniform(dim, dim, -1, 1):mul(0.01)	-- for combining inner, outer meanings
-	net.Wwo = uniform(dim, dim, -1, 1):mul(0.01)
-	net.bw = uniform(dim, 1, -1, 1):mul(0)
-	net.Ws = uniform(1, dim, -1, 1):mul(0.01)	-- for scoring
-	net.bs = uniform(1, 1, -1, 1):mul(0)		
+	net.Wwi = uniform(2*dim, dim, -1, 1):mul(0.01)	-- for combining inner, outer meanings
+	net.Wwo = uniform(2*dim, dim, -1, 1):mul(0.01)
+	net.bw = uniform(2*dim, 1, -1, 1):mul(0)
+	net.Ws = uniform(1, 2*dim, -1, 1):mul(0.01)	-- for scoring
 
 	-- classification
 	net.WCat = uniform(nCat, dim, -1, 1):mul(0.01)
@@ -133,7 +132,6 @@ function IORNN:fold( Model )
 		Model.Wwo or self.Wwo,
 		Model.bw or self.bw,
 		Model.Ws or self.Ws,
-		Model.bs or self.bs,
 
 		Model.L or self.L,
 		Model.root_outer or self.root_outer
@@ -167,7 +165,7 @@ function IORNN:unfold(Theta)
 			self.Wbol, self.Wbor, self.Wbop, self.bbol, self.bbor,
 			self.Wui, self.bui,
 			self.WCat, self.bCat,
-			self.Wwi, self.Wwo, self.bw, self.Ws, self.bs,
+			self.Wwi, self.Wwo, self.bw, self.Ws,
 			self.L, self.root_outer
 		}
 
@@ -191,7 +189,7 @@ function IORNN:forward(tree)
 	local Wui = self.Wui; local bui = self.bui; 
 	local WCat = self.WCat; local bCat = self.bCat
 	local Wwi = self.Wwi; local Wwo = self.Wwo; local bw = self.bw
-	local Ws = self.Ws; local bs = self.bs
+	local Ws = self.Ws
 	local L = self.L
 
 	local func = self.func
@@ -201,12 +199,16 @@ function IORNN:forward(tree)
 	local wrdDicLen = self.wrdDicLen
 	local nCat = self.nCat
 
+	local n_nodes = tree.n_nodes
+
 	--################### inside ###############--
 	tree.inner = torch.Tensor(dim, tree.n_nodes)
 	for i = tree.n_nodes,1,-1 do 
+		local column_i = {{},{i}}
+
 		-- for leaves
 		if tree.n_children[i] == 0 then
-			tree.inner[{{},{i}}]:copy(L[{{},{tree.word_id[i]}}])
+			tree.inner[column_i]:copy(L[{{},{tree.word_id[i]}}])
 
 		-- for internal nodes
 		else
@@ -222,7 +224,7 @@ function IORNN:forward(tree)
 
 			else error('accept only binary trees') end
 		
-			tree.inner[{{},{i}}] = func(input) 
+			tree.inner[column_i] = func(input) 
 		end
 	end
 
@@ -238,37 +240,41 @@ function IORNN:forward(tree)
 	-- for substitued word
 	tree.stt_word_id = torch.rand(tree.n_nodes):mul(self.wrdDicLen):add(1):floor()
 	tree.stt_word_emb = torch.Tensor(dim, tree.n_nodes)
-	tree.stt_word_score = torch.zeros(n_nodes)
-	tree.stt_word_io = torch.zeros(dim, tree.n_nodes)	-- combination of inner and outer meanings
+	tree.stt_word_score = torch.zeros(tree.n_nodes)
+	tree.stt_word_io = torch.zeros(Ws:size(2), tree.n_nodes)	-- combination of inner and outer meanings
 
 	-- for gold standard word
 	tree.word_score = torch.zeros(n_nodes)
-	tree.word_io = torch.zeros(dim, tree.n_nodes)
+	tree.word_io = torch.zeros(Ws:size(2), tree.n_nodes)
 
 	-- process
 	tree.outer[{{},{1}}]:copy(self.root_outer)
 
 	for i = 2,tree.n_nodes do
+		local col_i = {{},{i}}
+
 		local input = Wbop * tree.outer[{{},{tree.parent_id[i]}}]
-		if tree.left_sister_id[i] > 0 then
-			input:add(Wbol * tree.inner[{{},{tree.left_sister_id[i]}}])
-			input:add(bbol)
-		elseif tree.right_sister_id[i] > 0 then
-			input:add(Wbor * tree.inner[{{},{tree.right_sister_id[i]}}])
-			input:add(bbor)
+		if tree.sister_id[i] > 0 then
+			if tree.child_pos[i] == 1 then
+				input:add(Wbol * tree.inner[{{},{tree.sister_id[i]}}]):add(bbol)
+			elseif tree.child_pos[i] == 2 then
+				input:add(Wbor * tree.inner[{{},{tree.sister_id[i]}}]):add(bbor)
+			else
+				error('accept only binary tree')
+			end
 		else
-			error('accept only binary tree')
+			error("unary branching: not implement yet")
 		end
-		tree.outer[{{},{i}}]:copy(func(input))
+		tree.outer[col_i]:copy(func(input))
 
 		-- leaf: compute word score
 		if tree.n_children[i] == 0 then
-			tree.word_io[{{},{i}}]:copy(func((Wwo * tree.outer[i]):add(Wwi * tree.inner[i]):add(bw)))
-			tree.word_score[i] = (Ws * tree.word_io[{{},{i}}]):add(bs)
+			tree.word_io[col_i]:copy(func((Wwo * tree.outer[col_i]):add(Wwi * tree.inner[col_i]):add(bw)))
+			tree.word_score[i] = Ws * tree.word_io[col_i]
 
-			tree.stt_word_emb[{{},{i}}]:copy(L[{{},{tree.stt_word_id[i]}}])
-			tree.stt_word_io[{{},{i}}]:copy(func((Wwo * tree.outer[i]):add(Wwi * tree.stt_word_emb[{{},{i}}]):add(bw)))
-			tree.stt_word_score[i] = (Ws * tree.stt_word_io[{{},{i}}]):add(bs)
+			tree.stt_word_emb[col_i]:copy(L[{{},{tree.stt_word_id[i]}}])
+			tree.stt_word_io[col_i]:copy(func((Wwo * tree.outer[col_i]):add(Wwi * tree.stt_word_emb[col_i]):add(bw)))
+			tree.stt_word_score[i] = Ws * tree.stt_word_io[col_i]
 		end
 	end
 end
@@ -278,7 +284,7 @@ end
 -- input:
 -- 	tree : result of the parse function
 -- output:
-function IORNN:backpropagate(tree, grad, alpha)
+function IORNN:backpropagate(tree, grad, alpha, beta)
 
 	local dim = self.dim
 	local wrdDicLen = self.wrdDicLen
@@ -289,87 +295,168 @@ function IORNN:backpropagate(tree, grad, alpha)
 	local Wui = self.Wui; local bui = self.bui
 	local WCat = self.WCat; local bCat = self.bCat
 	local Wwo = self.Wwo; local Wwi = self.Wwi; local bw = self.bw
-	local Ws = self.Ws; local bs = self.bs
+	local Ws = self.Ws
 	local L = self.L
 
 	local func = self.func
 	local funcPrime = self.funcPrime
 
-	-- compute costs = alpha * cat cost + (1-alpha) * word_cost
+	-- compute costs = alpha * cat cost + (beta) * word_cost
 	local cat_cost = tree.cat_error:sum()
-	local tree.word_error = tree.stt_word_score + 1 - tree.word_score
-	tree.word_error:cmul(torch.ge(tree.word_error,0))
+	tree.word_error = tree.stt_word_score + 1 - tree.word_score
+	tree.word_error:cmul(torch.gt(tree.word_error,0):double())
 	local word_cost = tree.word_error:sum()
 
-	local cost = alpha*cat_cost + (1-alpha)*word_cost
+	local cost = alpha*cat_cost + (beta)*word_cost
 
-	-- gradient over Z (inner and outer)
-	local gradZi = torch.zeros(dim, tree.n_nodes)
-	local gradZo = torch.zeros(dim, tree.n_nodes)
-
-	-- gradient over Z of softmax nodes
-	local gradZCat = tree.cat_predict - tree.category
 
 	--*************** outside *************-
-	for i = tree.n_nodes, 1, -1 do
+	local tree_gradZo = torch.zeros(dim, tree.n_nodes)
+
+	for i = tree.n_nodes, 2, -1 do
+		local col_i = {{},{i}}
+		local gZo = nil
+
 		-- leaf: word ranking error
-		if tree.word_error[i] > 0 then
-			Ws:add(tree.stt_word_io[{{},{i}}]
-			
+		if tree.n_children[i] == 0 and tree.word_error[i] > 0 then
+			local word_io_prime = funcPrime(tree.word_io[col_i])
+			local stt_word_io_prime = funcPrime(tree.stt_word_io[col_i])
+
+			-- Ws
+			local gWs = (tree.stt_word_io[col_i] - tree.word_io[col_i]):t()
+			grad.Ws:add(gWs * (beta))
+
+			-- Wwo, Wwi, bw
+			local gbw = (stt_word_io_prime - word_io_prime):cmul(Ws:t())
+			grad.bw:add(gbw * (beta))
+			local gWwo = gbw * tree.outer[col_i]:t()
+			grad.Wwo:add(gWwo * (beta))
+
+			local gWwi = torch.cmul(Ws, stt_word_io_prime):t() * tree.stt_word_emb[col_i]:t() 
+						- torch.cmul(Ws, word_io_prime):t() * tree.inner[col_i]:t()
+			grad.Wwi:add(gWwi * (beta))
+	
+			-- gradZo
+			gZo = funcPrime(tree.outer[col_i]):cmul(Wwo:t() * gbw) * (beta)
+			tree_gradZo[col_i]:copy(gZo)
+
+			-- update lexsem
+			grad.L[{{},{tree.word_id[i]}}]:add((Wwi:t() * torch.cmul(Ws:t(),-word_io_prime)):mul(beta))
+			grad.L[{{},{tree.stt_word_id[i]}}]:add((Wwi:t() * torch.cmul(Ws:t(),stt_word_io_prime)):mul(beta))
+
+		-- nonterminal node
+		elseif tree.n_children[i] > 0 then
+			if tree.n_children[i] == 1 then
+				error("unary branching: not implement yet")
+			elseif tree.n_children[i] == 2 then
+				gZo = Wbop:t() * (tree_gradZo[{{},{tree.children_id[{1,i}]}}] + tree_gradZo[{{},{tree.children_id[{2,i}]}}])
+			else
+				error('only binary trees')
+			end
+			gZo:cmul(funcPrime(tree.outer[col_i]))
+			tree_gradZo[col_i]:copy(gZo)
+		end
+
+		-- Wbop, Wbol, Wbor, bbol, bbor
+		local gWbop = gZo * tree.outer[{{},{tree.parent_id[i]}}]:t()
+		grad.Wbop:add(gWbop)
+
+		-- binary
+		if tree.sister_id[i] > 0 then
+			local gWbo = gZo * tree.outer[{{},{tree.sister_id[i]}}]:t()
+			local gbbo = gZo
+			-- if this is left child
+			if tree.child_pos[i] == 1 then
+				grad.Wbol:add(gWbo)
+				grad.bbol:add(gbbo)
+			else -- right child 
+				grad.Wbor:add(gWbo)
+				grad.bbor:add(gbbo)
+			end
+		else
+			-- not root , unary
+			error("not implement yet")
 		end
 	end
 
+	-- root
+	local gZo = nil
+	if tree.n_children[1] == 2 then
+		gZo = Wbop:t() * (tree_gradZo[{{},{tree.children_id[{1,1}]}}] + tree_gradZo[{{},{tree.children_id[{2,1}]}}])
+	else
+		error("not implement yet")
+	end
+	grad.root_outer:add(gZo)
+
 
 	--*************** inside ****************
+	-- gradient over Z of softmax nodes
+	local tree_gradZi = torch.zeros(dim, tree.n_nodes)
+	local tree_gradZCat = (tree.cat_predict - tree.category):mul(alpha)
 
 	for i = 1,tree.n_nodes do
-		local W = support[i].W
-		local b = support[i].b
-		local gradZp = support[i].gradZp
-
-		gradZCat_i = gradZCat[{{},{i}}]
-		inner_i = tree.inner[{{},{i}}]
+		local col_i = {{},{i}}
+		local gZCat = tree_gradZCat[col_i]
 
 		-- for internal node
 		if tree.n_children[i] > 0 then	
-			-- compute gradZ
-			local gradZ = 	funcPrime(inner_i):cmul(
-							(WCat:t() * gradZCat_i):add(W:t()* gradZp))
+			-- gradZi
+			local gZi = funcPrime(tree.inner[col_i]):cmul(WCat:t() * gZCat)
+			if tree.parent_id[i] > 0 then
+				if tree.child_pos[i] == 1 then
+					gZi:add(Wbil:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
+					if tree.sister_id[i] > 0 then
+						gZi:add(Wbor:t() * tree_gradZo[{{},{tree.sister_id[i]}}])
+					end
+				else
+					gZi:add(Wbir:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
+					gZi:add(Wbol:t()* tree_gradZo[{{},{tree.sister_id[i]}}])
+				end	
+			end
+			tree_gradZi[col_i]:copy(gZi)
 
-			-- compute gradient
-			gradWCat:add(gradZCat_i * inner_i:t())
-			gradbCat:add(gradZCat_i)
+			-- WCat, bCat
+			grad.WCat:add(gZCat * tree.inner[col_i]:t())
+			grad.bCat:add(gZCat)
 
+			-- binary tree
+			-- Wbil, Wbir, bbi
 			if tree.n_children[i] == 2 then
 				local c1id = tree.children_id[{1,i}]
 				local c2id = tree.children_id[{2,i}]
-				gradWbil:add(gradZ * tree.inner[{{},{c1id}}]:t())
-				gradWbir:add(gradZ * tree.inner[{{},{c2id}}]:t())
-				gradbbi:add(gradZ)
-			
-				-- propagate to its children
-				support[c1id] = {W = Wbil, gradZp = gradZ}
-				support[c2id] = {W = Wbir, gradZp = gradZ}
-
-
+				grad.Wbil:add(gZi * tree.inner[{{},{c1id}}]:t())
+				grad.Wbir:add(gZi * tree.inner[{{},{c2id}}]:t())
+				grad.bbi:add(gZi)
+	
+			-- unary tree
+			-- Wbui, bui
 			elseif tree.n_children[i] == 1 then
 				local cid = tree.children_id[{1,i}]
-				gradWui:add(gradZ * tree.inner[{{},{cid}}]:t())
-				gradbui:add(gradZ)
-	
-				-- propagate to its children
-				support[cid] = {W = Wui, gradZp = gradZ}
+				grad.Wui:add(gZi * tree.inner[{{},{cid}}]:t())
+				grad.bui:add(gZi)
 
 			else error('accept only binary trees') end
 
 		else -- leaf
-			-- compute gradZ
-			local gradZ = (W:t() * gradZp):add(WCat:t() * gradZCat_i)
+			-- gradZi
+			local gZi = WCat:t() * gZCat
+			if tree.parent_id[i] > 0 then
+				if tree.child_pos[i] == 1 then
+					gZi:add(Wbil:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
+					if tree.sister_id[i] > 0 then
+						gZi:add(Wbor:t() * tree_gradZo[{{},{tree.sister_id[i]}}])
+					end
+				else
+					gZi:add(Wbir:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
+					gZi:add(Wbol:t()* tree_gradZo[{{},{tree.sister_id[i]}}])
+				end	
+			end
+			tree_gradZi[col_i]:copy(gZi)
 
 			-- compute gradient
-			gradWCat:add(gradZCat_i * inner_i:t())
-			gradbCat:add(gradZCat_i)
-			gradL[{{},{tree.word_id[i]}}]:add(gradZ)
+			grad.WCat:add(gZCat * tree.inner[col_i]:t())
+			grad.bCat:add(gZCat)
+			grad.L[{{},{tree.word_id[i]}}]:add(gZi)
 		end
 	end
 	
@@ -502,20 +589,35 @@ else
 -- for single process
 	local grad = {
 		L = torch.zeros(self.L:size()),
+		root_outer = torch.zeros(self.root_outer:size()),
+
 		Wbil = torch.zeros(self.Wbil:size()),
 		Wbir = torch.zeros(self.Wbir:size()),
 		bbi = torch.zeros(self.bbi:size()),
+		
 		Wui = torch.zeros(self.Wui:size()),
 		bui = torch.zeros(self.bui:size()),
+
+		Wbop = torch.zeros(self.Wbop:size()),
+		Wbol = torch.zeros(self.Wbol:size()),
+		Wbor = torch.zeros(self.Wbor:size()),
+		bbol = torch.zeros(self.bbol:size()),
+		bbor = torch.zeros(self.bbor:size()),
+		
 		WCat = torch.zeros(self.WCat:size()),
-		bCat = torch.zeros(self.bCat:size()) 
+		bCat = torch.zeros(self.bCat:size()),
+
+		Wwo = torch.zeros(self.Wwo:size()),
+		Wwi = torch.zeros(self.Wwi:size()),
+		bw = torch.zeros(self.bw:size()),
+		Ws = torch.zeros(self.Ws:size())
 	}
 
 	local cost = 0
 	local nSample = #treebank
 	for i, tree in ipairs(treebank)  do
 		self:forward(tree)
-		cost = cost + self:backpropagate(tree, grad)
+		cost = cost + self:backpropagate(tree, grad, config.alpha, config.beta)
 	end
 
 	local M = self:fold()
@@ -634,7 +736,7 @@ require 'xlua'
 p = xlua.Profiler()
 
 function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
-								maxit, learn_rate, lambda)
+								maxit, learn_rate, lambda, alpha)
 	local nSample = #traintreebank
 	local j = 0
 
@@ -654,7 +756,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 				subtreebank[k] = traintreebank[k+(j-1)*batchSize]
 			end
 			p:start("compute grad")
-			cost, Grad = self:computeCostAndGrad(subtreebank, {lambda = lambda})
+			cost, Grad = self:computeCostAndGrad(subtreebank, {lambda = lambda, alpha = alpha})
 			p:lap("compute grad")
 
 			-- for visualization
@@ -688,7 +790,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 end
 
 --*********************************** test ******************************--
---[[
+
 	word2id = {
 		['yet'] = 1,
 		['the'] = 2,
@@ -712,13 +814,17 @@ end
 	net = IORNN:new(struct)
 	t1 = Tree:create_from_string("(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))")
 	t2 = Tree:create_from_string("(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))")
-	
-	t1 = t1:to_torch_matrices(word2id, 5)
-	t2 = t2:to_torch_matrices(word2id, 5)
 
-	config = {lambda = 1e-3}
+	require "dict"
+	dic = Dict:new(huang_template)
+	dic.word2id = word2id
+	
+	t1 = t1:to_torch_matrices(dic, 5)
+	t2 = t2:to_torch_matrices(dic, 5)
+
+	config = {lambda = 1e-3, alpha = 0.4, beta = 0.2}
 	net:checkGradient({t1,t2},config)
-]]
+
 
 
 
