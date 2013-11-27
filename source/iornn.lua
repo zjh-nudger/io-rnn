@@ -48,40 +48,41 @@ function IORNN:new(struct)
 	local nCat = struct.nCategory
 
 	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat}
+	local mul = 1
 	
 	-- unary branch inner
-	net.Wui = uniform(dim, dim, -1, 1):mul(0.01)
+	net.Wui = uniform(dim, dim, -1, 1):mul(mul)
 	net.bui = uniform(dim, 1, -1, 1):mul(0)
 
 	-- binary branch inner
-	net.Wbil = uniform(dim, dim, -1, 1):mul(0.01)	--left
-	net.Wbir = uniform(dim, dim, -1, 1):mul(0.01)	--right
+	net.Wbil = uniform(dim, dim, -1, 1):mul(mul)	--left
+	net.Wbir = uniform(dim, dim, -1, 1):mul(mul)	--right
 	net.bbi = uniform(dim, 1, -1, 1):mul(0)
 
 	-- binary brach outer
-	net.Wbol = uniform(dim, dim, -1, 1):mul(0.01)	--left sister
-	net.Wbor = uniform(dim, dim, -1, 1):mul(0.01)	--right sister
-	net.Wbop = uniform(dim, dim, -1, 1):mul(0.01)	--parent
+	net.Wbol = uniform(dim, dim, -1, 1):mul(mul)	--left sister
+	net.Wbor = uniform(dim, dim, -1, 1):mul(mul)	--right sister
+	net.Wbop = uniform(dim, dim, -1, 1):mul(mul)	--parent
 	net.bbol = uniform(dim, 1, -1, 1):mul(0)
 	net.bbor = uniform(dim, 1, -1, 1):mul(0)
 
 	-- word ranking
-	net.Wwi = uniform(2*dim, dim, -1, 1):mul(0.01)	-- for combining inner, outer meanings
-	net.Wwo = uniform(2*dim, dim, -1, 1):mul(0.01)
+	net.Wwi = uniform(2*dim, dim, -1, 1):mul(mul)	-- for combining inner, outer meanings
+	net.Wwo = uniform(2*dim, dim, -1, 1):mul(mul)
 	net.bw = uniform(2*dim, 1, -1, 1):mul(0)
-	net.Ws = uniform(1, 2*dim, -1, 1):mul(0.01)	-- for scoring
+	net.Ws = uniform(1, 2*dim, -1, 1):mul(mul)	-- for scoring
 
 	-- classification
-	net.WCat = uniform(nCat, dim, -1, 1):mul(0.01)
+	net.WCat = uniform(nCat, dim, -1, 1):mul(mul)
 	net.bCat = uniform(nCat, 1, -1, 1):mul(0)
 
 	-- wordembedding
-	net.L = torch.randn(struct.Lookup:size()) * 0.001
+	net.L = torch.randn(struct.Lookup:size()):mul(0.1)
 	net.func = struct.func
 	net.funcPrime = struct.funcPrime
 
 	-- root outer
-	net.root_outer = uniform(dim, 1, -1, 1):mul(0.001)
+	net.root_outer = uniform(dim, 1, -1, 1):mul(0.1)
 	
 	setmetatable(net, IORNN_mt)
 	return net
@@ -238,7 +239,8 @@ function IORNN:forward(tree)
 	tree.outer = torch.Tensor(dim, tree.n_nodes)
 	
 	-- for substitued word
-	tree.stt_word_id = torch.rand(tree.n_nodes):mul(self.wrdDicLen):add(1):floor()
+	-- tree.stt_word_id = torch.rand(tree.n_nodes):mul(self.wrdDicLen):add(1):floor()
+	tree.stt_word_id = torch.Tensor(tree.n_nodes):fill(3) -- for gradient checking only
 	tree.stt_word_emb = torch.Tensor(dim, tree.n_nodes)
 	tree.stt_word_score = torch.zeros(tree.n_nodes)
 	tree.stt_word_io = torch.zeros(Ws:size(2), tree.n_nodes)	-- combination of inner and outer meanings
@@ -642,6 +644,7 @@ function IORNN:checkGradient(treebank, config)
 	local _, gradTheta = self:computeCostAndGrad(treebank, config)
 
 	local n = Theta:nElement()
+	local numGradTheta = torch.zeros(n)
 	for i = 1,n do
 		local index = {{i}}
 		Theta[index]:add(epsilon)
@@ -654,10 +657,18 @@ function IORNN:checkGradient(treebank, config)
 		Theta[index]:add(epsilon)
 		self:unfold(Theta)
 
-		local diff = math.abs((costPlus - costMinus) / (2*epsilon) - gradTheta[i])
+		numGradTheta[i] = (costPlus - costMinus) / (2*epsilon) 
+
+		local diff = math.abs(numGradTheta[i] - gradTheta[i])
 		print('diff ' .. diff)
 	end
+
+	local diff = torch.norm(gradTheta - numGradTheta) 
+					/ torch.norm(gradTheta + numGradTheta)
+	print(diff)
+	print("should be < 1e-9")
 end
+
 
 --***************************** eval **************************
 function IORNN:eval(treebank)
@@ -790,7 +801,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 end
 
 --*********************************** test ******************************--
-
+	torch.setnumthreads(1)
 	word2id = {
 		['yet'] = 1,
 		['the'] = 2,
@@ -814,6 +825,9 @@ end
 	net = IORNN:new(struct)
 	t1 = Tree:create_from_string("(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))")
 	t2 = Tree:create_from_string("(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))")
+	t3 = Tree:create_from_string("(2 (4 the) (1 screenplay))")
+	t4 = Tree:create_from_string("(3 (2 (1 is) (1 more)) (3 (2 than) (3 here)))")
+
 
 	require "dict"
 	dic = Dict:new(huang_template)
@@ -821,9 +835,11 @@ end
 	
 	t1 = t1:to_torch_matrices(dic, 5)
 	t2 = t2:to_torch_matrices(dic, 5)
+	t3 = t3:to_torch_matrices(dic, 5)
+	t4 = t4:to_torch_matrices(dic, 5)
 
-	config = {lambda = 1e-3, alpha = 0.4, beta = 0.2}
-	net:checkGradient({t1,t2},config)
+	config = {lambda = 1e-3, alpha = 1.0, beta = 0}
+	net:checkGradient({t1,t2,t3,t4},config)
 
 
 

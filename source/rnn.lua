@@ -63,22 +63,23 @@ function RNN:new(struct)
 	local nCat = struct.nCategory
 
 	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat}
-	
+	local mul = 0.1
+
 	-- unary branch
-	net.Wu = uniform(dim, dim, -1, 1):mul(0.01)
+	net.Wu = uniform(dim, dim, -1, 1):mul(mul)
 	net.bu = uniform(dim, 1, -1, 1):mul(0)
 
 	-- binary branch
-	net.Wb1 = uniform(dim, dim, -1, 1):mul(0.01)
-	net.Wb2 = uniform(dim, dim, -1, 1):mul(0.01)
+	net.Wb1 = uniform(dim, dim, -1, 1):mul(mul)
+	net.Wb2 = uniform(dim, dim, -1, 1):mul(mul)
 	net.bb = uniform(dim, 1, -1, 1):mul(0)
 
 	-- classification
-	net.WCat = uniform(nCat, dim, -1, 1):mul(0.01)
+	net.WCat = uniform(nCat, dim, -1, 1):mul(mul)
 	net.bCat = uniform(nCat, 1, -1, 1):mul(0)
 
 	-- wordembedding
-	net.L = torch.randn(struct.Lookup:size()) * 0.001
+	net.L = torch.randn(struct.Lookup:size()):mul(0.1)
 	net.func = struct.func
 	net.funcPrime = struct.funcPrime
 	
@@ -467,6 +468,7 @@ function RNN:checkGradient(treebank, config)
 	local _, gradTheta = self:computeCostAndGrad(treebank, config)
 
 	local n = Theta:nElement()
+	local numGradTheta = torch.zeros(n)
 	for i = 1,n do
 		local index = {{i}}
 		Theta[index]:add(epsilon)
@@ -479,9 +481,16 @@ function RNN:checkGradient(treebank, config)
 		Theta[index]:add(epsilon)
 		self:unfold(Theta)
 
-		local diff = math.abs((costPlus - costMinus) / (2*epsilon) - gradTheta[i])
+		numGradTheta[i] = (costPlus - costMinus) / (2*epsilon) 
+
+		local diff = math.abs(numGradTheta[i] - gradTheta[i])
 		print('diff ' .. diff)
 	end
+
+	local diff = torch.norm(gradTheta - numGradTheta) 
+					/ torch.norm(gradTheta + numGradTheta)
+	print(diff)
+	print("should be < 1e-9")
 end
 
 --***************************** eval **************************
@@ -615,7 +624,8 @@ function RNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 end
 
 --*********************************** test ******************************--
---[[
+	torch.setnumthreads(1)
+
 	word2id = {
 		['yet'] = 1,
 		['the'] = 2,
@@ -634,18 +644,27 @@ end
 		['``'] = 15,
 		['memento'] = 16,
 		["''"] = 17 }
+	local dic = Dict:new(huang_template)
+	dic.word2id = word2id
 
 	struct = {Lookup = torch.randn(3,17), nCategory = 5, func = tanh, funcPrime = tanhPrime}
 	net = RNN:new(struct)
 	t1 = Tree:create_from_string("(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))")
 	t2 = Tree:create_from_string("(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))")
+	t3 = Tree:create_from_string("(2 (4 the) (1 screenplay))")
+	t4 = Tree:create_from_string("(3 (2 (1 is) (1 more)) (3 (2 than) (3 here)))")
+
+	require "dict"
+	dic = Dict:new(huang_template)
+	dic.word2id = word2id
 	
-	t1 = t1:to_torch_matrices(word2id, 5)
-	t2 = t2:to_torch_matrices(word2id, 5)
+	t1 = t1:to_torch_matrices(dic, 5)
+	t2 = t2:to_torch_matrices(dic, 5)
+	t3 = t3:to_torch_matrices(dic, 5)
+	t4 = t4:to_torch_matrices(dic, 5)
 
 	config = {lambda = 1e-3}
 	net:checkGradient({t1,t2},config)
-]]
 
 
 
