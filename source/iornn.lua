@@ -205,11 +205,11 @@ function IORNN:forward(tree)
 	--################### inside ###############--
 	tree.inner = torch.Tensor(dim, tree.n_nodes)
 	for i = tree.n_nodes,1,-1 do 
-		local column_i = {{},{i}}
+		local col_i = {{},{i}}
 
 		-- for leaves
 		if tree.n_children[i] == 0 then
-			tree.inner[column_i]:copy(L[{{},{tree.word_id[i]}}])
+			tree.inner[col_i]:copy(L[{{},{tree.word_id[i]}}])
 
 		-- for internal nodes
 		else
@@ -225,7 +225,7 @@ function IORNN:forward(tree)
 
 			else error('accept only binary trees') end
 		
-			tree.inner[column_i] = func(input) 
+			tree.inner[col_i]:copy(func(input))
 		end
 	end
 
@@ -838,7 +838,7 @@ end
 	t3 = t3:to_torch_matrices(dic, 5)
 	t4 = t4:to_torch_matrices(dic, 5)
 
-	config = {lambda = 1e-3, alpha = 1.0, beta = 0}
+	config = {lambda = 1e-3, alpha = 0, beta = 1}
 	net:checkGradient({t1,t2,t3,t4},config)
 
 
