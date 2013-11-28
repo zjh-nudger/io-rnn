@@ -624,6 +624,7 @@ function RNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 end
 
 --*********************************** test ******************************--
+--[[
 	torch.setnumthreads(1)
 
 	word2id = {
@@ -665,6 +666,6 @@ end
 
 	config = {lambda = 1e-3}
 	net:checkGradient({t1,t2},config)
-
+]]
 
 

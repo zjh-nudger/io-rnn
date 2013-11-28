@@ -48,7 +48,7 @@ function IORNN:new(struct)
 	local nCat = struct.nCategory
 
 	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat}
-	local mul = 1
+	local mul = 0.1
 	
 	-- unary branch inner
 	net.Wui = uniform(dim, dim, -1, 1):mul(mul)
@@ -77,12 +77,12 @@ function IORNN:new(struct)
 	net.bCat = uniform(nCat, 1, -1, 1):mul(0)
 
 	-- wordembedding
-	net.L = torch.randn(struct.Lookup:size()):mul(0.1)
+	net.L = torch.randn(struct.Lookup:size()):mul(0.0001)
 	net.func = struct.func
 	net.funcPrime = struct.funcPrime
 
 	-- root outer
-	net.root_outer = uniform(dim, 1, -1, 1):mul(0.1)
+	net.root_outer = uniform(dim, 1, -1, 1):mul(0.0001)
 	
 	setmetatable(net, IORNN_mt)
 	return net
@@ -113,21 +113,21 @@ end
 function IORNN:fold( Model )
 	local Model = Model or {}
 	local Params = {
-		Model.Wbil or self.Wbil,
-		Model.Wbir or self.Wbir,
-		Model.bbi or self.bbi,
+		Model.Wbil or self.Wbil,	--  9
+		Model.Wbir or self.Wbir,	-- 18
+		Model.bbi or self.bbi,		-- 21
 		
-		Model.Wbol or self.Wbol,
-		Model.Wbor or self.Wbor,
-		Model.Wbop or self.Wbop,
-		Model.bbol or self.bbol,
-		Model.bbor or self.bbor,
+		Model.Wbol or self.Wbol,	-- 30
+		Model.Wbor or self.Wbor,	-- 39
+		Model.Wbop or self.Wbop,	-- 48
+		Model.bbol or self.bbol,	-- 51
+		Model.bbor or self.bbor,	-- 54
 
-		Model.Wui or self.Wui,
-		Model.bui or self.bui,
+		Model.Wui or self.Wui,		-- 63
+		Model.bui or self.bui,		-- 66
 
-		Model.WCat or self.WCat,
-		Model.bCat or self.bCat,
+		Model.WCat or self.WCat,	-- 81
+		Model.bCat or self.bCat,	-- 86
 
 		Model.Wwi or self.Wwi,
 		Model.Wwo or self.Wwo,
@@ -186,7 +186,8 @@ end
 function IORNN:forward(tree)
 
 	local Wbil = self.Wbil; local Wbir = self.Wbir; local bbi = self.bbi
-	local Wbol = self.Wbol; local Wbor = self.Wbor; local Wbop = self.Wbop; local bbol = self.bbol; local bbor = self.bbor
+	local Wbol = self.Wbol; local Wbor = self.Wbor; local Wbop = self.Wbop; 
+	local bbol = self.bbol; local bbor = self.bbor
 	local Wui = self.Wui; local bui = self.bui; 
 	local WCat = self.WCat; local bCat = self.bCat
 	local Wwi = self.Wwi; local Wwo = self.Wwo; local bw = self.bw
@@ -239,8 +240,8 @@ function IORNN:forward(tree)
 	tree.outer = torch.Tensor(dim, tree.n_nodes)
 	
 	-- for substitued word
-	-- tree.stt_word_id = torch.rand(tree.n_nodes):mul(self.wrdDicLen):add(1):floor()
-	tree.stt_word_id = torch.Tensor(tree.n_nodes):fill(3) -- for gradient checking only
+	tree.stt_word_id = torch.rand(tree.n_nodes):mul(self.wrdDicLen):add(1):floor()
+	--tree.stt_word_id = torch.Tensor(tree.n_nodes):fill(3) -- for gradient checking only
 	tree.stt_word_emb = torch.Tensor(dim, tree.n_nodes)
 	tree.stt_word_score = torch.zeros(tree.n_nodes)
 	tree.stt_word_io = torch.zeros(Ws:size(2), tree.n_nodes)	-- combination of inner and outer meanings
@@ -251,12 +252,15 @@ function IORNN:forward(tree)
 
 	-- process
 	tree.outer[{{},{1}}]:copy(self.root_outer)
+	tree.word_error = torch.zeros(tree.n_nodes)
 
 	for i = 2,tree.n_nodes do
 		local col_i = {{},{i}}
+		local input = nil
 
-		local input = Wbop * tree.outer[{{},{tree.parent_id[i]}}]
 		if tree.sister_id[i] > 0 then
+			input = Wbop * tree.outer[{{},{tree.parent_id[i]}}]
+
 			if tree.child_pos[i] == 1 then
 				input:add(Wbol * tree.inner[{{},{tree.sister_id[i]}}]):add(bbol)
 			elseif tree.child_pos[i] == 2 then
@@ -267,16 +271,22 @@ function IORNN:forward(tree)
 		else
 			error("unary branching: not implement yet")
 		end
+
 		tree.outer[col_i]:copy(func(input))
 
 		-- leaf: compute word score
 		if tree.n_children[i] == 0 then
-			tree.word_io[col_i]:copy(func((Wwo * tree.outer[col_i]):add(Wwi * tree.inner[col_i]):add(bw)))
+			tree.word_io[col_i]:copy(func(	(Wwo * tree.outer[col_i])
+											:add(Wwi * tree.inner[col_i]):add(bw)))
 			tree.word_score[i] = Ws * tree.word_io[col_i]
 
 			tree.stt_word_emb[col_i]:copy(L[{{},{tree.stt_word_id[i]}}])
-			tree.stt_word_io[col_i]:copy(func((Wwo * tree.outer[col_i]):add(Wwi * tree.stt_word_emb[col_i]):add(bw)))
+			tree.stt_word_io[col_i]:copy(func(	
+											(Wwo * tree.outer[col_i])
+											:add(Wwi * tree.stt_word_emb[col_i]):add(bw)))
 			tree.stt_word_score[i] = Ws * tree.stt_word_io[col_i]
+
+			tree.word_error[i] = math.max(0, 1 - tree.word_score[i] + tree.stt_word_score[i])
 		end
 	end
 end
@@ -293,7 +303,8 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 	local nCat = self.nCat
 
 	local Wbil = self.Wbil; local Wbir = self.Wbir; local bbi = self.bbi
-	local Wbol = self.Wbol; local Wbor = self.Wbor; local Wbop = self.Wbop; local bbol = self.bbol; local bbor = self.bbor
+	local Wbol = self.Wbol; local Wbor = self.Wbor; local Wbop = self.Wbop; 
+	local bbol = self.bbol; local bbor = self.bbor
 	local Wui = self.Wui; local bui = self.bui
 	local WCat = self.WCat; local bCat = self.bCat
 	local Wwo = self.Wwo; local Wwi = self.Wwi; local bw = self.bw
@@ -305,11 +316,9 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 
 	-- compute costs = alpha * cat cost + (beta) * word_cost
 	local cat_cost = tree.cat_error:sum()
-	tree.word_error = tree.stt_word_score + 1 - tree.word_score
-	tree.word_error:cmul(torch.gt(tree.word_error,0):double())
 	local word_cost = tree.word_error:sum()
 
-	local cost = alpha*cat_cost + (beta)*word_cost
+	local cost = alpha*cat_cost + beta*word_cost
 
 
 	--*************** outside *************-
@@ -317,7 +326,7 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 
 	for i = tree.n_nodes, 2, -1 do
 		local col_i = {{},{i}}
-		local gZo = nil
+		local gZo = torch.zeros(dim, 1)
 
 		-- leaf: word ranking error
 		if tree.n_children[i] == 0 and tree.word_error[i] > 0 then
@@ -326,32 +335,35 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 
 			-- Ws
 			local gWs = (tree.stt_word_io[col_i] - tree.word_io[col_i]):t()
-			grad.Ws:add(gWs * (beta))
+			grad.Ws:add(gWs * beta)
 
 			-- Wwo, Wwi, bw
 			local gbw = (stt_word_io_prime - word_io_prime):cmul(Ws:t())
-			grad.bw:add(gbw * (beta))
+			grad.bw:add(gbw * beta)
 			local gWwo = gbw * tree.outer[col_i]:t()
-			grad.Wwo:add(gWwo * (beta))
+			grad.Wwo:add(gWwo * beta)
 
-			local gWwi = torch.cmul(Ws, stt_word_io_prime):t() * tree.stt_word_emb[col_i]:t() 
-						- torch.cmul(Ws, word_io_prime):t() * tree.inner[col_i]:t()
-			grad.Wwi:add(gWwi * (beta))
+			local gWwi = torch.cmul(Ws:t(), stt_word_io_prime) * tree.stt_word_emb[col_i]:t()
+						- torch.cmul(Ws:t(), word_io_prime) * tree.inner[col_i]:t()
+			grad.Wwi:add(gWwi * beta)
 	
 			-- gradZo
-			gZo = funcPrime(tree.outer[col_i]):cmul(Wwo:t() * gbw) * (beta)
+			gZo = funcPrime(tree.outer[col_i]):cmul(Wwo:t() * gbw):mul(beta)
 			tree_gradZo[col_i]:copy(gZo)
 
 			-- update lexsem
-			grad.L[{{},{tree.word_id[i]}}]:add((Wwi:t() * torch.cmul(Ws:t(),-word_io_prime)):mul(beta))
-			grad.L[{{},{tree.stt_word_id[i]}}]:add((Wwi:t() * torch.cmul(Ws:t(),stt_word_io_prime)):mul(beta))
+			grad.L[{{},{tree.word_id[i]}}]
+						:add((Wwi:t() * torch.cmul(Ws:t(),-word_io_prime)):mul(beta))
+			grad.L[{{},{tree.stt_word_id[i]}}]
+						:add((Wwi:t() * torch.cmul(Ws:t(),stt_word_io_prime)):mul(beta))
 
 		-- nonterminal node
 		elseif tree.n_children[i] > 0 then
 			if tree.n_children[i] == 1 then
 				error("unary branching: not implement yet")
 			elseif tree.n_children[i] == 2 then
-				gZo = Wbop:t() * (tree_gradZo[{{},{tree.children_id[{1,i}]}}] + tree_gradZo[{{},{tree.children_id[{2,i}]}}])
+				gZo = Wbop:t() * (	tree_gradZo[{{},{tree.children_id[{1,i}]}}] 
+									+ tree_gradZo[{{},{tree.children_id[{2,i}]}}])
 			else
 				error('only binary trees')
 			end
@@ -360,13 +372,21 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 		end
 
 		-- Wbop, Wbol, Wbor, bbol, bbor
-		local gWbop = gZo * tree.outer[{{},{tree.parent_id[i]}}]:t()
-		grad.Wbop:add(gWbop)
-
 		-- binary
 		if tree.sister_id[i] > 0 then
-			local gWbo = gZo * tree.outer[{{},{tree.sister_id[i]}}]:t()
+			if gZo == nil then
+				print(i)
+				for k,v in pairs(tree) do
+					print(k)
+					print(v)
+				end
+			end
+			local gWbop = gZo * tree.outer[{{},{tree.parent_id[i]}}]:t()
+			grad.Wbop:add(gWbop)
+
+			local gWbo = gZo * tree.inner[{{},{tree.sister_id[i]}}]:t()
 			local gbbo = gZo
+
 			-- if this is left child
 			if tree.child_pos[i] == 1 then
 				grad.Wbol:add(gWbo)
@@ -384,7 +404,8 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 	-- root
 	local gZo = nil
 	if tree.n_children[1] == 2 then
-		gZo = Wbop:t() * (tree_gradZo[{{},{tree.children_id[{1,1}]}}] + tree_gradZo[{{},{tree.children_id[{2,1}]}}])
+		gZo = Wbop:t() * (	tree_gradZo[{{},{tree.children_id[{1,1}]}}] 
+							+ tree_gradZo[{{},{tree.children_id[{2,1}]}}] )
 	else
 		error("not implement yet")
 	end
@@ -403,7 +424,7 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 		-- for internal node
 		if tree.n_children[i] > 0 then	
 			-- gradZi
-			local gZi = funcPrime(tree.inner[col_i]):cmul(WCat:t() * gZCat)
+			local gZi = WCat:t() * gZCat
 			if tree.parent_id[i] > 0 then
 				if tree.child_pos[i] == 1 then
 					gZi:add(Wbil:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
@@ -415,6 +436,7 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 					gZi:add(Wbol:t()* tree_gradZo[{{},{tree.sister_id[i]}}])
 				end	
 			end
+			gZi:cmul(funcPrime(tree.inner[col_i]))
 			tree_gradZi[col_i]:copy(gZi)
 
 			-- WCat, bCat
@@ -660,7 +682,7 @@ function IORNN:checkGradient(treebank, config)
 		numGradTheta[i] = (costPlus - costMinus) / (2*epsilon) 
 
 		local diff = math.abs(numGradTheta[i] - gradTheta[i])
-		print('diff ' .. diff)
+		print('diff ' .. i .. ' ' .. diff)
 	end
 
 	local diff = torch.norm(gradTheta - numGradTheta) 
@@ -672,7 +694,7 @@ end
 
 --***************************** eval **************************
 function IORNN:eval(treebank)
-	_, _, treebank = self:computeCostAndGrad(treebank, {lambda = 0})
+	_, _, treebank = self:computeCostAndGrad(treebank, {lambda = 0, alpha=0, beta=0})
 	local total = 0
 	local correct = 0
 
@@ -747,11 +769,11 @@ require 'xlua'
 p = xlua.Profiler()
 
 function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
-								maxit, learn_rate, lambda, alpha)
+								maxit, learn_rate, lambda, alpha, beta)
 	local nSample = #traintreebank
 	local j = 0
 
-	print('accuracy = ' .. self:eval(devtreebank)) io.flush()
+	--print('accuracy = ' .. self:eval(devtreebank)) io.flush()
 	local adagrad_config = {learningRate = learn_rate}
 	local adagrad_state = {}
 
@@ -767,7 +789,8 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 				subtreebank[k] = traintreebank[k+(j-1)*batchSize]
 			end
 			p:start("compute grad")
-			cost, Grad = self:computeCostAndGrad(subtreebank, {lambda = lambda, alpha = alpha})
+			cost, Grad = self:computeCostAndGrad(subtreebank, 
+									{lambda = lambda, alpha = alpha, beta=beta})
 			p:lap("compute grad")
 
 			-- for visualization
@@ -801,6 +824,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 end
 
 --*********************************** test ******************************--
+--[[
 	torch.setnumthreads(1)
 	word2id = {
 		['yet'] = 1,
@@ -825,7 +849,7 @@ end
 	net = IORNN:new(struct)
 	t1 = Tree:create_from_string("(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))")
 	t2 = Tree:create_from_string("(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))")
-	t3 = Tree:create_from_string("(2 (4 the) (1 screenplay))")
+	t3 = Tree:create_from_string("(2 (4 (1 the) (2 act)) (1 screenplay))")
 	t4 = Tree:create_from_string("(3 (2 (1 is) (1 more)) (3 (2 than) (3 here)))")
 
 
@@ -838,9 +862,9 @@ end
 	t3 = t3:to_torch_matrices(dic, 5)
 	t4 = t4:to_torch_matrices(dic, 5)
 
-	config = {lambda = 1e-3, alpha = 0, beta = 1}
+	config = {lambda = 1e-3, alpha = 0.8, beta = 0.2}
 	net:checkGradient({t1,t2,t3,t4},config)
-
+]]
 
 
 
