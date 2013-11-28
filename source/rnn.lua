@@ -79,7 +79,7 @@ function RNN:new(struct)
 	net.bCat = uniform(nCat, 1, -1, 1):mul(0)
 
 	-- wordembedding
-	net.L = torch.randn(struct.Lookup:size()):mul(0.1)
+	net.L = torch.randn(struct.Lookup:size()):mul(0.0001)
 	net.func = struct.func
 	net.funcPrime = struct.funcPrime
 	
@@ -496,20 +496,26 @@ end
 --***************************** eval **************************
 function RNN:eval(treebank)
 	_, _, treebank = self:computeCostAndGrad(treebank, {lambda = 0})
-	local total = 0
-	local correct = 0
+	local total_all = 0
+	local correct_all = 0
+
+	local total_root = 0
+	local correct_root = 0
 
 	for i,tree in ipairs(treebank) do
-		total = total + tree.n_nodes
+		total_all = total_all + tree.n_nodes
+		total_root = total_root + 1
+
 		local m,_ = tree.predict:max(1)
 		pred = 	torch.eq(
 					tree.predict, 
 					torch.repeatTensor(torch.reshape(m,1,tree.n_nodes), self.nCat,1))
 				:double()
-		correct = correct + torch.cmul(pred, tree.category):sum()
+		correct_all = correct_all + torch.cmul(pred, tree.category):sum()
+		correct_root = correct_root + torch.cmul(pred[{{},{1}}], tree.category[{{},{1}}]):sum()
 	end
 
-	return correct / total
+	return correct_all / total_all, correct_root / total_root
 end
 
 --******************************* train networks *************************
@@ -610,13 +616,15 @@ function RNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 
 		p:printAll()
 
-		if math.mod(iter,100) == 0 then
-			print('accuracy = ' .. self:eval(devtreebank))
+		if math.mod(iter,500) == 0 then
+			local acc = self:eval(devtreebank) * 100
+			acc = math.floor(acc * 100) / 100
+			print('accuracy = ' .. acc)
 			io.flush()
-		end
 
-		if math.mod(iter, 1000) == 0 then
-			self:save('model/model.' .. math.floor(iter / 1000))
+			if math.mod(iter, 500) == 0 then
+				self:save('model/model.rnn.' .. iter .. '_' .. acc)
+			end
 		end
 
 		collectgarbage()

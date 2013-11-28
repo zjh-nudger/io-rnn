@@ -4,11 +4,13 @@ require 'utils'
 require 'dict'
 require 'optim'
 
-if #arg == 2 then
+if #arg == 4 then
 	torch.setnumthreads(1)
 
 	we_path = arg[1]
 	treebank_dir = arg[2]
+	alpha = tonumber(arg[3])
+	learn_rate = tonumber(arg[4])
 	n_categories = 5
 
 -- load word emb
@@ -28,7 +30,7 @@ if #arg == 2 then
 	end
 
 	local devtreebank = {}
-	for line in io.lines(treebank_dir .. '/dev.txt') do
+	for line in io.lines(treebank_dir .. '/test.txt') do
 		tree = Tree:create_from_string(line)
 		tree = tree:to_torch_matrices(dic, n_categories)
 		devtreebank[#devtreebank + 1] = tree
@@ -42,10 +44,8 @@ if #arg == 2 then
 	local net = IORNN:new(struct)
 
 	maxit = 100000
-	learn_rate = 1e-1
 	lambda = 1e-4
 	batchsize = 27
-	alpha = 0.8
 	beta = 1-alpha
 	
 	net:train_with_adagrad(traintreebank, devtreebank, batchsize,
@@ -53,5 +53,5 @@ if #arg == 2 then
 
 
 else
-	print("invalid arugments: [wordemb path] [treebank dir]")
+	print("invalid arugments: [wordemb path] [treebank dir] [alpha] [learning rate]")
 end

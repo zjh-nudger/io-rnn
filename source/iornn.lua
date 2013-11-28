@@ -706,6 +706,9 @@ function IORNN:eval(treebank)
 					torch.repeatTensor(torch.reshape(m,1,tree.n_nodes), self.nCat,1))
 				:double()
 		correct = correct + torch.cmul(pred, tree.category):sum()
+		--print('---------------')
+		--print(pred)
+		--print(tree.category)
 	end
 
 	return correct / total
@@ -773,7 +776,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	local nSample = #traintreebank
 	local j = 0
 
-	--print('accuracy = ' .. self:eval(devtreebank)) io.flush()
+	print('accuracy = ' .. self:eval(devtreebank)) io.flush()
 	local adagrad_config = {learningRate = learn_rate}
 	local adagrad_state = {}
 
@@ -790,7 +793,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			end
 			p:start("compute grad")
 			cost, Grad = self:computeCostAndGrad(subtreebank, 
-									{lambda = lambda, alpha = alpha, beta=beta})
+									{lambda = lambda, alpha = alpha, beta = beta})
 			p:lap("compute grad")
 
 			-- for visualization
@@ -802,6 +805,9 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			
 			return cost, Grad
 		end
+
+		print(self.WCat:sum())
+		print(self.bCat:sum())
 	
 		p:start("optim")
 		M,_ = optim.adagrad(func, self:fold(), adagrad_config, adagrad_state)
@@ -810,13 +816,13 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 
 		p:printAll()
 
-		if math.mod(iter,100) == 0 then
+		if math.mod(iter,1000) == 0 then
 			print('accuracy = ' .. self:eval(devtreebank))
 			io.flush()
 		end
 
-		if math.mod(iter, 1000) == 0 then
-			self:save('model/model.' .. math.floor(iter / 1000))
+		if math.mod(iter, 5000) == 0 then
+			self:save('model/model.' .. math.floor(iter / 1000) .. '_' .. alpha)
 		end
 
 		collectgarbage()
