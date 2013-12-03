@@ -23,14 +23,14 @@ if #arg == 4 then
 -- load treebank
 	print('load treebank...')
 	local traintreebank = {}
-	for line in io.lines(treebank_dir .. '/train.txt') do
+	for line in io.lines(treebank_dir .. '/train1000.txt') do
 		tree = Tree:create_from_string(line)
 		tree = tree:to_torch_matrices(dic, n_categories)
 		traintreebank[#traintreebank + 1] = tree
 	end
 
 	local devtreebank = {}
-	for line in io.lines(treebank_dir .. '/test.txt') do
+	for line in io.lines(treebank_dir .. '/dev.txt') do
 		tree = Tree:create_from_string(line)
 		tree = tree:to_torch_matrices(dic, n_categories)
 		devtreebank[#devtreebank + 1] = tree
@@ -41,7 +41,9 @@ if #arg == 4 then
 	print('train rnn...')
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
 						func = tanh, funcPrime = tanhPrime }
-	local net = IORNN:new(struct)
+	--local net = IORNN:new(struct)
+	local net = IORNN:load('model/model.100_0')
+	net.WCat = uniform(net.WCat:size(1), net.WCat:size(2), -1, 1):mul(0.1)
 
 	maxit = 100000
 	lambda = 1e-4

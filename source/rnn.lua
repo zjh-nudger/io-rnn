@@ -622,7 +622,7 @@ function RNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			print('accuracy = ' .. acc)
 			io.flush()
 
-			if math.mod(iter, 500) == 0 then
+			if math.mod(iter, 50000) == 0 then
 				self:save('model/model.rnn.' .. iter .. '_' .. acc)
 			end
 		end

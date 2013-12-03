@@ -21,7 +21,7 @@ if #arg == 2 then
 -- load treebank
 	print('load treebank...')
 	local traintreebank = {}
-	for line in io.lines(treebank_dir .. '/train.txt') do
+	for line in io.lines(treebank_dir .. '/train1000.txt') do
 		tree = Tree:create_from_string(line)
 		tree = tree:to_torch_matrices(dic, n_categories)
 		traintreebank[#traintreebank + 1] = tree

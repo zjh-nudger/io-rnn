@@ -487,128 +487,10 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 	return cost
 end
 
---[[************************ compute cost and gradient *****************--
---input:
---output:
-require 'parallel'
-
--- worker function 
-function worker()
-
-	require 'rnn'
-	local data = parallel.parent:receive()
-
-	local treebank = data.treebank
-	local net = data.net
-	local config = data.config
-	local fw_only = data.fw_only
-
-	local grad = {
-		Wbil = torch.zeros(net.Wbil:size()),
-		Wbir = torch.zeros(net.Wbir:size()),
-		bbi = torch.zeros(net.bbi:size()),
-		Wui = torch.zeros(net.Wui:size()),
-		bui = torch.zeros(net.bui:size()),
-		WCat = torch.zeros(net.WCat:size()),
-		bCat = torch.zeros(net.bCat:size()),
-		L = torch.zeros(net.L:size()) }
-
-	local cost = 0
-	local timer = torch.Timer()
-	treebank = {}
-	for i,tree in ipairs(treebank) do
-		IORNN.forward(net, tree)
-		if not fw_only then
-			cost = cost + IORNN.backpropagate(net, tree, grad)
-		end
-	end
-	print('time for child running ' .. timer:time().real) io.flush()
-
-	local stats = nil
-	if not fw_only then treebank = nil end
-
-	parallel.parent:send({
-			cost = cost, 
-			grad = rnn.fold(net, grad), 
-			treebank = treebank
-		})
-end
-	
--- parent call
-function parent(param)
-
-	local treebank = param.treebank
-	local nSample = #treebank
-	local net = param.net
-	local fw_only = param.fw_only
-
-	-- split data
-	local size = math.ceil(nSample / NPROCESS)
-	local children = parallel.sfork(NPROCESS)
-	children:exec(worker)
-
-	-- send data
-	local timer = torch.Timer()
-	for i = 1, NPROCESS do
-		local data = {treebank = {}, net = param.net, config = param.config, fw_only = fw_only}
-		for j = 1,size do
-			local id = (i-1)*size+j
-			if id > nSample then break end
-			data.treebank[j] = treebank[id]
-		end
-		children[i]:send(data)
-	end
-	print('time for parent -> children ' .. timer:time().real) io.flush()
-
-	-- receive results
-	timer = torch.Timer()
-	for i = 1, NPROCESS do
-		local reply = children[i]:receive()
-		param.totalCost = param.totalCost + reply.cost
-		if param.totalGrad == nil then
-			param.totalGrad = reply.grad
-		else
-			param.totalGrad:add(reply.grad)
-		end
-
-		if fw_only then
-			param.treebank = {}
-			for j = 1,#reply.treebank do
-				param.treebank[#param.treebank+1] = reply.treebank[j]
-			end
-		end
-	end
-	print('time for children -> parent ' .. timer:time().real) io.flush()
-
-	timer = torch.Timer()
-	children:sync()
-	print('time for sync ' .. timer:time().real) io.flush()
-
-	-- finalize
-	local M = param.net:fold()
-	param.totalCost = param.totalCost / nSample + param.config.lambda/2 * torch.pow(M,2):sum()
-	param.totalGrad:div(nSample):add(M * param.config.lambda)
-end
-]]
-
-function IORNN:computeCostAndGrad(treebank, config, fw_only)
+function IORNN:computeCostAndGrad(treebank, config)
+	local parse = config.parse or false
 	
 if NPROCESS > 1 then
---[[	local param = {
-		net = self,
-		config = config,
-		treebank = treebank,
-		totalCost = 0,
-		totalGrad = nil,
-		fw_only = fw_only or false
-	}
-
-
-	local ok,err = pcall(parent, param)
-	if not ok then 	print(err) parallel.close() end
-	
-	return param.totalCost, param.totalGrad, param.treebank
-]]
 else
 -- for single process
 	local grad = {
@@ -641,14 +523,18 @@ else
 	local nSample = #treebank
 	for i, tree in ipairs(treebank)  do
 		self:forward(tree)
-		cost = cost + self:backpropagate(tree, grad, config.alpha, config.beta)
+		if parse == false then
+			cost = cost + self:backpropagate(tree, grad, config.alpha, config.beta)
+		end
 	end
 
-	local M = self:fold()
-	grad = self:fold(grad)
+	if parse == false then
+		local M = self:fold()
+		grad = self:fold(grad)
 
-	cost = cost / nSample + config.lambda/2 * torch.pow(M,2):sum()
-	grad:div(nSample):add(M * config.lambda)
+		cost = cost / nSample + config.lambda/2 * torch.pow(M,2):sum()
+		grad:div(nSample):add(M * config.lambda)
+	end
 
 	return cost, grad, treebank
 end
@@ -694,78 +580,29 @@ end
 
 --***************************** eval **************************
 function IORNN:eval(treebank)
-	_, _, treebank = self:computeCostAndGrad(treebank, {lambda = 0, alpha=0, beta=0})
-	local total = 0
-	local correct = 0
+	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true})
+	local total_all = 0
+	local correct_all = 0
+
+	local total_root = 0
+	local correct_root = 0
 
 	for i,tree in ipairs(treebank) do
-		total = total + tree.n_nodes
+		total_all = total_all + tree.n_nodes
+		total_root = total_root + 1
+
 		local m,_ = tree.cat_predict:max(1)
 		pred = 	torch.eq(
 					tree.cat_predict, 
 					torch.repeatTensor(torch.reshape(m,1,tree.n_nodes), self.nCat,1))
 				:double()
-		correct = correct + torch.cmul(pred, tree.category):sum()
-		--print('---------------')
-		--print(pred)
-		--print(tree.category)
+		correct_all = correct_all + torch.cmul(pred, tree.category):sum()
+		correct_root = correct_root + 
+						torch.cmul(pred[{{},{1}}], tree.category[{{},{1}}]):sum()
 	end
 
-	return correct / total
+	return correct_all / total_all, correct_root / total_root
 end
-
---******************************* train networks *************************
---[[-- optFunc from 'optim' package
-function IORNN:train(traintreebank, validtreebank, batchSize, optFunc, optFuncState, config)
-	local nSample = #traintreebank
-	local j = 0
-
-	local iter = 1
-	local timer = torch.Timer()
-
-	print('accuracy = ' .. self:eval(validtreebank)) io.flush()
-
-	local function func(M)
-		print('time for optim ' .. timer:time().real) io.flush()
-		self:unfold(M)
-
-		-- extract data
-		local timer1 = torch.Timer()
-		j = j + 1
-		if j > nSample/batchSize then j = 1 end
-		local subtreebank = {}
-		for k = 1,batchSize do
-			subtreebank[k] = traintreebank[k+(j-1)*batchSize]
-		end
-		print('time to extract data ' .. timer1:time().real) io.flush()
-
-		timer1 = torch.Timer()
-		local cost, Grad = self:computeCostAndGrad(subtreebank, config)
-		print('time to compute cost & grad ' .. timer1:time().real) io.flush()
-
-		-- for visualization
-		if math.mod(iter,1) == 0 then
-			print('--- iter: ' .. iter)
-			print('cost: ' .. cost)
-			io.flush()
-		end
-		if math.mod(iter,10) == 0 then
-			print('accuracy = ' .. self:eval(validtreebank))
-			--self:save('model/model.' .. math.floor(iter / 10))
-			io.flush()
-		end
-
-		iter = iter + 1
-		collectgarbage()
-		
-		timer = torch.Timer()
-		return cost, Grad
-	end
-
-	local M = optFunc(func, self:fold(), optFuncState, optFuncState)
-	self:unfold(M)
-end
-]]
 
 require 'optim'
 require 'xlua'
@@ -806,9 +643,6 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			return cost, Grad
 		end
 
-		print(self.WCat:sum())
-		print(self.bCat:sum())
-	
 		p:start("optim")
 		M,_ = optim.adagrad(func, self:fold(), adagrad_config, adagrad_state)
 		self:unfold(M)
@@ -816,12 +650,14 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 
 		p:printAll()
 
-		if math.mod(iter,1000) == 0 then
-			print('accuracy = ' .. self:eval(devtreebank))
+		if math.mod(iter,500) == 0 then
+			all,root = self:eval(devtreebank)
+			print('accuracy all ' .. all)
+			print('accuracy root ' .. root)
 			io.flush()
 		end
 
-		if math.mod(iter, 5000) == 0 then
+		if math.mod(iter, 500000) == 0 then
 			self:save('model/model.' .. math.floor(iter / 1000) .. '_' .. alpha)
 		end
 
