@@ -69,10 +69,9 @@ function huang_template(word)
 end
 
 function collobert_template(word)
-	local ret
-	word = string.lower(word)
+	local ret = string.lower(word)
 
-	if tonumber(word) ~= nil then 
+	if tonumber(ret) ~= nil then 
 		ret = '0'
 	end
 	return ret

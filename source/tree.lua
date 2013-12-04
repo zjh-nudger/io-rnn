@@ -67,7 +67,7 @@ end
 --******************** deep copy ****************
 function Tree:clone()
 	local nChild = #self.children
-	local newtree = Tree:new( self.label, self.sublabel, self.cover )
+	local newtree = Tree:new(self.label, self.cover)
 	
 	-- clone children
 	for i = 1,nChild do
@@ -121,6 +121,59 @@ function Tree:leaves(ret)
 	return ret
 end
 
+--*********************** binarize tree ******************--
+function Tree:binarize(left_branching, strict)
+	local strict = strict or false
+	local left_branching = left_branching or true
+	local nChild = #self.children
+       
+	if strict then
+		while nChild == 1 do
+			if #self.children[1].children > 0 then
+				self.label = self.label .. '^' .. self.children[1].label
+			else 
+				self.label = self.children[1].label
+			end
+			self.children = self.children[1].children
+			nChild = #self.children
+		end
+	end
+
+	if nChild > 2 then
+		-- newlabel = '@[this_node_label]'
+		local newlabel = self.label
+		if newlabel:sub(1,1) ~= '@' then newlabel = '@' .. newlabel end
+
+		-- create new child
+		local lChild, rChild
+		if left_branching then
+			rChild = self.children[nChild]
+			lChild = tree:new(newlabel)
+			for i = 1,nChild-1 do
+				lChild.children[i] = self.children[i]
+			end
+			lChild.cover[1] = lChild.children[1].cover[1]
+			lChild.cover[2] = lChild.children[nChild-1].cover[2]
+		else
+			lChild = self.children[1]
+			rChild = tree:new(newlabel)
+			for i = 2, nChild do
+				rChild.children[i-1] = self.children[i]
+			end
+			rChild.cover[1] = rChild.children[1].cover[1]
+			rChild.cover[2] = rChild.children[nChild-1].cover[2]
+		end
+		
+		-- update children list for this node
+		self.children = {lChild, rChild}
+	end
+       
+	-- binarize subtrees
+	for i = 1,#self.children do
+		self.children[i]:binarize(left_branching, strict)
+	end
+end
+                                
 --********************** get all nodes ******************
 -- pre-order traverse
 function Tree:all_nodes(ret)
@@ -178,7 +231,8 @@ end
 function Tree:to_torch_matrices(dic, nCat)
 	require "utils"
 
-	self:to_stanford_sa_form()
+	--self:to_stanford_sa_form()
+	self:binarize(true, true)
 
 	local nodes = self:to_flat_form()
 	local nnodes = #nodes
@@ -208,9 +262,10 @@ function Tree:to_torch_matrices(dic, nCat)
 			end
 		end
 
-		cat = torch.zeros(nCat)
-		cat[tonumber(node.cat)+1] = 1
-		category[{{},i}]:copy(cat)
+		-- uncomment these lines in the case of unsupervised learning
+		--cat = torch.zeros(nCat)
+		--cat[tonumber(node.cat)+1] = 1
+		--category[{{},i}]:copy(cat)
 		
 		if #node.childId == 0 then
 			word_id[i] = dic:get_id(node.label)
@@ -230,3 +285,18 @@ function Tree:to_torch_matrices(dic, nCat)
 				word_id = word_id 
 			}
 end
+
+
+
+--*********** test **************
+--[[
+local string = "(TOP (S (NP (NP (JJ Influential) (NNS members)) (PP (IN of) (NP (DT the) (NNP House) (NNP Ways) (CC and) (NNP Means) (NNP Committee)))) (VP (VBD introduced) (NP (NP (NN legislation)) (SBAR (WHNP (WDT that)) (S (VP (MD would) (VP (VB restrict) (SBAR (WHADVP (WRB how)) (S (NP (DT the) (JJ new) (NN savings-and-loan) (NN bailout) (NN agency)) (VP (MD can) (VP (VB raise) (NP (NN capital)))))) (, ,) (S (VP (VBG creating) (NP (NP (DT another) (JJ potential) (NN obstacle)) (PP (TO to) (NP (NP (NP (DT the) (NN government) (POS 's)) (NN sale)) (PP (IN of) (NP (JJ sick) (NNS thrifts)))))))))))))) (. .)))"
+
+print(string)
+
+tree = Tree:create_from_string(string)
+print(tree:to_string())
+
+tree:binarize(true, true)
+print(tree:to_string())
+]]

@@ -604,6 +604,7 @@ function IORNN:eval(treebank)
 	return correct_all / total_all, correct_root / total_root
 end
 
+--**************************** training ************************--
 require 'optim'
 require 'xlua'
 p = xlua.Profiler()
@@ -657,7 +658,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			io.flush()
 		end
 
-		if math.mod(iter, 500000) == 0 then
+		if math.mod(iter, 500) == 0 then
 			self:save('model/model.' .. math.floor(iter / 1000) .. '_' .. alpha)
 		end
 
