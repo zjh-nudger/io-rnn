@@ -235,7 +235,7 @@ where $\mathbf{W}^l$ is a $n \times |V|$ matrix, and
 \end{equation}
 And therefore, the loss function needs to be minimized is a cross entropy loss function 
 \begin{equation}
-	J(\theta) = \sum_{s \in D} \sum_{w \in s} \sum_j w_j log(\hat{w}_j)
+	J(\theta) = \sum_{s \in D} \sum_{w \in s} \sum_j -w_j log(\hat{w}_j)
 \end{equation}
 Intuitively, the loss function computes the word prediction error of the net over all 
 words of all training sentences. 
@@ -289,7 +289,10 @@ local syntactic contexts''. That is true if sentences are processed independentl
 However, if all sentences in a dialogue or paragraph are processed at the same time
 by DC-IO-RNN (see Section~\ref{section dciornn}), antonyms could be well 
 distinguishable. The reason is that, in a positive/negative paragraph, positive/negative words tend
-to occur together, though in different sentences, and DC-IO-RNN can capture that.
+to occur together, though in different sentences, and DC-IO-RNN is hopfully able to capture that.
+
+\subsection{Paraphrasing}
+[???]
 
 \subsection{Dialogue Modeling with DC-IO-RNN}
 [???]

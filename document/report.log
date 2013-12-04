@@ -1,4 +1,4 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2008.4.10)  21 NOV 2013 12:32
+This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2008.4.10)  4 DEC 2013 17:38
 entering extended mode
 **report.tex
 (./report.tex
@@ -206,7 +206,7 @@ File: DC-IO-RNN.png Graphic file (type png)
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[5] (./report.bbl [6 <./DC-IO-RNN.png>]
+[5] [6 <./DC-IO-RNN.png>] (./report.bbl
 Missing character: There is no â in font cmr10!
 Missing character: There is no € in font cmr10!
 Missing character: There is no “ in font cmr10!
@@ -229,10 +229,11 @@ Missing character: There is no “ in font cmr10!
 Missing character: There is no â in font cmr10!
 Missing character: There is no € in font cmr10!
 Missing character: There is no “ in font cmr10!
+ [8]
 Missing character: There is no â in font cmr10!
 Missing character: There is no € in font cmr10!
 Missing character: There is no “ in font cmr10!
- [8]) [9] (./report.aux) ) 
+) [9] (./report.aux) ) 
 Here is how much of TeX's memory you used:
  2086 strings out of 94500
  24130 string characters out of 1169920
@@ -240,20 +241,20 @@ Here is how much of TeX's memory you used:
  5248 multiletter control sequences out of 10000+50000
  12477 words of font info for 48 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
- 27i,6n,24p,267b,241s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 27i,6n,24p,267b,239s stack positions out of 1500i,500n,5000p,200000b,5000s
 PDF statistics:
  76 PDF objects out of 300000
  0 named destinations out of 131072
  11 words of extra memory for PDF output out of 65536
-</usr/share/texmf/fonts/type1/bluesky/cm/cmex10.pfb><
-/usr/share/texmf/fonts/type1/bluesky/cm/cmmi5.pfb></usr/share/texmf/fonts/type1
-/bluesky/cm/cmr5.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr7.pfb></usr/sh
-are/texmf/fonts/type1/bluesky/cm/cmsy7.pfb></usr/share/texmf/fonts/type1/bluesk
-y/symbols/msbm10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmsy10.pfb></usr/
-share/texmf/fonts/type1/bluesky/cm/cmmi7.pfb></usr/share/texmf/fonts/type1/blue
-sky/cm/cmbx10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmmi10.pfb></usr/sha
-re/texmf/fonts/type1/bluesky/cm/cmti10.pfb></usr/share/texmf/fonts/type1/bluesk
-y/cm/cmr10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmbx12.pfb></usr/share/
-texmf/fonts/type1/bluesky/cm/cmr12.pfb></usr/share/texmf/fonts/type1/bluesky/cm
-/cmr17.pfb>
-Output written on report.pdf (9 pages, 138363 bytes).
+</usr/share/texmf/fonts/type1/bluesky/cm/cmex10.pfb></usr
+/share/texmf/fonts/type1/bluesky/cm/cmmi5.pfb></usr/share/texmf/fonts/type1/blu
+esky/cm/cmr5.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr7.pfb></usr/share/
+texmf/fonts/type1/bluesky/cm/cmsy7.pfb></usr/share/texmf/fonts/type1/bluesky/sy
+mbols/msbm10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmsy10.pfb></usr/shar
+e/texmf/fonts/type1/bluesky/cm/cmmi7.pfb></usr/share/texmf/fonts/type1/bluesky/
+cm/cmbx10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmmi10.pfb></usr/share/t
+exmf/fonts/type1/bluesky/cm/cmti10.pfb></usr/share/texmf/fonts/type1/bluesky/cm
+/cmr10.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmbx12.pfb></usr/share/texm
+f/fonts/type1/bluesky/cm/cmr12.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmr
+17.pfb>
+Output written on report.pdf (9 pages, 138527 bytes).
