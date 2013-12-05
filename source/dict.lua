@@ -55,26 +55,15 @@ end
 
 --***************** template function *************--
 function huang_template(word)
-	word = string.lower(word)
-	local ret = word
-	if tonumber(word) ~= nil then
-		if string.len(word) == 4 then
-			ret = 'CDCDCDCD'
-		else
-			ret = 'CD'
-		end
-	end
-
-	return ret
+	return string.lower(string.gsub(word, '[0-9]', 'CD'))
 end
 
 function collobert_template(word)
-	local ret = string.lower(word)
-
-	if tonumber(ret) ~= nil then 
-		ret = '0'
+	if word == 'UNKNOWN' or word == 'PADDING' then 
+		return word
+	else
+		return string.lower(string.gsub(word, '[0-9]', '0'))
 	end
-	return ret
 end
 
 

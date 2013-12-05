@@ -8,7 +8,7 @@ if #arg == 3 then
 	local outputpath = arg[3]
 	local dim = tonumber(arg[2])
 	
-	local dic = Dict:new(huang_template)	
+	local dic = Dict:new(collobert_template)	
 	dic:load(wordlistpath)
 
 	local embs = (torch.rand(dim, dic:size()) - 0.5) * 2 * 0.0001

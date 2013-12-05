@@ -77,7 +77,7 @@ function IORNN:new(struct)
 	net.bCat = uniform(nCat, 1, -1, 1):mul(0)
 
 	-- wordembedding
-	net.L = torch.randn(struct.Lookup:size()):mul(0.0001)
+	net.L = struct.Lookup --torch.randn(struct.Lookup:size()):mul(0.0001)
 	net.func = struct.func
 	net.funcPrime = struct.funcPrime
 
@@ -659,11 +659,16 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 		end
 
 		if math.mod(iter, 500) == 0 then
-			self:save('model/model.' .. math.floor(iter / 1000) .. '_' .. alpha)
+			self:save('model/model.' .. iter .. '_' .. self.dim)
 		end
 
 		collectgarbage()
 	end
+end
+
+function IORNN:parse(treebank) 
+	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true})
+	return treebank
 end
 
 --*********************************** test ******************************--

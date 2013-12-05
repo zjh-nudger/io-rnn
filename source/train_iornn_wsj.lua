@@ -5,7 +5,7 @@ require 'dict'
 require 'optim'
 
 if #arg == 3 then
-	torch.setnumthreads(2)
+	torch.setnumthreads(1)
 
 	we_path = arg[1]
 	treebank_dir = arg[2]
@@ -39,7 +39,7 @@ if #arg == 3 then
 	local net = IORNN:new(struct)
 
 	maxit = 100000
-	lambda = 1e-4
+	lambda = 1e-7
 	batchsize = 100
 	alpha = 0
 	beta = 1

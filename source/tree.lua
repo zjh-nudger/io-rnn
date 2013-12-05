@@ -286,6 +286,25 @@ function Tree:to_torch_matrices(dic, nCat)
 			}
 end
 
+function extract_all_phrases(tree, dic, phrases, node_id)
+	local phrases = phrases or {}
+	local node_id = node_id or 1
+
+	if tree.n_children[node_id] == 0 then
+		phrases[node_id] = dic.id2word[tree.word_id[node_id]]
+	else
+		local str = ''
+		for i = 1,tree.n_children[node_id] do
+			phrases = extract_all_phrases(tree, dic, phrases, 
+										tree.children_id[{i,node_id}])
+			str = str .. ' ' .. phrases[tree.children_id[{i,node_id}]]
+		end
+		phrases[node_id] = string.sub(str, 2)
+	end
+
+	return phrases
+end
+
 
 
 --*********** test **************
