@@ -651,7 +651,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 
 		p:printAll()
 
-		if math.mod(iter,500) == 0 then
+		if math.mod(iter,50) == 0 then
 			all,root = self:eval(devtreebank)
 			print('accuracy all ' .. all)
 			print('accuracy root ' .. root)
@@ -659,7 +659,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 		end
 
 		if math.mod(iter, 500) == 0 then
-			self:save('model/model.' .. iter .. '_' .. self.dim)
+			--self:save('model/model.' .. iter .. '_' .. self.dim)
 		end
 
 		collectgarbage()

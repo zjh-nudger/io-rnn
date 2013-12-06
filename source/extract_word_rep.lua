@@ -55,13 +55,13 @@ if #arg == 4 then
 			end
 			f:writeString('\n')
 
-			-- find knn
+			--[[ find knn
 			local nn = knn(entries, emb, k)
 			local str = word .. ' :\t'
 			for _,id in ipairs(nn) do
 				str = str .. entries.labels[id] .. ' '
 			end
-			print(str)
+			print(str)]]
 		end
 	end
 	f:close()
