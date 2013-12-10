@@ -75,7 +75,7 @@ if #arg == 3 then
 	local vocabsize = L:size(2)
 
 	local WwiL = Wwi * L
-	local n = 5000
+	local n = 20000
 	local big_bw = torch.repeatTensor(bw, 1, n)
 
 	--torch.setnumthreads(5)

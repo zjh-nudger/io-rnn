@@ -1,0 +1,1703 @@
+side 301	team 5	
+side 302	ally 1	part 1	responsibility 1	position 1	standpoint 1	
+side 303	part 4	perspective 1	view 1	aspect 1	
+side 304	team 2	contingent 1	you 1	faction 1	
+side 305	against 1	flank 1	hand 1	
+side 306	surface 1	conversely 1	instead 1	
+side 307	faction 2	position 1	team 1	
+side 308	bank 1	flank 1	divide 1	shore 1	edge 1	
+side 309	aspect 2	area 1	part 1	facet 1	
+side 310	boundary 2	fringe 1	position 1	edge 1	
+tell 311	inform 2	
+tell 312	inform 4	
+tell 313	inform 4	notify 1	
+tell 314	assure 1	
+tell 315	inform 3	assure 1	notify 1	
+tell 316	assure 1	
+tell 317	order 1	instruct 1	assure 1	
+tell 318	communicate 1	explain 1	inform 1	
+tell 319	assure 2	inform 1	
+tell 320	recount 1	describe 1	impart 1	narrate 1	
+terrible 321	awful 4	severe 1	horrible 1	
+terrible 322	awful 3	bad 1	appalling 1	dreadful 1	
+terrible 323	awful 2	appalling 1	negative 1	formidable 1	
+terrible 324	awful 3	dreadful 2	appalling 1	
+terrible 325	awful 2	poignant 1	appalling 1	shocking 1	dreadful 1	horrific 1	
+terrible 326	awful 3	shocking 1	dreadful 1	unpleasant 1	
+terrible 327	awful 4	dreadful 1	atrocious 1	
+terrible 328	fearsome 1	frightening 1	horrifying 1	terrifying 1	awful 1	formidable 1	
+terrible 329	awful 4	deplorable 1	bad 1	
+terrible 330	awful 2	bad 1	shocking 1	dreadful 1	abhorrent 1	
+think 331	believe 4	recommend 1	feel 1	
+think 332	believe 3	assume 1	suspect 1	feel 1	reckon 1	
+think 333	believe 4	assume 1	feel 1	
+think 334	believe 3	consider 1	reason 1	expect 1	
+think 335	consider 5	reason 1	
+think 336	believe 5	reckon 1	
+think 337	consider 3	contemplate 1	reason 1	analyse 1	
+think 338	believe 2	reckon 2	guess 1	suppose 1	expect 1	
+think 339	believe 4	consider 1	assume 1	suppose 1	
+think 340	believe 2	expect 2	imagine 1	assume 1	anticipate 1	
+thus 341	so 4	this 1	
+thus 342	therefore 4	accordingly 1	so 1	consequently 1	
+thus 343	so 4	therefore 2	consequently 1	hence 1	
+thus 344	so 4	this 1	
+thus 345	therefore 5	accordingly 1	consequently 1	
+thus 346	therefore 5	consequently 1	
+thus 347	therefore 4	consequently 2	hence 1	
+thus 348	therefore 5	accordingly 1	consequently 1	
+thus 349	so 3	therefore 2	accordingly 1	consequently 1	
+thus 350	so 3	therefore 2	there 1	consequently 1	
+wind 351	breeze 5	
+wind 352	
+wind 353	gust 1	air 1	
+wind 354	gust 4	breeze 2	blast 1	
+wind 355	
+wind 356	fart 1	flatulence 1	gas 1	
+wind 357	breeze 3	gust 1	
+wind 358	
+wind 359	breeze 5	gust 1	
+wind 360	vagary 1	gust 1	whirlwind 1	current 1	
+charge 361	levy 2	require 1	impose 1	demand 1	
+charge 362	run 2	rush 2	storm 1	dash 1	
+charge 363	indict 3	accuse 1	
+charge 364	recharge 2	
+charge 365	indict 3	accuse 1	
+charge 366	run 2	storm 1	rush 1	fly 1	dash 1	
+charge 367	demand 2	cost 1	ask 1	
+charge 368	indict 2	accuse 1	
+charge 369	levy 2	impose 1	take 1	demand 1	
+charge 370	attack 5	
+civil 371	noncriminal 1	private 1	civic 1	citizen 1	
+civil 372	public 2	elected 1	civic 1	state 1	
+civil 373	noncriminal 2	civic 1	state 1	
+civil 374	polite 3	courteous 2	cordial 1	inoffensive 1	
+civil 375	domestic 2	internal 2	people's 1	
+civil 376	general 1	public 1	polite 1	civic 1	nongovernmental 1	
+civil 377	friendly 1	thoughtful 1	benevolent 1	cordial 1	
+civil 378	community 1	citizens' 1	personal 1	civic 1	citizen 1	individual 1	
+civil 379	polite 2	friendly 1	public 1	ordinary 1	cultured 1	
+civil 380	polite 4	social 1	courteous 1	cordial 1	
+clean 381	tidy 2	clear 2	purge 1	empty 1	
+clean 382	tidy 2	clear 2	scrape 1	
+clean 383	cleanse 2	clear 2	correct 1	mend 1	rectify 1	
+clean 384	wipe 4	remove 2	
+clean 385	tidy 4	finish 1	clear 1	restore 1	complete 1	
+clean 386	empty 4	
+clean 387	wash 4	
+clean 388	win 1	clear 1	prosper 1	accumulate 1	
+clean 389	cleanse 2	disinfect 2	purify 1	clear 1	
+clean 390	clear 3	tidy 1	correct 1	remedy 1	fix 1	repair 1	
+coach 391	carriage 4	
+coach 392	trainer 5	
+coach 393	trainer 3	counsellor 1	instructor 1	teacher 1	
+coach 394	trainer 3	teacher 2	tutor 1	instructor 1	
+coach 395	trainer 4	bus 1	
+coach 396	bus 4	
+coach 397	bus 4	transport 1	trainer 1	carriage 1	
+coach 398	carriage 4	car 1	
+coach 399	bus 5	carriage 1	
+coach 400	trainer 5	tutor 1	teacher 1	
+dry 401	arid 4	drought 1	parched 1	rainless 1	
+dry 402	evaporate 1	out 1	empty 1	
+dry 403	arid 5	waterless 1	
+dry 404	wry 2	facetious 1	impassive 1	understated 1	droll 1	
+dry 405	boring 2	uninteresting 2	unsympathetic 1	dull 1	
+dry 406	boring 3	uninteresting 2	dull 2	
+dry 407	wry 2	deadpan 1	impassive 1	understated 1	droll 1	
+dry 408	dull 2	boring 1	soulless 1	uninteresting 1	flat 1	
+dry 409	teetotal 1	
+dry 410	parched 2	unmoistened 1	desiccated 1	stodgy 1	
+full 411	complete 4	total 1	abundant 1	
+full 412	filled 1	
+full 413	complete 3	entire 2	total 2	whole 1	
+full 414	complete 5	total 1	
+full 415	maximum 2	top 1	highest 1	total 1	
+full 416	voluminous 1	overflowing 1	abundant 1	ample 1	generous 1	big 1	gathered 1	complete 1	ruched 1	
+full 417	complete 3	maximum 2	
+full 418	
+full 419	complete 3	whole 2	entire 2	
+full 420	whole 3	complete 2	entire 1	
+heap 421	pile 4	mound 1	
+heap 422	loads 4	tons 1	lots 1	
+heap 423	pile 3	mound 1	
+heap 424	pile 4	collection 1	category 1	
+heap 425	pile 3	mound 2	
+heap 426	mess 2	bundle 1	wreck 1	pile 1	state 1	
+heap 427	wreck 4	pile 1	mess 1	
+heap 428	pile 4	assortment 1	mess 1	
+heap 429	pile 4	lump 1	wreck 1	mess 1	
+heap 430	pile 2	bin 1	mound 1	
+job 431	duty 1	task 1	role 1	
+job 432	work 4	employment 2	post 1	
+job 433	duty 2	function 1	bit 1	responsibility 1	task 1	role 1	
+job 434	responsibility 3	duty 2	role 2	business 1	
+job 435	assignment 1	task 1	
+job 436	task 4	matter 1	assignment 1	business 1	work 1	
+job 437	employment 3	work 2	functional 1	role 1	
+job 438	post 3	position 2	career 1	role 1	employment 1	
+job 439	employment 3	work 1	
+job 440	role 2	employment 2	contract 1	place 1	
+late 441	
+late 442	recently 4	lately 1	current 1	recent 1	
+late 443	tardy 1	overdue 1	
+late 444	delayed 3	tardy 2	behind 1	
+late 445	latterly 1	
+late 446	
+late 447	delayed 1	behind 1	tardy 1	
+late 448	recently 3	recent 1	
+late 449	
+late 450	older 1	
+new 451	original 2	recent 2	novel 2	different 1	additional 1	
+new 452	different 2	further 1	additional 1	fresh 1	
+new 453	fresh 2	different 1	additional 1	another 1	distinct 1	novel 1	
+new 454	additional 2	fresh 2	younger 1	extra 1	
+new 455	different 2	novel 2	original 1	additional 1	fresh 1	modern 1	
+new 456	fresh 3	novel 2	original 1	current 1	recent 1	
+new 457	latest 3	fresh 1	
+new 458	fresh 4	different 1	additional 1	extra 1	
+new 459	latest 2	succeeding 1	fresh 1	
+new 460	different 2	fresh 2	other 1	additional 1	
+often 461	frequently 5	regularly 1	
+often 462	frequently 4	recurrently 1	generally 1	commonly 1	
+often 463	frequently 3	sometimes 1	generally 1	commonly 1	
+often 464	frequently 5	sometimes 1	commonly 1	regularly 1	
+often 465	frequently 3	sometimes 1	generally 1	occasionally 1	usually 1	regularly 1	
+often 466	regularly 3	frequently 2	habitually 1	
+often 467	usually 4	frequently 1	generally 1	regularly 1	
+often 468	frequently 4	much 1	regularly 1	
+often 469	frequently 2	generally 2	usually 2	sometimes 1	commonly 1	
+often 470	frequently 5	regularly 1	
+only 471	just 3	merely 3	
+only 472	just 3	merely 2	barely 1	
+only 473	just 2	merely 2	
+only 474	solely 4	exclusively 1	purely 1	uniquely 1	
+only 475	solely 4	exclusively 2	uniquely 1	
+only 476	recently 1	just 1	merely 1	hardly 1	barely 1	
+only 477	exclusively 3	just 2	solely 1	
+only 478	just 2	singularly 1	solely 1	purely 1	
+only 479	just 3	merely 1	
+only 480	solely 5	exclusively 1	
+pulse 481	beat 2	emanation 1	beep 1	sound 1	
+pulse 482	heart 2	lifeblood 1	energy 1	stimulus 1	centre 1	force 1	
+pulse 483	heartbeat 2	heartrate 1	
+pulse 484	rhythm 2	throb 2	beat 1	throbbing 1	
+pulse 485	throbbing 1	reflex 1	
+pulse 486	beat 4	rhythm 2	throb 1	
+pulse 487	legume 1	
+pulse 488	legume 1	
+pulse 489	wave 2	vibration 1	beat 1	throb 1	
+pulse 490	heartbeat 2	hearbeat 1	
+put 491	gather 2	assemble 2	collate 1	collect 1	join 1	
+put 492	send 1	settle 1	place 1	allow 1	leave 1	
+put 493	place 5	position 1	
+put 494	give 2	propound 1	provide 1	place 1	present 1	
+put 495	present 3	advance 1	propose 1	place 1	
+put 496	express 2	propound 1	present 1	give 1	phrase 1	state 1	
+put 497	place 2	make 1	remove 1	dismiss 1	leave 1	
+put 498	place 3	stick 2	fix 1	position 1	fasten 1	
+put 499	place 3	make 1	get 1	
+put 500	set 2	lay 1	allay 1	place 1	nullify 1	
+really 501	truly 2	genuinely 2	very 1	absolutely 1	definitely 1	unquestionably 1	
+really 502	very 3	truly 2	extremely 1	exceptionally 1	
+really 503	very 3	truly 2	extremely 1	exceptionally 1	
+really 504	actually 3	properly 1	effectively 1	
+really 505	truly 2	actually 2	definitely 1	honestly 1	
+really 506	truly 4	definitely 1	genuinely 1	actually 1	
+really 507	truly 3	indeed 1	definitely 1	genuinely 1	actually 1	
+really 508	totally 3	truly 2	completely 1	absolutely 1	unreservedly 1	
+really 509	actually 3	absolutely 1	
+really 510	actually 3	absolutely 1	truly 1	
+return 511	
+return 512	revert 1	revisit 1	go 1	
+return 513	
+return 514	revert 1	retrace 1	revisit 1	
+return 515	retrieve 2	get 1	
+return 516	revert 2	resume 1	regress 1	
+return 517	
+return 518	revert 2	repeat 1	revisit 1	
+return 519	earn 2	yield 2	make 1	produce 1	realize 1	
+return 520	yield 2	earn 1	realize 1	
+shed 521	moult 4	discard 1	drop 1	
+shed 522	lose 5	relinquish 1	discard 1	
+shed 523	throw 3	reveal 2	shine 1	
+shed 524	give 2	spread 1	shine 1	radiate 1	scatter 1	emit 1	
+shed 525	lose 4	discarding 1	
+shed 526	lose 4	discard 1	drop 1	
+shed 527	spread 2	pass 2	transmit 2	emit 1	
+shed 528	drop 2	throw 1	disperse 1	discard 1	give 1	
+shed 529	lose 3	spill 1	give 1	
+shed 530	radiate 2	emit 2	spread 1	
+softly 531	quietly 5	gently 1	faintly 1	
+softly 532	delicately 2	lightly 2	gently 1	finely 1	
+softly 533	gently 5	daintily 1	lightly 1	
+softly 534	gently 4	quietly 1	slightly 1	subtly 1	tenderly 1	
+softly 535	gently 4	quietly 1	slightly 1	subtly 1	tenderly 1	
+softly 536	gently 3	carefully 1	delicately 1	lightly 1	
+softly 537	gently 4	quietly 2	faintly 1	
+softly 538	quietly 3	gently 2	indifferently 1	subtly 1	
+softly 539	gently 4	lightly 2	
+softly 540	quietly 5	faintly 1	
+special 541	unique 2	particular 1	peculiar 1	tailored 1	
+special 542	particular 1	atypical 1	exceptional 1	anomalous 1	abnormal 1	extraordinary 1	
+special 543	exceptional 3	wonderful 1	extraordinary 1	memorable 1	magical 1	
+special 544	particular 3	atypical 1	anomalous 1	abnormal 1	selected 1	
+special 545	important 3	distinguished 1	eminent 1	
+special 546	exceptional 2	memorable 2	unique 1	wonderful 1	outstanding 1	
+special 547	particular 5	additional 1	extra 1	
+special 548	particular 4	exceptional 1	additional 1	extra 1	
+special 549	valued 1	exceptional 1	premium 1	treasured 1	quality 1	exclusive 1	
+special 550	exceptional 2	kind 1	wonderful 1	remarkable 1	lovely 1	important 1	
+way 551	manner 5	fashion 1	
+way 552	respect 2	aspect 2	sense 2	
+way 553	means 3	method 3	practice 1	
+way 554	respect 2	aspect 2	sense 1	characteristic 1	
+way 555	incidentally 3	by 2	
+way 556	manner 4	method 1	
+way 557	direction 2	how 1	route 1	
+way 558	route 3	journey 1	passage 1	
+way 559	manner 3	technique 1	method 1	
+way 560	far 3	so 1	some 1	
+about 561	regarding 2	discussed 2	of 1	
+about 562	approximately 4	around 2	
+about 563	concerning 3	regarding 2	
+about 564	approximately 2	somewhat 1	roughly 1	nearly 1	
+about 565	arise 4	happen 2	round 1	occur 1	
+about 566	approximately 4	roughly 2	around 1	
+about 568	of 2	consider 1	regarding 1	concerning 1	
+about 569	around 5	
+about 570	of 3	consider 1	
+bug 571	tap 1	surveillance 1	
+bug 572	fault 2	gremlin 1	defect 1	
+bug 573	germ 4	virus 1	infection 1	
+bug 574	problem 1	gremlin 1	defect 1	
+bug 575	insect 4	infection 1	
+bug 576	insect 5	
+bug 577	insect 5	
+bug 578	insect 5	
+bug 579	error 1	defect 1	virus 1	fault 1	
+bug 580	addiction 1	obsession 1	virus 1	fever 1	craze 1	
+bull 581	cow 1	
+bull 582	rising 2	growing 1	booming 1	
+bull 583	male 4	
+bull 584	rubbish 5	nonsense 1	
+bull 585	animal 1	
+bull 586	edict 2	warrant 1	document 1	
+bull 587	target 3	
+bull 588	suitor 1	male 1	stud 1	stag 1	
+bull 589	centre 3	
+bull 590	rubbish 4	crap 1	nonsense 1	
+education 591	learning 3	tuition 1	teaching 1	schooling 1	
+education 592	training 5	
+education 593	learning 3	schooling 3	study 1	
+education 594	learning 3	knowledge 1	study 1	schooling 1	training 1	
+education 595	learning 2	schooling 2	instruction 1	
+education 596	learning 2	erudition 1	intellect 1	educated 1	
+education 597	training 2	schooling 2	place 1	
+education 598	schooling 2	college 1	learning 1	
+education 599	schooling 3	teaching 2	
+education 600	teaching 2	schooling 2	training 1	
+girl 601	woman 3	female 2	gal 1	
+girl 602	woman 3	gal 1	lass 1	female 1	
+girl 603	female 2	
+girl 604	child 3	woman 2	lass 1	miss 1	
+girl 605	child 2	she 1	gal 1	
+girl 606	child 3	woman 2	gal 1	
+girl 607	female 3	lass 1	
+girl 608	female 5	
+girl 609	woman 1	child 1	
+girl 610	female 1	
+good 611	minimum 1	reasonable 1	substantial 1	full 1	comfortable 1	
+good 612	friendliness 1	pleasant 1	cordiality 1	amiable 1	happiness 1	
+good 613	large 2	significant 2	satisfactory 1	substantial 1	
+good 614	effective 2	easy 1	satisfactory 1	favourable 1	excellent 1	
+good 615	pleasant 2	happy 2	fun 2	enjoyable 1	nice 1	
+good 616	pleasant 1	
+good 617	satisfactory 1	favourable 1	considerable 1	healthy 1	substantial 1	respectable 1	decent 1	
+good 618	thorough 2	effective 2	commendable 1	beneficial 1	excellent 1	
+good 619	effective 2	commendable 1	competent 1	satisfactory 1	excellent 1	
+good 620	esteem 1	standing 1	pleasant 1	reputation 1	character 1	excellent 1	
+hard 621	closely 2	intently 2	carefully 2	persistently 1	
+hard 622	forcefully 1	strenuously 1	firmly 1	strongly 1	aggressive 1	
+hard 623	strenuously 3	diligently 2	arduously 1	intensely 1	intensively 1	
+hard 624	determinedly 2	keenly 1	forcefully 1	sufficiently 1	persistently 1	
+hard 625	carefully 4	closely 1	intently 1	
+hard 626	badly 3	forcefully 1	harshly 1	severely 1	
+hard 627	forcefully 2	strenuously 1	strongly 1	determinedly 1	
+hard 628	carefully 4	intensely 1	seriously 1	earnestly 1	
+hard 629	forcefully 2	firmly 2	tightly 2	strongly 1	
+hard 630	forcefully 1	violently 1	fiercely 1	heavily 1	firmly 1	
+heavy 631	weighty 5	massive 1	
+heavy 632	excessive 2	regular 1	severe 1	constant 1	profuse 1	extensive 1	serious 1	frequent 1	
+heavy 633	harsh 1	big 1	severe 1	weighty 1	serious 1	tough 1	
+heavy 634	weighty 3	onerous 1	considerable 1	costly 1	wieldy 1	
+heavy 635	weighty 2	strong 1	substantial 1	extensive 1	serious 1	
+heavy 636	worst 1	strongest 1	severe 1	weighty 1	wild 1	
+heavy 637	fat 2	weighty 2	stout 1	ample 1	overweight 1	
+heavy 638	weighty 2	tedious 1	dark 1	difficult 1	laboured 1	serious 1	
+heavy 639	excessive 2	extensive 1	abundant 1	frequent 1	
+heavy 640	severe 2	serious 2	excessive 1	hard 1	
+instead 641	alternatively 2	
+instead 642	rather 2	alternatively 2	
+instead 643	
+instead 644	
+instead 645	rather 2	but 1	
+instead 646	alternatively 3	rather 1	alternately 1	
+instead 647	alternatively 1	
+instead 648	rather 3	alternatively 1	
+instead 649	rather 3	
+instead 650	rather 2	alternatively 1	
+live 651	living 5	
+live 652	living 4	animate 1	breathing 1	real 1	
+live 653	performing 1	performed 1	
+live 654	direct 1	
+live 655	real 3	living 1	existent 1	
+live 656	living 5	
+live 657	functioning 2	operative 1	active 1	working 1	sustainable 1	realtime 1	
+live 658	charged 2	connected 1	active 1	powered 1	
+live 659	
+live 660	active 2	viewable 1	circulated 1	running 1	showing 1	online 1	
+mass 661	public 2	crowd 1	people 1	majority 1	populace 1	
+mass 662	volume 2	climax 1	means 1	
+mass 663	quantity 1	shock 1	splash 1	conglomeration 1	accumulation 1	host 1	bulk 1	
+mass 664	crowd 4	majority 1	throng 1	
+mass 665	weight 2	magnitude 1	expanse 1	bulk 1	extent 1	
+mass 666	majority 2	proletariat 1	multitude 1	
+mass 667	people 1	majority 1	public 1	multitude 1	
+mass 668	body 1	magnitude 1	weight 1	aggregate 1	bulk 1	
+mass 669	weight 3	density 1	bulk 1	
+mass 670	
+match 671	game 5	
+match 672	correspondence 2	correlation 1	hit 1	association 1	equivalent 1	counterpart 1	
+match 673	matchstick 4	
+match 674	game 5	
+match 675	game 2	competition 1	event 1	
+match 676	link 1	fit 1	correspondence 1	pairing 1	association 1	choice 1	
+match 677	equal 3	contest 2	rival 2	competitor 1	
+match 678	contest 3	bout 2	competition 1	
+match 679	marriage 2	couple 1	partnership 1	correspondence 1	pairing 1	association 1	
+match 680	fit 2	marriage 1	correlation 1	correspondence 1	association 1	equivalent 1	
+mood 681	disposition 1	demeanour 1	humour 1	temper 1	
+mood 682	atmosphere 4	feeling 2	
+mood 683	humour 2	temperament 1	disposition 1	feeling 1	vibe 1	
+mood 684	disposition 1	outlook 1	mode 1	form 1	mindset 1	manner 1	
+mood 685	mindset 2	disposition 1	
+mood 686	atmosphere 4	ambience 1	feeling 1	tone 1	
+mood 687	temperament 2	ambience 1	disposition 1	feeling 1	outlook 1	timbre 1	
+mood 688	feeling 2	attitude 2	temperament 1	vibe 1	mindset 1	
+mood 689	temperament 1	disposition 1	humour 1	attitude 1	
+mood 690	disposition 1	feeling 1	mode 1	mindset 1	attitude 1	modality 1	
+phone 691	telephone 5	
+phone 692	telephone 5	
+phone 693	telephone 4	cellular 1	handset 1	mobile 1	
+phone 694	speech 1	sonant 1	allophone 1	phoneme 1	sound 1	
+phone 695	sound 3	
+phone 696	mobile 2	telephone 1	
+phone 697	telephone 1	
+phone 698	telephone 5	
+phone 699	telephone 4	telecommunication 1	telecom 1	
+phone 700	telephone 5	
+post 701	position 3	job 2	role 1	
+post 702	mail 2	date 1	
+post 703	pole 3	support 2	stake 1	upright 1	
+post 704	support 2	pole 2	stake 2	upright 1	
+post 705	mail 4	
+post 706	message 2	mail 1	announcement 1	
+post 707	position 3	employment 1	job 1	
+post 708	support 2	marker 1	target 1	pole 1	boundary 1	upright 1	
+post 709	position 3	job 2	appointment 1	situation 1	role 1	
+post 710	crossing 3	station 2	lookout 1	fence 1	
+pound 711	lb 1	
+pound 712	kilo 2	kilogram 2	weight 1	
+pound 713	enclosure 2	lot 1	store 1	
+pound 714	sterling 1	pn 1	
+pound 715	kilo 2	pn 1	
+pound 716	lb 1	pn 1	
+pound 717	sterling 1	dollar 1	pn 1	
+pound 718	enclosure 3	kennel 1	prison 1	cage 1	
+pound 719	quid 1	pn 1	
+pound 720	beat 3	thump 2	hammer 1	throb 1	
+raw 721	untreated 4	unprocessed 2	
+raw 722	untreated 3	unprocessed 2	unspun 1	natural 1	
+raw 723	unprocessed 3	basic 2	rudimentary 1	uncompressed 1	
+raw 724	uncooked 5	
+raw 725	bad 2	harsh 1	unfair 1	
+raw 726	unspoilt 3	unsophisticated 1	basic 1	rough 1	austere 1	natural 1	
+raw 727	natural 2	basic 1	harsh 1	refreshing 1	naked 1	genuine 1	
+raw 728	bloody 2	open 1	untreated 1	excoriated 1	undressed 1	exposed 1	
+raw 729	crude 3	harsh 1	immature 1	untaught 1	inexperienced 1	
+raw 730	unprocessed 2	rudimentary 1	untreated 1	unrefined 1	crude 1	natural 1	
+remainder 731	leftover 3	residual 1	
+remainder 732	rest 4	residue 1	balance 1	
+remainder 733	rest 5	balance 1	
+remainder 734	leftover 3	residue 1	surplus 1	
+remainder 735	rest 5	
+remainder 736	rest 5	
+remainder 737	leftover 1	residual 1	surplus 1	
+remainder 738	leftover 1	residual 1	surplus 1	
+remainder 739	rest 4	balance 2	
+remainder 740	rest 4	balance 1	surplus 1	
+rude 741	rough 2	basic 1	primitive 1	approximate 1	crude 1	inexact 1	
+rude 742	impolite 3	disrespectful 1	unpleasant 1	
+rude 743	impolite 3	disrespectful 1	unkind 1	abusive 1	
+rude 744	abrupt 2	awkward 1	rough 1	unpleasant 1	surprise 1	savage 1	
+rude 745	crude 2	vulgar 1	lewd 1	coarse 1	naughty 1	wild 1	
+rude 746	crude 3	vulgar 1	lewd 1	coarse 1	naughty 1	
+rude 747	impolite 2	insulting 2	offensive 2	
+rude 748	primitive 3	basic 1	rudimentary 1	crude 1	
+rude 749	raw 3	crude 2	unrefined 1	unfinished 1	
+rude 750	abrupt 2	awkward 1	sudden 1	rough 1	unpleasant 1	
+saint 751	figure 1	
+saint 752	angel 2	good 1	blessed 1	
+saint 753	paladin 1	
+saint 754	canonised 1	pn 1	
+saint 755	angel 2	goodman 1	
+saint 756	angel 2	goodman 1	
+saint 757	disciple 1	
+saint 758	angel 2	
+saint 759	martyr 1	
+saint 760	angel 1	prophet 1	
+still 761	calm 5	windless 1	
+still 762	unmoving 2	motionless 2	calm 1	stationary 1	static 1	
+still 763	quiet 3	motionless 2	hushed 1	calm 1	
+still 764	calm 5	tranquil 1	unruffled 1	smooth 1	
+still 765	motionless 3	unmoving 2	fixed 1	stationary 1	static 1	
+still 766	calm 5	peaceful 1	quiet 1	serene 1	
+still 767	calm 4	peaceful 1	hushed 1	tranquil 1	windless 1	
+still 768	calm 5	peaceful 1	tranquil 1	windless 1	
+still 769	motionless 3	arranged 1	stationary 1	static 1	
+still 770	motionless 2	unmoving 1	nonmoving 1	fixed 1	stationary 1	static 1	
+straight 771	honest 4	forthright 1	direct 1	candid 1	accurate 1	
+straight 772	pure 1	standard 1	plain 1	undiluted 1	genuine 1	true 1	unadulterated 1	
+straight 774	heterosexual 5	
+straight 775	uncurving 1	undeviating 1	level 1	vertical 1	undistorted 1	nondeviating 1	unbent 1	
+straight 776	sorted 2	clear 2	correct 1	right 1	orderly 1	
+straight 777	direct 2	undeviating 1	linear 1	unswerving 1	uncrooked 1	unbent 1	unbending 1	
+straight 778	consecutive 4	uninterrupted 1	successive 1	
+straight 779	honest 3	candid 2	forthright 1	direct 1	truthful 1	
+straight 780	undeviating 1	direct 1	smooth 1	continuous 1	uncurved 1	unbending 1	
+strain 781	variety 3	type 2	breed 1	sort 1	extraction 1	
+strain 782	stress 2	burden 2	effort 1	pressure 1	anxiety 1	worry 1	
+strain 783	variety 3	type 2	breed 1	group 1	stock 1	
+strain 784	tune 3	melody 1	music 1	
+strain 785	variety 3	type 2	trace 1	breed 1	form 1	
+strain 786	variety 3	type 2	breed 1	extraction 1	line 1	
+strain 787	pressure 4	stress 2	burden 1	tension 1	
+strain 788	stress 2	pressure 2	burden 1	exertion 1	load 1	
+strain 789	pressure 3	stress 2	burden 1	tension 1	
+strain 790	variety 3	type 3	kind 1	form 1	
+time 791	period 4	point 1	instant 1	occasion 1	
+time 792	point 3	moment 2	deadline 1	juncture 1	
+time 793	period 3	point 2	moment 1	juncture 1	
+time 795	period 2	era 2	day 1	age 1	
+time 796	moment 2	occasionally 1	period 1	interval 1	instance 1	occasion 1	
+time 797	era 4	epoch 1	period 1	day 1	age 1	
+time 798	instance 2	occasion 2	chance 1	
+time 799	occasion 2	space 1	allocation 1	allotment 1	
+time 800	occasion 3	moment 2	chance 1	opportunity 1	instant 1	
+yard 801	garden 2	lot 1	garden  1	property 1	
+yard 802	area 3	lot 1	patio 1	terrace 1	
+yard 803	metre 2	pn 1	
+yard 805	metre 2	pn 1	
+yard 806	garden 5	enclosure 1	patio 1	lawn 1	
+yard 807	enclosure 2	lot 1	depot 1	area 1	
+yard 808	enclosure 2	lot 1	area 1	courtyard 1	
+yard 809	playground 4	ground 1	
+yard 810	garden 5	
+apparently 811	seemingly 5	ostensibly 1	
+apparently 812	seemingly 3	looking 1	supposedly 1	
+apparently 813	seemingly 4	plainly 1	obviously 1	evidently 1	clearly 1	
+apparently 814	seemingly 5	ostensibly 1	supposedly 1	
+apparently 815	seemingly 4	evidently 1	palpably 1	
+apparently 816	seemingly 5	ostensibly 1	evidently 1	
+apparently 817	seemingly 4	evidently 1	supposedly 1	
+apparently 818	seemingly 3	manifestly 1	obviously 1	evidently 1	clearly 1	
+apparently 819	seemingly 4	manifestly 1	evidently 1	
+apparently 820	seemingly 3	evidently 1	
+around 821	about 4	here 1	there 1	living 1	alive 1	
+around 822	about 4	here 1	there 1	living 1	
+around 823	about 2	surrounding 1	over 1	encircling 1	round 1	
+around 824	about 4	here 1	there 1	
+around 825	round 2	about 2	over 1	
+around 826	about 4	approximately 2	roughly 1	
+around 827	about 5	
+around 828	about 3	approximately 3	roughly 1	
+around 829	over 3	everywhere 2	
+around 830	about 4	here 1	living 1	alive 1	
+away 831	off 4	depart 1	go 1	leave 1	
+away 832	stealing 1	seizing 1	removing 1	confiscate 1	off 1	
+away 833	repeatedly 2	continuously 1	along 1	
+away 834	out 1	continuously 1	off 1	
+away 835	off 2	repel 1	rebuff 1	
+away 836	apart 4	afar 1	aside 1	
+away 837	out 4	absent 2	gone 1	elsewhere 1	
+away 838	distant 2	apart 2	distance 1	
+away 839	distant 2	off 2	out 1	hence 1	
+away 840	continuously 2	ahead 1	along 1	repeatedly 1	
+blue 841	sapphire 1	
+blue 842	sad 3	depressed 2	down 1	unhappy 1	melancholy 1	
+blue 843	grey 1	
+blue 844	azure 2	sapphire 1	
+blue 845	conservative 1	pn 1	
+blue 846	speculative 1	sapphire 1	
+blue 847	depressed 2	down 2	sad 2	unhappy 1	melancholy 1	
+blue 848	indecent 2	cobalt 1	shady 1	pornographic 1	naughty 1	
+blue 849	sad 3	depressed 2	
+blue 850	purple 1	grey 1	
+check 851	tick 3	select 2	mark 1	examine 1	
+check 852	verify 3	confirm 2	report 1	
+check 853	admit 2	register 1	submit 1	put 1	
+check 854	inspect 3	search 2	scrutinise 1	examine 1	
+check 855	tick 3	mark 2	examine 1	select 1	
+check 856	verify 4	confirm 1	note 1	
+check 857	inspect 2	scrutinise 1	test 1	survey 1	
+check 858	test 2	inspect 2	verify 1	examine 1	
+check 859	verify 4	confirm 1	investigate 1	
+check 860	scrutinise 1	inspect 1	
+clear 861	remove 1	sort 1	eliminate 1	process 1	
+clear 862	improve 4	change 1	brighten 1	
+clear 863	tidy 2	unblock 2	unobstruct 2	empty 1	
+clear 864	remove 3	eliminate 1	
+clear 865	above 2	pass 1	over 1	skim 1	
+clear 866	release 1	cash 1	
+clear 867	remove 4	move 1	
+clear 868	exonerate 2	acquit 1	vindicate 1	authorise 1	pardon 1	absolve 1	
+clear 869	remove 4	tidy 1	take 1	
+clear 870	free 2	unblock 2	tidy 1	
+close 871	end 4	conclusion 2	finish 1	
+close 872	end 5	finish 1	conclusion 1	
+close 873	end 5	finish 1	conclusion 1	
+close 874	end 4	conclusion 2	finish 1	
+close 875	end 4	conclusion 2	finish 1	
+close 876	conclusion 3	end 3	finale 1	
+close 877	free 1	shutdown 1	shut 1	conclusion 1	
+close 878	end 4	finish 2	conclusion 1	
+close 879	end 4	conclusion 2	finish 1	
+close 880	end 2	finish 1	ending 1	conclusion 1	finale 1	
+come 881	arrive 4	appear 1	
+come 882	join 4	unite 1	rally 1	gather 1	combine 1	
+come 883	considering 1	concern 1	
+come 884	arrive 2	appear 1	report 1	emanate  1	originate 1	
+come 885	arrive 4	reach 1	get 1	return 1	
+come 886	occur 2	happen 2	arrive 1	
+come 887	spring 2	occur 1	
+come 888	arrive 4	occur 1	happen 1	arrive  1	
+come 889	fall 3	lever 1	leave 1	
+come 890	find 3	notice 1	encounter 1	happen 1	
+cry 891	bawl 3	wail 1	weep 1	snivel 1	
+cry 892	call 3	shout 2	wail 1	shriek 1	
+cry 893	call 4	shout 2	demand 1	
+cry 894	call 2	shout 2	wail 1	exclaim 1	yell 1	
+cry 895	weep 5	tear 1	sob 1	
+cry 896	weep 5	sob 1	
+cry 897	weep 4	sob 2	
+cry 898	call 3	shout 2	utter 1	yell 1	
+cry 899	weep 2	bawl 2	sob 2	
+cry 900	shout 3	complain 1	call 1	exclaim 1	yell 1	
+dismiss 901	sack 4	fire 2	discharge 1	
+dismiss 902	reject 2	discard 1	ignore 1	see 1	deride 1	
+dismiss 903	excuse 2	release 2	
+dismiss 904	sack 3	fire 2	discharge 1	
+dismiss 905	ignore 2	reject 2	discard 1	see 1	deride 1	
+dismiss 906	reject 3	remove 2	discard 1	
+dismiss 907	excuse 1	release 1	discharge 1	
+dismiss 908	banish 1	dispatch 1	excuse 1	discharge 1	reject 1	
+dismiss 909	sack 4	fire 1	discharge 1	
+dismiss 910	sack 3	fire 2	discharge 1	
+draw 911	attract 2	bring 2	summon 1	call 1	focus 1	
+draw 912	take 3	acquire 1	pull 1	extract 1	obtain 1	
+draw 913	use 3	consider 1	employ 1	exploit 1	focus 1	
+draw 914	use 1	rely 1	employ 1	exploit 1	focus 1	consult 1	
+draw 915	sketch 5	paint 1	depict 1	portray 1	
+draw 916	take 2	receive 1	earn 1	extract 1	get 1	claim 1	derive 1	obtain 1	
+draw 917	use 2	gather 1	make 1	employ 1	exploit 1	
+draw 918	pull 4	drag 2	haul 1	
+draw 919	take 3	withdraw 2	remove 1	obtain 1	
+draw 920	tie 1	play 1	pit 1	schedule 1	choose 1	select 1	set 1	
+earlier 921	previously 4	initially 1	formerly 1	before 1	
+earlier 922	beforehand 2	sooner 2	before 1	
+earlier 923	sooner 4	beforehand 1	previously 1	
+earlier 924	sooner 3	beforehand 2	before 2	
+earlier 925	sooner 3	before 2	
+earlier 926	previously 4	formerly 1	beforehand 1	
+earlier 927	previously 5	beforehand 1	
+earlier 928	before 3	previously 3	beforehand 1	
+earlier 929	previously 3	before 3	
+earlier 930	sooner 3	before 2	beforehand 1	previously 1	
+entirely 931	completely 5	altogether 1	
+entirely 932	completely 5	wholly 1	fully 1	totally 1	
+entirely 933	completely 4	wholly 2	totally 1	
+entirely 934	wholly 3	completely 2	exclusively 1	totally 1	
+entirely 935	completely 4	wholly 1	exclusively 1	totally 1	
+entirely 936	completely 3	wholly 2	exclusively 1	totally 1	
+entirely 937	completely 5	exclusively 1	totally 1	
+entirely 938	completely 3	wholly 1	continuously 1	totally 1	
+entirely 939	completely 4	wholly 1	exclusively 1	totally 1	
+entirely 940	completely 3	wholly 1	totally 1	utterly 1	
+forth 941	on 4	
+forth 942	forwards 2	
+forth 943	forward 3	express 1	advance 1	phrase 1	across 1	
+forth 944	out 5	outward 1	
+forth 945	on 2	onward 2	onwards 2	forward 1	
+forth 946	forward 3	out 1	advance 1	depart 1	leave 1	
+forth 947	on 4	etcetera 1	
+forth 948	out 5	forward 1	
+forth 949	about 2	show 1	forward 1	extract 1	forwards 1	
+forth 950	on 4	etcetera 1	
+fresh 951	novel 2	impertinent 1	forward 1	new 1	raw 1	
+fresh 952	pure 2	airy 1	refreshing 1	uncontaminated 1	new 1	
+fresh 953	new 5	
+fresh 954	recent 2	vivid 1	clear 1	new 1	raw 1	undimmed 1	
+fresh 955	new 2	novel 2	original 1	relevant 1	modern 1	
+fresh 956	new 5	
+fresh 957	original 2	new 2	bright 1	different 1	refreshing 1	novel 1	
+fresh 958	new 3	clean 2	another 1	
+fresh 959	new 5	another 1	raw 1	
+fresh 960	unprocessed 1	nonfrozen 1	uncanned 1	raw 1	
+go 961	endure 1	pass 1	journey 1	travel 1	move 1	be 1	
+go 962	pass 2	walk 2	move 1	proceed 1	
+go 963	travel 2	take 2	proceed 1	leave 1	
+go 964	take 3	travel 2	
+go 965	start 3	run 1	operate 1	move 1	work 1	running 1	
+go 966	travel 4	journey 1	proceed 1	
+go 967	start 4	operate 1	move 1	proceed 1	work 1	
+go 968	aim 3	reach 1	try 1	take 1	
+go 969	attempt 1	undertake 1	proceed 1	attack 1	approach 1	start 1	
+go 970	release 2	rest 1	free 1	relax 1	loose 1	
+let 971	allow 3	forgive 2	permit 1	
+let 972	allow 5	permit 1	authorise 1	
+let 973	allow 4	permit 2	
+let 974	allow 4	permit 1	have 1	authorise 1	
+let 975	rent 5	hire 1	lease 1	
+let 976	allow 4	permit 1	have 1	
+let 977	lessen 2	give 2	release 1	diminish 1	slacken 1	reduce 1	
+let 978	give 3	release 2	free 1	expel 1	
+let 979	tell 3	advise 1	inform 1	
+let 980	release 2	give 2	free 1	expel 1	give  1	
+liberal 981	progressive 1	humanitarian 1	openhanded 1	noninterventionist 1	
+liberal 982	progressive 2	liberated 1	
+liberal 983	generous 2	abundant 2	ample 1	free 1	plentiful 1	
+liberal 984	progressive 2	free 2	open 1	
+liberal 985	generous 2	free 2	abundant 2	ample 1	plentiful 1	
+liberal 986	generous 4	plentiful 1	social 1	abundant 1	
+liberal 987	progressive 3	tolerant 1	
+liberal 988	generous 2	plentiful 2	abundant 2	ample 1	
+liberal 989	generous 2	plentiful 2	abundant 2	ample 1	
+liberal 990	progressive 2	tolerant 1	lenient 1	
+light 991	easy 2	simple 2	gentle 1	undemanding 1	
+light 992	pale 4	fair 1	pale  1	
+light 993	unheavy 2	portable 2	
+light 994	gentle 3	soft 3	slight 1	faint 1	
+light 995	slight 1	minor 1	unsubstantial 1	inconsiderable 1	mild 1	casual 1	restricted 1	
+light 996	frothy 1	easy 1	slight 1	simple 1	undemanding 1	trivial 1	facile 1	
+light 997	bright 5	luminous 1	
+light 998	bright 2	easy 1	upbeat 1	cheerful 1	entertaining 1	
+light 999	gentle 2	soft 2	small 1	slight 1	faint 1	
+light 1000	easy 1	lightweight 1	unheavy 1	ethereal 1	
+likewise 1001	similarly 5	equally  1	
+likewise 1002	similarly 5	correspondingly 1	
+likewise 1003	similarly 4	equally 1	also 1	
+likewise 1004	similarly 5	additionally 1	also 1	
+likewise 1005	similarly 5	
+likewise 1006	similarly 4	additionally 1	also 1	
+likewise 1007	similarly 4	also 2	additionally 1	
+likewise 1008	similarly 4	
+likewise 1009	similarly 5	additionally 1	also 1	
+likewise 1010	similarly 4	also 2	
+now 1011	presently 2	currently 1	recently 1	lately 1	nowadays 1	
+now 1012	immediately 2	so 1	next 1	instantly 1	
+now 1013	presently 2	currently 2	nowadays 1	consequently 1	
+now 1014	so 2	well 1	perhaps 1	consequently 1	
+now 1015	presently 3	currently 2	
+now 1016	currently 2	nowadays 2	presently 1	today 1	
+now 1017	currently 3	presently 1	just 1	
+now 1018	presently 1	currently 1	lately 1	recently 1	consequently 1	
+now 1019	today 3	
+now 1020	currently 1	presently 1	lately 1	since 1	consequently 1	
+order 1021	arrange 2	sort 2	grade 1	rank 1	
+order 1022	request 3	buy 2	reserve 1	purchase 1	
+order 1023	instruct 3	tell 2	command 2	
+order 1024	arrange 3	sort 2	organise 2	
+order 1025	command 3	direct 2	send 2	
+order 1026	organise 3	arrange 2	sort 1	plan 1	manage 1	
+order 1027	request 2	buy 2	sort 1	purchase 1	
+order 1028	command 4	instruct 2	send 1	tell 1	
+order 1029	organise 3	sort 2	arrange 1	
+order 1030	command 3	arrange 1	direct 1	instruct 1	mandate 1	
+possibly 1031	perhaps 4	maybe 2	
+possibly 1032	perhaps 1	reasonably 1	conceivably 1	plausibly 1	feasibly 1	potentially 1	believably 1	
+possibly 1033	reasonably 1	necessarily 1	conceivably 1	plausibly 1	feasibly 1	potentially 1	believably 1	
+possibly 1034	perhaps 3	maybe 1	potentially 1	
+possibly 1035	reasonably 1	necessarily 1	conceivably 1	plausibly 1	feasibly 1	
+possibly 1036	perhaps 4	maybe 2	
+possibly 1037	perhaps 4	maybe 2	plausibly 1	feasibly 1	
+possibly 1038	ever 1	reasonably 1	necessarily 1	conceivably 1	plausibly 1	feasibly 1	believably 1	
+possibly 1039	maybe 4	perhaps 3	
+possibly 1040	perhaps 3	potentially 2	maybe 1	
+quick 1041	fast 5	rapid 1	
+quick 1042	short 3	brief 2	swift 1	concise 1	
+quick 1043	brief 3	short 2	swift 1	concise 1	cursory 1	
+quick 1044	swift 3	fast 2	rapid 2	
+quick 1045	fast 3	rapid 2	swift 1	speedy 1	
+quick 1046	fast 2	immediate 1	express 1	speedy 1	expeditious 1	prompt 1	rapid 1	
+quick 1047	swift 2	fast 2	prompt 1	rapid 1	
+quick 1048	fast 3	rapid 2	swift 1	speedy 1	
+quick 1049	hasty 2	fast 2	swift 1	hurried 1	keen 1	
+quick 1050	brief 3	short 2	swift 1	cursory 1	
+see 1051	observe 3	notice 2	find 1	perceive 1	
+see 1052	watch 2	visit 2	view 2	
+see 1053	watch 4	view 1	
+see 1054	watch 3	notice 2	observe 1	distinguish 1	perceive 1	
+see 1055	understand 2	notice 1	discover 1	establish 1	ascertain 1	find 1	
+see 1056	discover 3	consider 1	watch 1	establish 1	ascertain 1	
+see 1057	observe 1	discover 1	establish 1	find 1	learn 1	note 1	
+see 1058	watch 4	observe 1	detect 1	behold 1	perceive 1	
+see 1059	watch 4	witness 1	observe 1	view 1	
+see 1060	undergo 2	witness 2	experience 2	observe 1	
+shortly 1061	soon 2	just 1	immediately 1	briefly 1	quickly 1	
+shortly 1062	soon 4	presently 2	
+shortly 1063	briefly 2	abruptly 1	curtly 1	soon 1	brusquely 1	quickly 1	
+shortly 1064	just 2	soon 2	little 1	
+shortly 1065	presently 3	soon 2	abruptly 1	
+shortly 1066	soon 3	just 1	
+shortly 1067	abruptly 3	curtly 2	sharply 1	brusquely 1	briefly 1	quickly 1	
+shortly 1068	soon 4	presently 1	quickly 1	
+shortly 1069	abruptly 3	curtly 2	presently 1	sharply 1	
+shortly 1070	soon 3	just 2	
+skip 1071	miss 5	avoid 1	dodge 1	neglect 1	
+skip 1072	skim 4	bounce 1	hop 1	jump 1	
+skip 1073	skim 4	bounce 1	hop 1	jump 1	bump 1	
+skip 1074	jump 3	spring 1	hop 1	bound 1	prance 1	
+skip 1075	miss 5	omit 1	
+skip 1076	disregard 1	miss 1	avoid 1	jump 1	ignore 1	leave 1	
+skip 1077	jump 4	
+skip 1078	omit 2	eschew 1	miss 1	avoid 1	reject 1	neglect 1	
+skip 1079	miss 4	jump 1	omit 1	
+skip 1080	jump 3	pass 1	skitter 1	shift 1	skim 1	
+solid 1081	hard 2	solid 1	firm 1	concrete 1	set 1	
+solid 1082	dependable 1	strong 1	firm 1	cemented 1	genuine 1	stable 1	reliable 1	
+solid 1083	hard 3	rigid 1	set 1	
+solid 1084	firm 2	dependable 1	fixed 1	strong 1	stable 1	reliable 1	
+solid 1085	firm 2	strong 1	secure 1	stable 1	reliable 1	
+solid 1086	strong 2	sturdy 2	secure 1	firm 1	substantial 1	stable 1	
+solid 1087	firm 2	hard 2	strong 1	dry 1	set 1	sound 1	
+solid 1088	dependable 1	strong 1	firm 1	respectable 1	accurate 1	sound 1	reliable 1	
+solid 1089	substantive 1	dependable 1	strong 1	firm 1	valid 1	reliable 1	good 1	sound 1	
+solid 1090	firm 2	dependable 1	strong 1	convincing 1	accurate 1	reliable 1	
+strong 1091	healthy 2	resilient 1	robust 1	sturdy 1	vigorous 1	hardy 1	
+strong 1092	sturdy 2	solid 1	robust 1	powerful 1	durable 1	secure 1	
+strong 1093	powerful 3	high 2	forceful 1	heavy 1	
+strong 1094	solid 2	firm 1	powerful 1	convincing 1	persuasive 1	compelling 1	
+strong 1095	solid 1	good 1	powerful 1	effective 1	sound 1	
+strong 1096	powerful 4	firm 1	clear 1	convincing 1	
+strong 1097	powerful 2	intense 1	pronounced 1	potent 1	distinct 1	keen 1	
+strong 1098	powerful 3	good 1	firm 1	masterful 1	effective 1	
+strong 1099	intense 1	robust 1	concentrated 1	dark 1	bitter 1	
+strong 1100	dependable 1	resilient 1	resolute 1	tough 1	forceful 1	capable 1	robust 1	sturdy 1	
+suffer 1101	have 2	acquire 1	undergo 1	endure 1	sustain 1	experience 1	
+suffer 1102	endure 3	undergo 2	experience 2	know 1	
+suffer 1103	experience 3	undergo 1	endure 1	have 1	
+suffer 1104	endure 3	tolerate 2	bear 2	
+suffer 1105	endure 3	tolerate 1	undergo 1	experience 1	
+suffer 1106	have 2	undergo 1	endure 1	sustain 1	experience 1	
+suffer 1107	endure 2	bear 2	tolerate 1	accept 1	
+suffer 1108	endure 3	undergo 1	experience 1	
+suffer 1109	undergo 4	endure 2	encounter 1	experience 1	
+suffer 1110	endure 2	undergo 2	have 1	feel 1	experience 1	
+tap 1111	drum 2	rap 2	move 1	knock 1	
+tap 1112	exploit 2	draw 1	use 1	syphon 1	utilise 1	
+tap 1113	knock 2	rap 2	drum 1	pat 1	beat 1	hit 1	
+tap 1114	exploit 2	utilise 2	use 1	syphon 1	
+tap 1115	utilise 2	syphon 1	exploit 1	milk 1	
+tap 1116	mark 1	establish 1	appoint 1	recommend 1	approach 1	commission 1	choose 1	
+tap 1117	mark 1	contact 1	approach 1	ask 1	commission 1	select 1	choose 1	
+tap 1118	exploit 2	utilise 2	use 1	syphon 1	extract 1	
+tap 1119	hit 2	drum 1	strike 1	knock 1	touch 1	rap 1	
+tap 1120	use 2	exploit 2	utilise 2	syphon 1	
+therefore 1121	consequently 3	accordingly 1	thus 1	hence 1	
+therefore 1122	consequently 3	thus 2	so 1	
+therefore 1123	consequently 3	thus 3	accordingly 1	
+therefore 1124	consequently 3	so 2	thus 2	
+therefore 1125	thus 3	consequently 2	accordingly 1	
+therefore 1126	consequently 2	thus 2	accordingly 1	
+therefore 1127	consequently 4	thus 2	accordingly 1	
+therefore 1128	accordingly 2	consequently 2	thus 2	hence 1	
+therefore 1129	consequently 3	accordingly 2	hence 1	
+therefore 1130	consequently 4	accordingly 1	so 1	thus 1	hence 1	
+touch 1131	feel 5	finger 1	stroke 1	
+touch 1132	brush 1	skim 1	study 1	
+touch 1133	affect 3	move 2	stir 1	influence 1	
+touch 1134	consider 1	undertake 1	handle 1	accept 1	do 1	
+touch 1135	mention 2	consider 1	alight 1	
+touch 1136	affect 4	infect 2	influence 1	
+touch 1137	consider 1	reach 1	study 1	
+touch 1138	on 1	contact 1	
+touch 1139	contact 2	meet 1	
+touch 1140	tinge 3	
+worthy 1141	deserved 1	laudable 1	commendable 1	deserving 1	reputable 1	trusted 1	excellent 1	
+worthy 1142	deserving 4	deserved 1	
+worthy 1143	deserving 3	deserved 1	laudable 1	admirable 1	respectable 1	creditable 1	
+worthy 1144	deserving 3	deserved 1	laudable 1	righteous 1	charitable 1	
+worthy 1145	deserving 2	deserved 1	admirable 1	satisfactory 1	acceptable 1	fitting 1	
+worthy 1146	deserving 4	charitable 1	fitting 1	
+worthy 1147	worthwhile 2	deserved 1	commendable 1	good 1	admirable 1	excellent 1	
+worthy 1148	worthwhile 2	honourable 1	commendable 1	deserving 1	beneficial 1	creditable 1	
+worthy 1149	deserving 3	worthwhile 1	befitting 1	suitable 1	
+worthy 1150	deserving 3	worthwhile 2	commendable 1	suitable 1	
+account 1151	explanation 2	description 2	synopsis 1	chronicle 1	
+account 1152	statement 1	subscription 1	facility 1	
+account 1153	explanation 3	consideration 2	description 1	
+account 1154	fund 1	balance 1	finance 1	asset 1	facility 1	
+account 1155	narrative 1	report 1	
+account 1156	logon 1	subscriber 1	ledger 1	access 1	facility 1	
+account 1157	fund 1	finance 1	asset 1	
+account 1158	finance 1	
+account 1159	ledger 2	statement 1	facility 1	
+account 1160	balance 1	ledger 1	facility 1	
+acquire 1161	gain 3	gather 2	amass 1	collect 1	
+acquire 1162	procure 2	gain 2	purchase 2	buy 2	obtain 1	
+acquire 1163	buy 3	procure 2	gain 1	get 1	purchase 1	obtain 1	
+acquire 1164	gain 4	amass 1	receive 1	obtain 1	
+acquire 1165	gain 3	procure 1	get 1	achieve 1	obtain 1	
+acquire 1166	gain 2	amass 1	secure 1	get 1	learn 1	obtain 1	
+acquire 1167	procure 2	obtain 2	purchase 1	gain 1	buy 1	
+acquire 1168	get 2	procure 1	gain 1	purchase 1	find 1	buy 1	obtain 1	
+acquire 1169	purchase 2	obtain 2	buy 2	procure 1	
+acquire 1170	get 3	gain 2	obtain 2	
+acute 1171	severe 3	critical 1	sharp 1	grave 1	serious 1	
+acute 1172	severe 4	sudden 1	urgent 1	serious 1	
+acute 1173	severe 3	serious 3	critical 1	
+acute 1174	sharp 2	sensitive 2	keen 1	serious 1	
+acute 1175	emergency 3	critical 2	severe 1	urgent 1	
+acute 1176	pn 2	critical 1	
+acute 1177	serious 2	heightened 1	intense 1	severe 1	
+acute 1178	severe 2	serious 2	
+acute 1179	critical 1	pn 1	
+acute 1180	serious 3	severe 2	
+below 1181	underneath 3	beneath 3	following 1	
+below 1182	underneath 3	beneath 3	
+below 1183	underneath 3	beneath 3	
+below 1184	beneath 2	later 2	included 1	attached 1	following 1	
+below 1185	underneath 3	beneath 3	following 1	
+below 1186	underneath 4	beneath 2	following 1	
+below 1187	underneath 3	beneath 3	following 1	
+below 1188	beneath 3	underneath 2	attached 1	following 1	
+below 1189	underneath 4	beneath 2	
+below 1190	underneath 4	beneath 2	following 1	
+bring 1191	draw 2	attract 1	gather 1	call 1	
+bring 1192	move 2	convey 2	gather 1	draw 1	
+bring 1193	file 2	attract 1	initiate 1	institute 1	instigate 1	take 1	start 1	
+bring 1194	institute 1	file 1	put 1	present 1	take 1	
+bring 1195	take 2	make 1	
+bring 1196	take 3	draw 1	deliver 1	guide 1	return 1	
+bring 1197	get 2	create 1	convey 1	produce 1	generate 1	introduce 1	take 1	
+bring 1198	shoot 1	depress 1	topple 1	ruin 1	bore 1	force 1	
+bring 1199	take 3	transport 1	convey 1	carry 1	move 1	
+bring 1200	introduce 2	attract 1	realise 1	contribute 1	take 1	incorporate 1	
+burst 1201	erupt 2	explode 2	rush 1	barge 1	break 1	
+burst 1202	explode 2	pop 2	rupture 1	end 1	deflate 1	
+burst 1203	erupt 1	bounce 1	leap 1	explode 1	
+burst 1204	erupt 1	explode 1	surprise 1	descend 1	break 1	
+burst 1205	cover 1	burgeon 1	bristle 1	explode 1	overflow 1	laden 1	
+burst 1206	break 3	erupt 1	run 1	rush 1	barge 1	
+burst 1207	break 3	overflow 2	fracture 1	
+burst 1208	break 2	erupt 1	rupture 1	enthusiastic 1	overflow 1	split 1	
+burst 1209	erupt 1	bound 1	run 1	push 1	rush 1	barge 1	break 1	
+burst 1210	break 3	erupt 1	explode 1	
+call 1211	name 5	address 1	designate 1	
+call 1212	dub 1	label 1	describe 1	designate 1	
+call 1213	name 5	
+call 1214	telephone 2	dial 2	phone 2	ring 1	
+call 1215	telephone 2	summon 2	request 1	ring 1	phone 1	
+call 1216	phone 3	telephone 2	ring 1	contact 1	
+call 1217	name 4	term 1	
+call 1218	phone 3	telephone 2	ring 1	
+call 1219	name 2	dub 1	label 1	designate 1	entitle 1	term 1	
+call 1220	telephone 2	ring 2	phone 2	contact 1	
+caravan 1221	trailer 1	roadshow 1	trailer  1	cavalcade 1	band 1	vehicle 1	company 1	
+caravan 1222	camper 2	
+caravan 1223	trailer 2	camper 1	camping 1	
+caravan 1224	trailer 2	camper 1	
+caravan 1225	convoy 4	group 1	cavalcade 1	
+caravan 1226	train 2	convoy 2	traveller 1	cavalcade 1	party 1	company 1	
+caravan 1227	convoy 3	trailer 1	troop 1	company 1	
+caravan 1228	convoy 3	crocodile 1	camper 1	cavalcade 1	company 1	
+caravan 1229	trailer 3	camper 1	
+caravan 1230	convoy 2	trailer 1	convey 1	cavalcade 1	company 1	
+carry 1231	convey 2	bear 1	send 1	bring 1	drag 1	take 1	
+carry 1232	convey 2	bear 1	transport 1	hold 1	transmit 1	contain 1	
+carry 1233	convey 2	take 2	bear 1	transport 1	bring 1	
+carry 1234	hold 2	bear 1	convey 1	use 1	contain 1	
+carry 1235	do 3	accomplish 2	execute 1	undertake 1	complete 1	
+carry 1236	execute 2	undertake 2	deploy 1	perform 1	complete 1	
+carry 1237	hold 2	convey 1	bring 1	pack 1	take 1	
+carry 1238	bring 3	take 2	transport 1	
+carry 1239	fulfil 3	execute 1	conclude 1	undertake 1	complete 1	
+carry 1240	hold 4	transport 1	lug 1	clutch 1	
+clear 1241	obvious 2	apparent 2	evident 1	transparent 1	certain 1	
+clear 1242	definite 2	obvious 1	transparent 1	distinct 1	true 1	unambiguous 1	
+clear 1243	distinct 3	obvious 2	unambiguous 1	definite 1	
+clear 1244	obvious 3	plain 1	evident 1	distinct 1	certain 1	
+clear 1245	obvious 3	plain 1	unmistakable 1	evident 1	apparent 1	
+clear 1246	clean 3	fresh 2	pure 1	
+clear 1247	obvious 4	plain 1	unmistakable 1	lucid 1	
+clear 1248	obvious 5	plain 1	patent 1	
+clear 1249	obvious 3	understandable 1	distinctly 1	evident 1	unambiguous 1	
+clear 1250	distinct 3	sharp 2	unobscured 1	unblurred 1	
+close 1251	near 5	adjacent 1	
+close 1252	near 5	proximate 1	about 1	
+close 1253	near 5	neighbouring 1	local 1	
+close 1254	near 5	
+close 1255	near 5	
+close 1256	near 2	proximate 1	adjacent 1	near  1	contiguous 1	
+close 1257	near 5	almost 1	
+close 1258	near 5	
+close 1259	near 4	next 1	
+close 1260	near 5	
+closely 1261	carefully 3	intently 1	attentively 1	scrupulously 1	
+closely 1262	intimately 4	nearly 1	directly 1	strongly 1	
+closely 1263	jointly 2	collectively 1	together 1	intimately 1	
+closely 1264	jointly 2	collectively 1	together 1	intimately 1	
+closely 1265	carefully 3	intently 1	attentively 1	
+closely 1266	intimately 3	neatly 1	narrowly 1	strongly 1	
+closely 1267	carefully 3	intently 1	attentively 1	
+closely 1268	jointly 2	carefully 1	alongside 1	together 1	
+closely 1269	jointly 2	carefully 1	together 1	intimately 1	
+closely 1270	nearly 5	approximately 1	
+decline 1271	reject 3	refuse 3	forgo  1	
+decline 1272	fall 2	decrease 2	weaken 1	drop 1	lessen 1	reject 1	
+decline 1273	fall 3	decrease 3	drop 1	
+decline 1274	fall 3	decrease 2	deteriorate 1	drop 1	
+decline 1275	fall 3	decrease 2	deteriorate 1	drop 1	
+decline 1276	fall 2	decrease 2	drop 1	
+decline 1277	decrease 3	fall 2	drop 1	
+decline 1278	fall 3	deteriorate 2	decrease 2	
+decline 1279	fall 3	decrease 3	drop 1	
+decline 1280	decrease 3	fall 2	reduce 1	
+drop 1281	unload 1	deliver 1	deliver  1	leave 1	
+drop 1282	write 3	email 1	send 1	text 1	
+drop 1283	relinquish 1	throw 1	dump 1	release 1	
+drop 1284	abandon 2	omit 2	ditch 1	
+drop 1285	fall 5	decline 1	
+drop 1286	fall 5	decline 1	
+drop 1287	abandon 2	deselect 1	
+drop 1288	pause 1	stop 1	lower 1	weigh 1	
+drop 1289	abandon 3	relinquish 1	discontinue 1	terminate 1	leave 1	
+drop 1290	fall 5	
+easy 1291	simple 4	accessible 1	
+easy 1292	simple 4	uncomplicated 1	carefree 1	undemanding 1	
+easy 1293	simple 2	convenient 1	
+easy 1294	simple 3	uncomplicated 1	undemanding 1	straightforward 1	
+easy 1295	simple 4	undemanding 1	possible 1	straightforward 1	
+easy 1296	simple 4	less 1	
+easy 1297	simple 4	possible 1	straightforward 1	
+easy 1299	simple 4	straightforward 1	
+easy 1300	possible 1	common 1	
+endure 1301	suffer 3	tolerate 2	bear 1	
+endure 1302	last 4	continue 2	
+endure 1303	suffer 3	undergo 3	have 1	experience 1	
+endure 1304	suffer 2	undergo 2	tolerate 1	
+endure 1305	suffer 3	tolerate 1	undergo 1	bear 1	
+endure 1306	undergo 3	suffer 1	have 1	experience 1	
+endure 1307	last 5	continue 1	persist 1	
+endure 1308	undergo 2	suffer 1	have 1	
+endure 1309	suffer 3	undergo 1	experience 1	
+endure 1310	suffer 2	tolerate 1	bear 1	
+extended 1311	wide 2	additional 1	expanded 1	broad 1	
+extended 1312	protracted 2	long 2	lengthened 1	prolonged 1	
+extended 1313	lengthened 2	enlarged 2	long 1	elongated 1	increased 1	
+extended 1314	wide 2	additional 1	expanded 1	broad 1	
+extended 1315	long 2	prolonged 2	lengthy 1	protracted 1	lengthened 1	
+extended 1316	lengthy 3	protracted 1	long 1	prolonged 1	
+extended 1317	extensive 3	expansive 1	lengthy 1	comprehensive 1	prolonged 1	
+extended 1318	lengthened 2	additional 1	long 1	expanded 1	increased 1	augmented 1	
+extended 1319	lengthy 3	prolonged 2	protracted 1	long 1	
+extended 1320	protracted 2	prolonged 2	lengthy 1	long 1	
+external 1321	outside 5	
+external 1322	outside 5	
+external 1323	outside 2	outward 2	outer 1	
+external 1324	outside 4	nonlocal 1	
+external 1325	outside 5	
+external 1326	outside 4	link 1	
+external 1327	outer 2	exterior 2	outside 1	
+external 1328	outside 3	outer 1	exterior 1	
+external 1329	outside 4	exterior 1	
+external 1330	outside 4	foreign 2	
+field 1331	area 1	holder 1	section 1	box 1	
+field 1332	area 4	speciality 1	activity 1	discipline 1	
+field 1333	land 1	resource 1	ground 1	licence 1	area 1	acreage 1	
+field 1334	area 3	discipline 2	domain 1	speciality 1	
+field 1335	area 2	sphere 1	region 1	
+field 1336	sphere 1	area 1	holder 1	box 1	
+field 1337	pitch 5	
+field 1338	community 1	area 1	battleground 1	
+field 1339	area 3	domain 1	sphere 1	province 1	discipline 1	
+field 1340	environment 1	subject 1	investigative 1	geographical 1	
+flat 1341	level 3	smooth 2	horizontal 2	
+flat 1342	straight 5	
+flat 1343	level 5	horizontal 1	
+flat 1344	lifeless 1	flush 1	horizontal 1	deflated 1	
+flat 1345	total 2	plain 1	absolute 1	outright 1	downright 1	categoric 1	
+flat 1346	plane 1	even 1	thin 1	smooth 1	
+flat 1347	level 5	horizontal 1	
+flat 1348	uniform 1	even 1	fixed 1	
+flat 1349	level 2	even 2	gently 1	shallow 1	
+flat 1350	level 2	thin 2	smooth 1	
+forward 1351	ahead 2	anticipate 2	
+forward 1352	onward 3	on 1	ahead 1	forth 1	along 1	
+forward 1353	ahead 3	frontward 2	
+forward 1354	ahead 2	anticipate 1	expect 1	
+forward 1355	onward 3	ahead 2	on 1	advance 1	
+forward 1356	onward 2	ahead 1	advance 1	along 1	
+forward 1357	ahead 4	out 1	
+forward 1358	ahead 2	advance 1	over 1	earlier 1	
+forward 1359	advance 2	onward 2	forth 1	
+forward 1360	onward 2	front 1	anticipative 1	
+fundamental 1361	elemental 2	radical 2	basic 1	intrinsic 1	essential 1	
+fundamental 1362	basic 3	essential 1	primary 1	significant 1	elemental 1	
+fundamental 1363	basic 4	essential 1	elementary 1	elemental 1	foundational 1	
+fundamental 1364	basic 2	significant 1	elemental 1	major 1	central 1	important 1	
+fundamental 1365	basic 4	essential 1	elementary 1	elemental 1	foundational 1	
+fundamental 1366	basic 2	essential 1	significant 1	elemental 1	vital 1	important 1	
+fundamental 1367	basic 3	essential 2	elemental 1	foundational 1	vital 1	
+fundamental 1368	basic 2	underlying 1	essential 1	significant 1	elemental 1	foundational 1	important 1	
+fundamental 1369	basic 3	essential 2	necessary 1	elemental 1	foundational 1	
+fundamental 1370	basic 2	radical 2	elementary 1	elemental 1	foundational 1	
+get 1371	persuade 4	convince 1	
+get 1372	be 4	become 1	achieve 1	
+get 1373	acquire 2	gain 2	receive 1	give 1	
+get 1374	travel 3	reach 1	go 1	
+get 1375	acquire 2	obtain 2	have 1	buy 1	
+get 1376	acquire 2	buy 2	obtain 2	
+get 1377	be 4	
+get 1378	obtain 3	achieve 2	acquire 1	
+get 1379	fetch 3	obtain 2	procure 1	reach 1	bring 1	buy 1	
+get 1380	become 3	be 2	
+hold 1381	maintain 3	have 2	believe 1	adhere 1	
+hold 1382	stand 2	support 2	lift 1	
+hold 1383	support 2	place 1	position 1	put 1	
+hold 1384	grasp 3	lift 1	take 1	clasp 1	
+hold 1385	occupy 3	have 2	retain 1	maintain 1	
+hold 1386	contain 3	store 2	retain 1	cache 1	
+hold 1387	convene 2	organise 2	conduct 1	call 1	host 1	
+hold 1388	occupy 3	possess 1	retain 1	have 1	
+hold 1389	keep 2	possess 1	retain 1	store 1	own 1	
+hold 1390	carry 2	grip 1	handle 1	clutch 1	grasp 1	clasp 1	
+informal 1391	casual 3	unofficial 2	relaxed 1	
+informal 1392	casual 4	unofficial 1	relaxed 1	
+informal 1393	unofficial 3	everyday 1	relaxed 1	ordinary 1	
+informal 1394	approximate 1	relaxed 1	casual 1	imprecise 1	
+informal 1395	casual 3	relaxed 2	unofficial 1	
+informal 1396	casual 3	relaxed 2	friendly 1	
+informal 1397	casual 3	friendly 1	spontaneous 1	relaxed 1	
+informal 1398	unofficial 2	everyday 1	casual 1	
+informal 1399	casual 3	untrained 1	spontaneous 1	relaxed 1	
+informal 1400	unofficial 2	easygoing 1	casual 1	
+inner 1401	internal 3	spiritual 2	inmost 1	inward 1	
+inner 1402	inside 3	enclosed 1	interior 1	innermore 1	
+inner 1403	internal 3	interior 1	mental 1	inward 1	spiritual 1	
+inner 1404	internal 4	private 1	inward 1	
+inner 1405	internal 2	interior 1	mental 1	inside 1	inward 1	spiritual 1	
+inner 1406	clique 1	close 1	interior 1	original 1	central 1	
+inner 1407	inside 2	internal 2	interior 1	under 1	
+inner 1408	internal 3	private 1	mental 1	inward 1	spiritual 1	
+inner 1409	internal 2	central 2	private 1	inside 1	
+inner 1410	internal 3	private 1	focal 1	central 1	
+investigator 1411	researcher 3	experimenter 1	inquirer 1	examiner 1	
+investigator 1412	detective 2	inquirer 1	officer 1	official 1	inspector 1	
+investigator 1413	inquirer 2	detective 2	officer 1	official 1	inspector 1	
+investigator 1414	researcher 3	inquirer 2	experimenter 1	
+investigator 1415	inquirer 2	detective 2	researcher 1	inspector 1	
+investigator 1416	researcher 3	inquirer 2	experimenter 1	
+investigator 1417	researcher 2	inquirer 1	detective 1	officer 1	
+investigator 1418	researcher 3	detective 1	examiner 1	
+investigator 1419	researcher 3	experimenter 1	inquirer 1	examiner 1	
+investigator 1420	researcher 3	inquirer 1	
+letter 1421	dispatch 1	missive 1	correspondence 1	memo 1	message 1	communication 1	
+letter 1422	epistle 1	missive 1	correspondence 1	correspondence  1	message 1	communication 1	
+letter 1423	character 2	alphabet 1	glyph 1	
+letter 1424	correspondence 1	missive 1	document 1	communication 1	
+letter 1425	character 2	glyph 1	
+letter 1426	character 2	glyph 1	
+letter 1427	correspondence 2	epistle 1	missive 1	document 1	mail 1	communication 1	
+letter 1428	epistle 1	missive 1	mail 1	note 1	message 1	communication 1	
+letter 1429	missive 2	dispatch 1	document 1	correspondence 1	communication 1	
+letter 1430	missive 2	communication 2	epistle 1	mail 1	
+loud 1431	noisy 2	big 1	vociferous 1	conspicuous 1	strident 1	
+loud 1432	booming 4	thundering 1	strong 1	resonant 1	
+loud 1433	noisy 4	deafening 1	
+loud 1434	noisy 4	deafening 1	shrill 1	blaring 1	
+loud 1435	noisy 2	booming 1	resonant 1	heavy 1	
+loud 1436	noisy 5	blaring 1	
+loud 1437	disturbing 1	imposing 1	deafening 1	clear 1	blaring 1	obtrusive 1	rowdy 1	
+loud 1438	big 1	strong 1	booming 1	clear 1	resonant 1	blaring 1	
+loud 1439	noisy 1	forceful 1	amplified 1	strong 1	powerful 1	resonant 1	
+loud 1440	noisy 5	raucous 1	rowdy 1	
+mad 1441	wild 3	hurried 1	crazy 1	frantic 1	rapid 1	
+mad 1442	insane 3	crazy 2	
+mad 1443	angry 4	annoyed 1	furious 1	
+mad 1444	crazy 3	wild 3	
+mad 1445	BSE 2	crazy 1	pn 1	
+mad 1446	crazy 3	fast 1	
+mad 1447	insane 2	rabid 2	crazy 2	
+mad 1448	BSE 2	crazy 1	pn 1	
+mad 1449	crazy 4	frenzied 1	frenetic 1	uncontrolled 1	wild 1	
+mad 1450	BSE 2	crazy 1	pn 1	
+make 1451	create 5	construct 1	succeed 1	complete 1	
+make 1452	help 2	compel 1	cause 1	cause  1	
+make 1453	take 3	reach 1	form 1	
+make 1454	produce 2	initiate 1	do 1	affect 1	
+make 1455	turn 1	cause 1	
+make 1456	generate 2	create 1	commit 1	produce 1	perform 1	
+make 1457	create 2	construct 1	produce 1	do 1	generate 1	write 1	
+make 1458	turn 1	change 1	
+make 1459	have 2	
+make 1460	commit 2	produce 1	have 1	
+mission 1461	negotiation 1	office 1	legation 1	assignment 1	charity 1	delegation 1	
+mission 1462	negotiation 1	assignment 1	operation 1	task 1	
+mission 1463	task 2	aim 2	assignment 1	purpose 1	objective 1	
+mission 1464	outreach 1	evangelical 1	ministering 1	operation 1	
+mission 1465	work 2	calling 1	quest 1	arrival 1	
+mission 1466	outreach 1	evangelical 1	operation 1	
+mission 1467	church 2	oratory 1	preaching 1	outreach 1	
+mission 1468	duty 2	vocation 1	calling 1	project 1	quest 1	purpose 1	
+mission 1469	assignment 2	operation 2	project 1	task 1	
+mission 1470	task 2	assignment 1	project 1	operation 1	aim 1	
+near 1471	almost 2	about 2	approximately 1	
+near 1472	close 4	
+near 1473	almost 3	about 2	approximately 1	
+near 1474	almost 3	practically 1	virtually 1	
+near 1475	almost 5	approaching 1	
+near 1476	almost 4	approaching 1	about 1	
+near 1477	close 3	neighbouring 1	adjoining 1	
+near 1478	close 5	alongside 1	
+near 1479	closely 1	nearly 1	
+near 1480	almost 5	
+open 1481	available 2	
+open 1482	unshut 1	unfastened 1	ajar 1	unclosed 1	accessible 1	
+open 1483	receptive 3	aware 1	exposed 1	susceptible 1	
+open 1484	unrestricted 2	unpoliced 1	free 1	unclosed 1	
+open 1485	alert 2	unlidded 1	peeled 1	wide 1	gaping 1	
+open 1486	sandal 1	unclosed 1	peep 1	
+open 1487	unrestricted 3	free 2	
+open 1488	working 1	unlocked 1	accessible 1	available 1	
+open 1489	exposed 2	green 1	unobstructed 1	clear 1	empty 1	accessible 1	
+open 1490	accessible 1	approachable 1	available 1	
+pot 1491	cannabis 4	marijuana 2	dope 1	weed 1	
+pot 1492	container 3	tub 1	vessel 1	
+pot 1493	bowl 1	tray 1	vessel 1	container 1	pan 1	casserole 1	
+pot 1494	teapot 2	container 2	ceramic 1	
+pot 1495	container 2	canister 1	pourer 1	vessel 1	
+pot 1496	container 2	stake 1	vessel 1	prize 1	winning 1	
+pot 1497	container 2	vessel 1	pan 1	
+pot 1498	tub 2	container 2	
+pot 1499	pan 2	vessel 1	saucepan 1	container 1	
+pot 1500	cannabis 4	marijuana 2	dope 1	weed 1	
+profound 1501	deep 2	sagacious 1	insightful 1	wise 1	discerning  1	
+profound 1502	deep 2	significant 1	important 1	extensive 1	
+profound 1503	deep 3	great 1	huge 1	
+profound 1504	deep 3	intense 2	significant 1	acute 1	
+profound 1505	intense 1	deep 1	thoughtful 1	intellectual 1	complex 1	thorough 1	
+profound 1506	deep 2	significant 1	keen 1	extensive 1	
+profound 1507	deep 2	serious 2	intellectual 1	penetrating 1	
+profound 1508	deep 2	significant 2	pronounced 1	
+profound 1509	deep 3	thorough 1	
+profound 1510	deep 3	significant 1	serious 1	
+prominent 1511	important 2	leading 1	
+prominent 1512	leading 1	eminent 1	important 1	
+prominent 1513	leading 2	renowned 1	
+prominent 1514	leading 2	important 2	significant 1	conspicuous 1	foremost 1	
+prominent 1515	leading 2	renowned 1	
+prominent 1516	leading 2	renowned 1	famous 1	
+prominent 1517	important 3	notable 1	conspicuous 1	major 1	foremost 1	
+prominent 1518	conspicuous 4	visible 1	obvious 1	
+prominent 1519	conspicuous 3	obvious 1	noticeable 1	notable 1	salient 1	
+prominent 1520	conspicuous 3	obvious 1	noticeable 1	pronounced 1	prevalent 1	
+pull 1521	remove 1	tug 1	pluck 1	rip 1	yank 1	wrench 1	
+pull 1522	stretch 3	tug 1	manipulate 1	yank 1	
+pull 1523	stop 3	draw  1	park 1	
+pull 1524	attract 4	draw 2	lure 1	
+pull 1525	tug 2	move 1	haul 1	heave 1	wrench 1	yank 1	
+pull 1526	drag 3	haul 2	tow 1	shift 1	
+pull 1527	stop 3	draw 1	park 1	
+pull 1528	yank 1	
+pull 1529	squeeze 3	push 1	draw 1	yank 1	
+pull 1530	request 1	stop 1	withdraw 1	extract 1	read 1	
+range 1531	series 2	spread 1	variety 1	collection 1	selection 1	choice 1	
+range 1532	gallery 2	
+range 1533	distance 3	extent 2	coverage 1	limit 1	
+range 1534	selection 3	variety 2	assortment 1	series 1	
+range 1535	variety 3	array 1	assortment 1	selection 1	span 1	breadth 1	
+range 1536	roaming 2	run 1	access 1	
+range 1537	span 2	scope 2	spread 1	selection 1	
+range 1538	area 4	
+range 1539	variety 4	array 1	assortment 1	
+range 1540	selection 2	variety 1	spread 1	series 1	scope 1	
+rather 1541	more 3	
+rather 1542	more 3	
+rather 1543	more 1	sooner 1	
+rather 1544	sooner 1	
+rather 1545	more 2	
+rather 1546	instead 4	preferably 1	sooner 1	
+rather 1547	quite 2	fairly 2	very 1	moderately 1	more 1	
+rather 1548	more 1	sooner 1	
+rather 1549	very 2	somewhat 2	slightly 1	significantly 1	quite 1	
+rather 1550	sooner 1	
+render 1551	make 3	portray 1	leave 1	
+render 1552	provide 2	deliver 2	create 1	bestow 1	give  1	
+render 1553	provide 3	deliver 2	give 1	
+render 1554	make 4	convert 1	leave 1	
+render 1555	display 2	show 1	use 1	represent 1	encode 1	
+render 1556	display 3	submit 1	represent 1	portray 1	
+render 1557	make 4	portray 1	leave 1	
+render 1558	make 4	deliver 1	leave 1	
+render 1559	make 5	
+render 1560	make 5	leave 1	
+rhythm 1561	beat 4	tempo 1	
+rhythm 1562	pattern 2	cycle 2	clock 1	pulse 1	
+rhythm 1563	beat 2	pattern 1	tempo 1	pulse 1	cycle 1	
+rhythm 1564	beat 3	pattern 1	cadence 1	tempo 1	
+rhythm 1565	pattern 2	beat 2	pulse 1	cycle 1	
+rhythm 1566	beat 5	cadence 1	
+rhythm 1567	beat 4	tempo 1	
+rhythm 1568	beat 5	pattern 1	
+rhythm 1569	tempo 3	harmony 1	beat 1	cycle 1	
+rhythm 1570	beat 4	form 1	
+scene 1571	backstage 3	stage 1	setting 1	programme 1	
+scene 1572	site 2	location 2	setting 2	sight 1	
+scene 1573	setting 4	image 1	
+scene 1574	setting 2	sequence 1	incident 1	place 1	event 1	
+scene 1575	sequence 1	part 1	setting 1	act 1	
+scene 1576	sphere 3	environment 1	community 1	business 1	field 1	
+scene 1577	setting 2	sight 1	sequence 1	area 1	picture 1	
+scene 1578	sequence 1	segment 1	setting 1	act 1	picture 1	
+scene 1579	setting 2	picture 2	location 1	event 1	
+scene 1580	arena 2	landscape 2	level 1	scale 1	
+serious 1581	significant 3	considerable 1	impressive 1	substantial 1	real 1	
+serious 1582	concerned 1	businesslike 1	resolute 1	sincere 1	heavy 1	
+serious 1583	severe 3	critical 1	significant 1	major 1	acute 1	
+serious 1584	severe 3	important 2	significant 1	grave 1	acute 1	
+serious 1585	important 3	grave 2	severe 1	urgent 1	
+serious 1586	grave 3	severe 2	significant 1	important 1	
+serious 1587	severe 3	significant 2	major 1	acute 1	
+serious 1588	major 2	severe 1	considerable 1	grave 1	significant 1	heavy 1	
+serious 1589	significant 3	proper 1	impressive 1	major 1	
+serious 1590	major 2	considerable 1	grave 1	significant 1	important 1	real 1	
+shade 1591	shadow 3	cover 1	shelter 1	
+shade 1592	hue 2	gradation 1	nuance 1	degree 1	tone 1	tint 1	
+shade 1593	shadow 3	shelter 1	
+shade 1594	trace 1	nuance 1	colour 1	hint 1	suggestion 1	echo 1	
+shade 1595	cover 1	shadow 1	screen 1	canopy 1	
+shade 1596	shadow 2	cover 1	shelter 1	shadow  1	
+shade 1597	trace 2	hint 2	suggestion 1	echo 1	
+shade 1598	hue 2	gradation 1	tint 1	tone 1	canopy 1	
+shade 1599	tint 2	hue 1	degree 1	tinge 1	tone 1	depth 1	
+shade 1600	sunglasses 5	
+so 1601	that 2	very 1	as 1	this 1	
+so 1602	as 3	very 1	
+so 1603	
+so 1604	that 3	
+so 1605	therefore 4	consequently 1	thus 1	
+so 1606	therefore 4	consequently 1	thus 1	
+so 1607	therefore 5	consequently 1	thus 1	hence 1	
+so 1608	therefore 5	consequently 1	thus 1	
+so 1609	as 3	therefore 1	likewise 1	
+so 1610	thereabouts 2	approximately 2	about  1	
+soft 1611	easy 2	weak 1	gentle 1	imprecise 1	
+soft 1612	quiet 4	feeble 1	faint 1	
+soft 1613	gentle 3	tender 2	flexible 1	compassionate 1	
+soft 1614	malleable 2	spongy 1	gentle 1	yielding 1	tender 1	
+soft 1615	smooth 2	spongy 1	yielding 1	cushioned 1	comfortable 1	
+soft 1616	gentle 5	quiet 2	restful 1	
+soft 1617	nonalcoholic 2	
+soft 1618	gentle 4	quiet 2	faint 1	
+soft 1619	easy 4	undemanding 1	lenient 1	
+soft 1620	yielding 2	spongy 1	comfy 1	cushioned 1	squashy 1	
+soil 1621	earth 1	dirt 1	terrain 1	compost 1	
+soil 1622	dirt 1	geological 1	pedological 1	pn 1	
+soil 1623	earth 2	compost 2	dirt 1	
+soil 1624	earth 2	dirt 1	compost 1	
+soil 1625	earth 2	layer 1	dirt 1	compost 1	
+soil 1626	earth 2	ground 1	land 1	dirt 1	
+soil 1627	earth 3	ground 1	dirt 1	
+soil 1628	dirt 2	tarnish 1	earth 1	compost 1	
+soil 1629	ground 1	earth 1	stain 1	
+soil 1630	earth 2	land 1	dirt 1	pedological 1	
+steady 1631	continuous 3	constant 2	constant  1	persistent 1	
+steady 1632	firm 2	stable 2	solid 1	unwavering 1	unshaking 1	
+steady 1633	constant 4	unvarying 1	fixed 1	stable 1	
+steady 1634	firm 2	stable 2	solid 1	unwavering 1	unshaking 1	
+steady 1635	constant 4	unchanging 1	unvarying 1	unfluctuating 1	
+steady 1636	constant 3	continuous 2	unbroken 1	
+steady 1637	continuous 2	regular 1	gradual 1	unremitting 1	unbroken 1	constant 1	
+steady 1638	continuous 3	gradual 1	uninterrupted 1	constant 1	
+steady 1639	constant 3	continuous 2	stable 1	
+steady 1640	constant 3	regular 1	sure 1	continuous 1	stable 1	
+stiff 1641	rigid 4	inelastic 1	firm 1	inflexible 1	
+stiff 1642	rigid 3	unyielding 1	firm 1	
+stiff 1643	strong 2	firm 2	good 1	solid 1	hard 1	
+stiff 1644	strong 4	tough 2	intense 1	
+stiff 1645	aching 3	frozen 1	rheumatic 1	cricked 1	painful 1	sore 1	
+stiff 1646	aching 3	sore 2	
+stiff 1647	stern 1	formal 1	firm 1	unrelaxed 1	constrained 1	unnatural 1	unbending 1	
+stiff 1648	harsh 2	heavy 2	severe 1	strong 1	rigid 1	
+stiff 1649	firm 3	rigid 2	unyielding 1	hard 1	
+stiff 1650	strong 4	heavy 2	powerful 1	
+strange 1651	odd 3	unusual 1	weird 1	bizarre 1	alien 1	
+strange 1652	foreign 2	bizarre 1	different 1	odd 1	alien 1	
+strange 1653	odd 3	peculiar 3	unusual 1	bizarre 1	
+strange 1654	odd 4	bizarre 1	abnormal 1	peculiar 1	
+strange 1655	odd 2	peculiar 2	weird 1	bizarre 1	
+strange 1656	peculiar 2	unfamiliar 2	odd 1	unknown 1	alien 1	
+strange 1657	odd 4	weird 1	unusual 1	
+strange 1658	odd 3	peculiar 3	weird 1	bizarre 1	
+strange 1659	odd 4	peculiar 2	bizarre 1	
+strange 1660	unexpected 2	unusual 1	surprising 1	peculiar 1	unlikely 1	unfamiliar 1	
+strike 1661	hit 5	bang 1	bash 1	knock 1	
+strike 1662	impress 2	surprise 2	move 1	affect 1	take 1	
+strike 1663	hit 5	
+strike 1664	hitting 1	fail 1	pn 1	
+strike 1665	hit 2	achieve 2	make 1	get 1	find 1	
+strike 1666	carve 1	hammer 1	make 1	cast 1	thrust 1	hit 1	
+strike 1667	hit 5	bump 1	
+strike 1668	occur 1	
+strike 1669	start 4	begin 2	
+strike 1670	hit 5	
+suspect 1671	believe 2	consider 1	guess 1	assume 1	think 1	surmise 1	expect 1	
+suspect 1672	think 2	imagine 1	guess 1	postulate 1	believe 1	surmise 1	
+suspect 1673	consider 2	question 1	presume 1	suspicious 1	expect 1	
+suspect 1674	believe 4	think 1	feel 1	reckon 1	
+suspect 1675	believe 3	imagine 1	think 1	reckon 1	
+suspect 1676	mistrust 1	
+suspect 1677	believe 3	think 1	surmise 1	reckon 1	
+suspect 1678	believe 3	surmise 1	reckon 1	
+suspect 1679	believe 2	reckon 2	imagine 1	expect 1	
+suspect 1680	mistrust 2	believe 1	
+tender 1681	delicate 3	soft 3	
+tender 1682	sore 4	delicate 1	sensitive 1	painful 1	
+tender 1683	gentle 3	delicate 2	sympathetic 1	kind 1	
+tender 1684	soft 4	delicate 1	
+tender 1685	delicate 4	soft 2	
+tender 1686	soft 5	
+tender 1687	soft 4	delicate 1	
+tender 1688	delicate 2	gentle 2	sensitive 2	
+tender 1689	loving 2	fond 1	sensitive 1	great 1	affectionate 1	soft 1	
+tender 1690	young 3	early 1	immature 1	soft 1	inexperienced 1	
+test 1691	examination 3	assessment 2	exam 1	evaluation 1	
+test 1692	examination 3	exam 2	assessment 1	
+test 1693	assessment 2	trial 1	examination 1	analysis 1	evaluation 1	
+test 1694	trial 2	analysis 2	scan 1	check 1	assessment 1	
+test 1695	analysis 2	examination 1	scan 1	check 1	assessment 1	
+test 1696	examination 3	exam 2	assessment 1	
+test 1697	trial 3	assessment 1	analysis 1	evaluation 1	
+test 1698	examination 3	exam 2	assessment 1	
+test 1699	examination 3	exam 2	assessment 1	
+test 1700	examination 3	exam 2	assessment 1	
+throw 1701	fling 1	chuck 1	fire 1	hurl 1	
+throw 1702	fling 2	put 2	toss 1	chuck 1	pitch 1	
+throw 1703	fling 3	hurl 2	
+throw 1704	fling 1	chuck 1	demand 1	ask 1	hurl 1	
+throw 1705	put 2	project 1	bring 1	place 1	focus 1	
+throw 1706	fling 3	chuck 2	toss 1	
+throw 1707	hurl 2	shoot 1	punch 1	deliver 1	propel 1	
+throw 1708	fling 2	chuck 2	toss 1	discard 1	hurl 1	
+throw 1709	fling 2	hurl 2	toss 1	cast 1	chuck 1	
+throw 1710	hurl 4	fling 2	toss 1	
+tremendous 1711	wonderful 2	great 2	marvellous 1	extraordinary 1	terrific 1	
+tremendous 1712	enormous 2	great 2	huge 2	terrible 1	
+tremendous 1713	enormous 2	great 2	huge 2	terrific 1	
+tremendous 1714	great 3	wonderful 1	enormous 1	terrific 1	huge 1	vast 1	
+tremendous 1715	huge 3	enormous 2	great 1	terrific 1	
+tremendous 1716	enormous 3	extraordinary 1	terrific 1	vast 1	huge 1	
+tremendous 1717	enormous 3	huge 3	
+tremendous 1718	enormous 3	huge 2	extraordinary 1	vast 1	
+tremendous 1719	great 2	huge 2	wonderful 1	enormous 1	terrific 1	
+tremendous 1720	enormous 2	huge 2	great 1	extraordinary 1	
+true 1721	factual 2	correct 1	genuine 1	verified 1	unquestionable 1	accurate 1	
+true 1722	real 4	genuine 2	
+true 1723	accurate 3	correct 1	factual 1	genuine 1	real 1	
+true 1724	correct 2	right 1	factual 1	accurate 1	real 1	truth 1	
+true 1725	correct 3	factual 1	fact 1	accurate 1	
+true 1726	correct 4	right 1	factual 1	accurate 1	
+true 1727	correct 3	accurate 2	genuine 1	
+true 1728	real 5	actual 1	correct 1	
+true 1729	correct 2	accurate 2	factual 1	genuine 1	verified 1	
+true 1730	real 5	actual 1	
+truly 1731	genuinely 4	strictly 1	unequivocally 1	actually 1	
+truly 1732	genuinely 3	perfectly 1	absolutely 1	unequivocally 1	actually 1	unquestionably 1	
+truly 1733	genuinely 2	perfectly 1	absolutely 1	definitely 1	actually 1	
+truly 1734	genuinely 5	really 1	unquestionably 1	
+truly 1735	genuinely 5	definitely 1	
+truly 1736	really 4	undoubtedly 1	genuinely 1	
+truly 1737	really 3	undoubtedly 1	absolutely 1	genuinely 1	
+truly 1738	genuinely 5	really 1	
+truly 1739	really 3	genuinely 2	fully 1	
+truly 1740	honestly 2	truthfully 1	genuinely 1	really 1	
+vital 1741	essential 3	crucial 2	critical 1	indispensable 1	
+vital 1742	essential 3	critical 1	requisite 1	fundamental 1	
+vital 1743	essential 3	crucial 2	requisite 1	
+vital 1744	indispensable 2	essential 2	integral 1	necessary 1	crucial 1	
+vital 1745	necessary 2	requisite 1	essential 1	crucial 1	important 1	
+vital 1746	essential 2	crucial 2	indispensable 1	necessary 1	
+vital 1747	essential 3	important 2	crucial 1	
+vital 1748	essential 2	important 2	necessary 1	crucial 1	
+vital 1749	essential 2	critical 1	indispensable 1	necessary 1	crucial 1	important 1	
+vital 1750	essential 3	requisite 1	crucial 1	
+worldwide 1751	global 4	international 2	
+worldwide 1752	global 4	international 2	
+worldwide 1753	global 4	international 2	
+worldwide 1754	global 4	international 2	
+worldwide 1755	global 3	universal 2	international 2	
+worldwide 1756	global 4	international 2	
+worldwide 1757	global 3	international 2	total 1	
+worldwide 1758	global 4	international 2	
+worldwide 1759	global 3	international 3	
+worldwide 1760	global 3	international 3	
+yet 1761	still 4	
+yet 1762	nevertheless 2	however 2	but 1	
+yet 1763	still 4	
+yet 1764	before 3	still 1	
+yet 1765	hitherto 1	already 1	still 1	
+yet 1766	but 2	nevertheless 2	although 1	still 1	however 1	
+yet 1767	hitherto 1	still 1	
+yet 1768	however 2	nevertheless 2	but 1	
+yet 1769	before 2	lately 1	hitherto 1	already 1	
+yet 1770	still 1	
+blow 1771	punch 2	thump 2	strike 1	clout 1	hit 1	
+blow 1772	hit 2	strike 1	knock 1	setback 1	criticism 1	punch 1	reverse 1	
+blow 1773	setback 2	strike 1	knock 1	shock 1	reverse 1	
+blow 1774	setback 3	disaster 1	knock 1	reverse 1	
+blow 1775	hair 3	wind 1	air 1	
+blow 1776	hit 2	attack 1	setback 1	shock 1	knockback 1	reverse 1	
+blow 1777	setback 2	knock 1	shock 1	rebuff 1	knockback 1	reverse 1	
+blow 1778	strike 1	knock 1	movement 1	
+blow 1779	strike 3	attack 1	thrust 1	hit 1	
+blow 1780	hit 3	punch 2	strike 1	
+board 1781	committee 2	administration 1	panel 1	management 1	directorate 1	executive 1	
+board 1782	committee 3	panel 1	
+board 1783	blackboard 2	screen 1	wipeboard 1	whiteboard 1	
+board 1784	table 2	game 1	
+board 1785	forum 2	screen 1	display 1	
+board 1786	committee 4	organisation 1	
+board 1787	committee 4	panel 1	
+board 1788	forum 2	site 1	
+board 1789	card 1	game 1	motherboard 1	
+board 1790	committee 4	group 1	
+cap 1791	capital 2	
+cap 1792	tip 1	nozzle 1	pn 1	
+cap 1793	lid 4	top 3	
+cap 1794	limit 4	restriction 2	ceiling 1	
+cap 1795	limit 4	ceiling 2	restriction 1	
+cap 1796	hat 2	nozzle 1	
+cap 1797	limit 4	restriction 2	ceiling 1	
+cap 1798	top 2	pileus 1	
+cap 1799	headdress 1	
+cap 1800	hat 2	
+change 1801	alter 4	amend 1	switch 1	modify 1	
+change 1802	move 2	alter 2	shift 1	vary 1	
+change 1803	alter 3	evolve 2	transform 1	
+change 1804	alter 4	modify 2	transform 1	
+change 1805	alter 4	modify 2	
+change 1806	alter 2	vary 2	adjust 1	
+change 1807	alter 3	move 1	transform 1	modify 1	
+change 1808	alter 3	transform 1	
+change 1809	modify 3	alter 2	adjust 1	
+change 1810	alter 3	modify 2	amend 1	update 1	
+charge 1811	command 2	control 2	power 1	authority 1	
+charge 1812	accusation 2	allegation 2	offence 1	indictment 1	
+charge 1813	allegation 3	accusation 2	criticism 1	
+charge 1814	accusation 2	allegation 2	indictment 1	issue 1	
+charge 1815	cost 4	expense 1	payment 1	fee 1	
+charge 1816	allegation 3	accusation 1	offence 1	indictment 1	prosecution 1	
+charge 1817	cost 3	expense 2	tariff 1	payment 1	
+charge 1818	allegation 1	indictment 1	prosecution 1	
+charge 1819	cost 4	tariff 1	fee 1	
+charge 1820	offence 2	allegation 2	accusation 1	indictment 1	
+execution 1821	killing 1	death 1	
+execution 1822	enforcement 2	implementation 2	administration 1	
+execution 1823	fulfilment 2	production 1	implementation 1	transaction 1	completion 1	
+execution 1824	enforcement 2	implementation 2	application 1	administration 1	performance 1	
+execution 1825	completion 2	operation  1	running 1	actualisation 1	performance 1	
+execution 1826	implementation 3	fulfilment 1	discharge 1	performance 1	
+execution 1827	killing 1	
+execution 1828	death 2	killing 1	
+execution 1829	death 2	killing 1	
+execution 1830	performance 3	implementation 2	method 1	
+fall 1831	drop 4	come 1	
+fall 1832	fail 3	drop 1	come 1	
+fall 1833	become 4	take 1	
+fall 1834	drop 4	slip 1	
+fall 1835	disappoint 1	drop 1	come 1	undershoot 1	
+fall 1836	drop 2	descend 2	land 1	
+fall 1837	disappoint 1	drop 1	come 1	undershoot 1	
+fall 1838	drop 5	
+fall 1839	tumble 2	drop 2	plunge 1	slip 1	
+fall 1840	drop 1	
+figure 1841	entity 1	organisation 1	character 1	representative 1	individual 1	
+figure 1842	number 4	statistic 1	numeral 1	
+figure 1843	number 3	amount 2	statistic 1	
+figure 1844	diagram 2	picture 2	illustration 1	people 1	image 1	
+figure 1845	number 3	statistic 1	account 1	value 1	
+figure 1846	leader 1	person 1	character 1	representative 1	individual 1	
+figure 1847	number 3	statistic 1	amount 1	calculation 1	
+figure 1848	character 3	person 1	personage 1	image 1	
+figure 1849	number 3	statistic 2	data 1	total 1	
+figure 1850	diagram 4	illustration 1	picture 1	
+fire 1851	shoot 5	
+fire 1852	shoot 4	launch 1	discharge 1	
+fire 1853	sack 5	dismiss 1	
+fire 1854	sack 5	dismiss 1	
+fire 1855	shoot 4	
+fire 1856	sack 5	dismiss 1	
+fire 1857	shoot 3	discharge 2	
+fire 1858	sack 5	dismiss 1	
+fire 1859	shoot 5	
+fire 1860	shoot 3	discharge 3	
+function 1861	purpose 4	role 1	
+function 1862	mapping 2	calculation 1	purpose 1	correspondence 1	equation 1	transformation 1	
+function 1863	feature 1	sequence 1	subroutine 1	task 1	operation 1	activity 1	
+function 1864	purpose 3	role 3	job 1	
+function 1865	mapping 2	correspondence 1	operation 1	result 1	
+function 1866	purpose 2	role 2	working 1	task 1	job 1	
+function 1867	purpose 2	role 2	mapping 1	working 1	
+function 1868	purpose 2	operation 1	activity 1	role 1	performance 1	
+function 1869	purpose 4	job 3	task 1	role 1	
+function 1870	mapping 2	relation 1	equation 1	activity 1	phenomenon 1	
+jam 1871	conserve 3	jelly 1	preserve 1	
+jam 1872	improv 1	
+jam 1873	gig 1	
+jam 1874	jelly 3	conserve 3	
+jam 1875	conserve 3	preserve 1	
+jam 1876	blockage 3	seizure 2	malfunction 1	
+jam 1877	congestion 2	blockage 1	queue 1	
+jam 1878	session 1	riff 1	
+jam 1879	congestion 2	blockage 1	queue 1	
+jam 1880	blockage 5	seizure 1	
+lead 1881	prospect 1	
+lead 1882	head 3	leader 2	star 1	
+lead 1883	leash 4	halter 1	
+lead 1884	example 2	enticement 1	foray 1	
+lead 1885	example 4	conduct 1	direction 1	guidance 1	
+lead 1887	cable 3	flex 1	halter 1	wire 1	
+lead 1888	tip 1	prospect 1	story 1	hint 1	opportunity 1	clue 1	
+lead 1889	ahead 1	influential 1	forefront 1	
+lead 1890	precedence 1	initiative 1	
+paper 1891	document 5	report 1	
+paper 1892	newspaper 4	publication 1	
+paper 1893	document 2	essay 2	treatise 1	article 1	study 1	
+paper 1894	document 5	newspaper 1	report 1	treatise 1	
+paper 1895	roll 4	
+paper 1896	stationery 2	papyrus 1	
+paper 1897	newspaper 4	journal 1	
+paper 1898	document 5	
+paper 1899	document 2	presentation 1	treatise 1	article 1	manuscript 1	
+paper 1900	article 3	thesis 1	treatise 1	document 1	manuscript 1	
+pass 1901	approve 3	ratify 2	authorise 1	adopt 1	
+pass 1902	satisfy 1	succeed 1	
+pass 1903	navigate 1	skirt 1	
+pass 1904	approach 1	see 1	
+pass 1905	send 2	transfer 1	hand 1	deliver 1	
+pass 1906	send 2	give 2	transfer 1	hand 1	
+pass 1907	go 2	flow 1	expire 1	leak 1	disappear 1	
+pass 1908	transpire 1	finish 1	occur 1	elapse 1	go 1	
+pass 1909	succeed 1	
+pass 1910	go  1	proceed 1	experience 1	traverse 1	go 1	
+poor 1911	bad 2	weak 2	incompetent 1	mediocre 1	inferior 1	
+poor 1912	unfortunate 4	hapless 1	sorry 1	miserable 1	
+poor 1913	unfortunate 3	unlucky 3	
+poor 1914	bad 3	unsatisfactory 1	inadequate 1	deficient 1	inferior 1	
+poor 1915	low 2	inferior 2	bad 1	unsatisfactory 1	substandard 1	
+poor 1916	unfortunate 5	unlucky 1	
+poor 1917	inferior 2	weak 1	bad 1	infertile 1	deficient 1	substandard 1	
+poor 1918	impoverished 1	destitute 1	needy 1	deprived 1	developing 1	underprivileged 1	
+poor 1919	destitute 1	needy 1	indigent 1	deprived 1	underprivileged 1	
+poor 1920	unfortunate 4	pitiable 1	wretched 1	unhappy 1	
+rest 1921	remainder 4	remains 1	
+rest 1922	remainder 5	balance 1	
+rest 1923	remainder 5	
+rest 1924	respite 2	repose 2	quiet 1	leisure 1	inactivity 1	sleep 1	
+rest 1925	support 3	stand 1	prop 1	base 1	stick 1	
+rest 1926	convenience 1	service 1	layby 1	comfort 1	break 1	
+rest 1927	remainder 5	balance 1	
+rest 1928	remainder 5	
+rest 1929	remainder 5	
+rest 1930	remainder 5	balance 1	
+right 1931	correct 4	straight 1	appropriate 1	
+right 1932	straight 3	immediately 2	straightaway 1	
+right 1933	straight 5	exactly 1	
+right 1934	straight 5	
+right 1935	correctly 4	well 1	properly 1	accurately 1	
+right 1936	straight 4	totally 1	
+right 1938	straight 4	immediately 1	directly 1	
+right 1939	straight 3	immediately 1	directly 1	
+right 1940	straight 3	directly 3	just 1	immediately 1	
+ring 1941	hoop 2	circle 2	band 1	rim 1	circlet 1	
+ring 1942	band 2	fob 1	chain 1	hoop 1	holder 1	circle 1	
+ring 1943	circle 4	shadow 1	band 1	
+ring 1944	group 3	chain 1	tone 1	syndicate 1	association 1	
+ring 1945	call 5	bell 1	
+ring 1946	sound 3	feel 1	connotation 1	chime 1	
+ring 1947	circle 4	band 1	coil 1	
+ring 1948	circle 3	group 2	network 1	
+ring 1949	hoop 3	circle 1	loop 1	
+ring 1950	circle 2	level 1	orbit 1	
+scrap 1951	waste 4	remainder 1	
+scrap 1952	waste 1	piece 1	rubbish 1	shred 1	
+scrap 1953	piece 4	fragment 2	
+scrap 1954	bit 2	morsel 2	leftover 1	piece 1	fragment 1	
+scrap 1955	piece 4	fragment 2	bit 1	
+scrap 1956	piece 5	
+scrap 1957	recycling 1	waste 1	
+scrap 1958	waste 5	
+scrap 1959	waste 2	morsel 2	leftover 1	crumb 1	bit 1	
+scrap 1960	clipping 1	album 1	collage 1	
+secret 1961	undisclosed 2	hidden 2	unpublished 1	clandestine 1	private 1	
+secret 1962	clandestine 2	hidden 2	undisclosed 1	undercover 1	concealed 1	unknown 1	
+secret 1963	undisclosed 2	hidden 2	unrevealed 1	unpublished 1	concealed 1	
+secret 1964	hidden 2	undisclosed 1	undercover 1	concealed 1	clandestine 1	
+secret 1965	private 2	classified 1	clandestine 1	coded 1	confidential 1	
+secret 1966	undisclosed 2	private 2	hidden 2	
+secret 1967	innermost 1	unspoken 1	inner 1	hidden 1	confidential 1	
+secret 1968	private 2	closed 1	undisclosed 1	concealed 1	unseen 1	hidden 1	
+secret 1969	undisclosed 2	closed 1	private 1	hidden 1	
+secret 1970	spying 1	intelligence 1	
+shot 1971	projectile 1	drive 1	firing 1	stroke 1	play 1	
+shot 1972	ammunition 4	pellet 2	
+shot 1973	bullet 1	projectile 1	round 1	blast 1	
+shot 1974	attempt 1	strike 1	stroke 1	play 1	aim 1	
+shot 1975	bullet 2	round 2	
+shot 1976	firing 1	discharge 1	noise 1	blast 1	
+shot 1977	attempt 1	move 1	stroke 1	manoeuvre 1	hit 1	play 1	
+shot 1978	photo 2	portrait 1	photograph 1	picture 1	
+shot 1979	picture 3	photo 1	portrait 1	photograph 1	
+shot 1980	injection 4	jab 3	vaccination 1	inoculation 1	
+show 1981	instruct 1	guide 1	
+show 1982	display 3	reveal 1	indicate 1	present 1	
+show 1983	play 2	display  1	present 1	air 1	exhibit 1	
+show 1984	display 4	present 1	illustrate 1	
+show 1985	appear 1	come 1	
+show 1986	display 3	reveal 1	present 1	depict 1	
+show 1987	indicate 3	illustrate 1	display 1	
+show 1988	play 3	offer 1	present 1	air 1	
+show 1989	play 3	give 1	
+show 1990	indicate 2	present 1	illustrate 1	picture 1	display 1	
+wind 1991	coil 4	coil  1	wrap 1	
+wind 1992	twist 2	weave 1	snake 1	meander 1	bend 1	
+wind 1993	tease 2	tighten 1	mislead 1	
+wind 1994	end 3	
+wind 1995	snake 2	twist 2	meander 1	bend 1	
+wind 1996	end 3	
+wind 1997	wend 1	progress 1	proceed 1	meander 1	bend 1	
+wind 1998	choke 1	
+wind 1999	navigate 1	wend 1	snake 1	weave 1	proceed 1	bend 1	
+wind 2000	wrap 4	coil 2	
+work 2001	engage 1	research 1	employ 1	investigate 1	labour 1	
+work 2002	labour 1	
+work 2003	collaborate 2	engage 1	labour 1	
+work 2004	labour 1	
+work 2005	toil 4	labour 3	task 1	
+work 2006	cooperate 2	engage 1	operate 1	collaborate 1	act 1	
+work 2007	operate 2	function 2	move 1	act 1	
+work 2008	cooperate 2	operate 1	participate 1	collaborate 1	act 1	
+work 2009	collaborate 2	engage 1	operate 1	cooperate 1	act 1	
+work 2010	operate 1	function 1	employ 1	participate 1	collaborate 1	labour 1	

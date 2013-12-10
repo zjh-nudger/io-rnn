@@ -18,7 +18,7 @@ if #arg == 4 then
 	local f = torch.DiskFile(we_path, 'r')
 	dic = f:readObject()
 	setmetatable(dic, Dict_mt)
-	--embs = f:readObject()
+	embs = f:readObject()
 	f:close()
 
 --[[
