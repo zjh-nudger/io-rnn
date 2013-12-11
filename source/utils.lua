@@ -21,3 +21,14 @@ function safe_compute_softmax(A)
 	local B = torch.repeatTensor((A - maxA):exp():sum(1):log(), A:size(1), 1)
 	return (A - maxA - B):exp()
 end
+
+function spearman_rho(X, Y)
+	local _,x = X:sort(1); x = x:double()
+	local _,y = Y:sort(1); y = y:double()
+	local n = x:numel()
+	local x1 = x - torch.Tensor(n):fill(x:mean())
+	local y1 = y - torch.Tensor(n):fill(y:mean())
+	local a = torch.cmul(x1,y1):sum()
+	local b = math.sqrt(x1:pow(2):sum() * y1:pow(2):sum())
+	return a/b
+end

@@ -618,6 +618,8 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	local adagrad_config = {learningRate = learn_rate}
 	local adagrad_state = {}
 
+	self:save('model/model.0_50')
+
 	for iter = 1,maxit do
 		local function func(M)
 			self:unfold(M)

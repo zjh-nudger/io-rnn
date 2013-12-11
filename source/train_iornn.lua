@@ -41,11 +41,11 @@ if #arg == 4 then
 	print('train rnn...')
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
 						func = tanh, funcPrime = tanhPrime }
-	--local net = IORNN:new(struct)
-	local net = IORNN:load('model/model.25000_25')
-	net.nCat = n_categories
-	net.WCat = uniform(n_categories, net.WCat:size(2), -1, 1):mul(0.1)
-	net.bCat = uniform(n_categories, 1, -1, 1):mul(0)
+	local net = IORNN:new(struct)
+	--local net = IORNN:load('model/model.25000_25')
+	--net.nCat = n_categories
+	--net.WCat = uniform(n_categories, net.WCat:size(2), -1, 1):mul(0.1)
+	--net.bCat = uniform(n_categories, 1, -1, 1):mul(0)
 
 	maxit = 100000
 	lambda = 1e-4

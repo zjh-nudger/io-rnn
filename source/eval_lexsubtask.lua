@@ -13,9 +13,11 @@ function load_gold()
 	for line in io.lines(parses_path) do
 		if math.mod(i, 2) == 1 then 
 			id = tonumber(split_string(line, "[0-9]+")[1])
-		else 
-			local tree = Tree:create_from_string(line)
-			parses[id] = tree:to_torch_matrix()
+		else
+			if line ~= "(TOP())" then  
+				local tree = Tree:create_from_string(line)
+				parses[id] = tree:to_torch_matrices(dic, 1)
+			end
 		end
 		i = i + 1
 	end
@@ -41,7 +43,7 @@ function load_gold()
 	local iter = 0
 	for line in io.lines(gold_path) do
 		iter = iter + 1
-		--if iter > 200 then break end
+		--if iter > 300 then break end
 
 		local comps = split_string(line)
 		local word_id = dic:get_id(comps[1])
@@ -67,7 +69,7 @@ function load_gold()
 			weight[{id}] = tonumber(comps[i+1])
 		end
 
-		if #name > 0 and word_id > 0 then
+		if #name > 0 and word_id > 0 and parses[case_id] ~= nil then
 			cases[#cases+1] = {
 						target = word_id,
 						gold_rank = {name = name, weight = weight}, 
@@ -165,7 +167,7 @@ end
 
 function rank_context( case, cand_names )
 	local cand_embs = net.L:index(2, torch.LongTensor(cand_names))
-	local score = compute_score_iornn(net, case.parse, case.tw_position, cand_embs)
+	local score = compute_score_iornn(case, cand_embs)
 	_,rank = score:sort(1, true)
 	return rank
 end
@@ -181,8 +183,8 @@ function compute_score_iornn(case, cand_embs)
 		if tree.n_children[i] == 0 then
 			leaf_count = leaf_count + 1
 			if leaf_count == case.tw_position then
-				outer = tree.outer[{{},{i}}]
-				inner = tree.inner[{{},{i}}]
+				outer = tree.outer[{{},{i}}]:clone()
+				inner = tree.inner[{{},{i}}]:clone()
 				break
 			end
 		end
@@ -194,21 +196,23 @@ function compute_score_iornn(case, cand_embs)
 
 	-- outer score
 	local small_WwiL = net.Wwi * cand_embs
-	local word_io = func(
+	local word_io = net.func(
 						torch.repeatTensor(net.Wwo*outer, 1, ncand)
 						:add(small_WwiL)
 						:add(torch.repeatTensor(net.bw, 1, ncand)))
-	local outer_score = (Ws * word_io):reshape(n)
+	local outer_score = (net.Ws * word_io):reshape(ncand)
 
-	return outer_score
+	local alpha = 1
+	return outer_score*alpha +  inner_score*(1-alpha)
 end
 
-if #arg == 2 then
+if #arg == 3 then
 
 	dic_emb_path	= arg[1]
-	gold_path 		= arg[2]
-	tw_position_path = arg[3]
-	parses_path = arg[4]
+	gold_path 		= arg[2] .. '/gold.txt'
+	tw_position_path = arg[2] .. '/lexsub_word_pos.txt'
+	parses_path = arg[2] .. '/lexsub_parse.txt'
+	net_path = arg[3]
 
 	-- load dic & emb
 	print('load dic & emb...')
@@ -218,14 +222,18 @@ if #arg == 2 then
 	emb = f:readObject()
 	f:close()
 
+	-- load net
+	print('load net...')
+	net = IORNN:load(net_path)
+
 	-- load gold
 	print('load gold and context...')
 	cases = load_gold()
 
 	-- eval
-	rank_function = rank_wo_context
+	rank_function = rank_context
 	print(eval(cases, rank_function))
 
 else
-	print('<dic_emb_path> <gold_path>')
+	print('<dic_emb_path> <lex sub dir> <net path>')
 end

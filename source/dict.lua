@@ -18,7 +18,14 @@ end
 function Dict:load(filename)
 	local i = 1
 	for line in io.lines(filename) do
-		self:addword(line)
+		--self:addword(line)
+		word = line
+		local id = self.word2id[word]
+		if id == nil then
+			id = self:size() + 1
+			self.word2id[word] = id
+			self.id2word[id] = word
+		end
 	end
 end
 
@@ -55,7 +62,11 @@ end
 
 --***************** template function *************--
 function huang_template(word)
-	return string.lower(string.gsub(word, '[0-9]', 'CD'))
+	if tonumber(word) ~= nil then 
+		return string.gsub(word, '[0-9]', 'CD')
+	else 
+		return string.lower(word)
+	end
 end
 
 function collobert_template(word)

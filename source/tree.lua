@@ -148,7 +148,7 @@ function Tree:binarize(left_branching, strict)
 		local lChild, rChild
 		if left_branching then
 			rChild = self.children[nChild]
-			lChild = tree:new(newlabel)
+			lChild = Tree:new(newlabel)
 			for i = 1,nChild-1 do
 				lChild.children[i] = self.children[i]
 			end
@@ -156,7 +156,7 @@ function Tree:binarize(left_branching, strict)
 			lChild.cover[2] = lChild.children[nChild-1].cover[2]
 		else
 			lChild = self.children[1]
-			rChild = tree:new(newlabel)
+			rChild = Tree:new(newlabel)
 			for i = 2, nChild do
 				rChild.children[i-1] = self.children[i]
 			end
