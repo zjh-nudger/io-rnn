@@ -134,9 +134,11 @@ function IORNN:fold( Model )
 		Model.bw or self.bw,
 		Model.Ws or self.Ws,
 
-		Model.L or self.L,
 		Model.root_outer or self.root_outer
 	}
+	if self.update_L == true then
+		Params[#Params+1] = Model.L or self.L
+	end
 
 	local dim = self.dim
 	local wrdDicLen = self.wrdDicLen
@@ -167,8 +169,11 @@ function IORNN:unfold(Theta)
 			self.Wui, self.bui,
 			self.WCat, self.bCat,
 			self.Wwi, self.Wwo, self.bw, self.Ws,
-			self.L, self.root_outer
+			self.root_outer
 		}
+	if self.update_L == true then
+		Params[#Params+1] = self.L
+	end
 
 	local i = 1
 	for _,P in ipairs(Params) do
@@ -352,10 +357,12 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 			tree_gradZo[col_i]:copy(gZo)
 
 			-- update lexsem
-			grad.L[{{},{tree.word_id[i]}}]
-						:add((Wwi:t() * torch.cmul(Ws:t(),-word_io_prime)):mul(beta))
-			grad.L[{{},{tree.stt_word_id[i]}}]
-						:add((Wwi:t() * torch.cmul(Ws:t(),stt_word_io_prime)):mul(beta))
+			if self.update_L then
+				grad.L[{{},{tree.word_id[i]}}]
+							:add((Wwi:t() * torch.cmul(Ws:t(),-word_io_prime)):mul(beta))
+				grad.L[{{},{tree.stt_word_id[i]}}]
+							:add((Wwi:t() * torch.cmul(Ws:t(),stt_word_io_prime)):mul(beta))
+			end
 
 		-- nonterminal node
 		elseif tree.n_children[i] > 0 then
@@ -480,7 +487,9 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 			-- compute gradient
 			grad.WCat:add(gZCat * tree.inner[col_i]:t())
 			grad.bCat:add(gZCat)
-			grad.L[{{},{tree.word_id[i]}}]:add(gZi)
+			if self.update_L then
+				grad.L[{{},{tree.word_id[i]}}]:add(gZi)
+			end
 		end
 	end
 	
@@ -494,7 +503,6 @@ if NPROCESS > 1 then
 else
 -- for single process
 	local grad = {
-		L = torch.zeros(self.L:size()),
 		root_outer = torch.zeros(self.root_outer:size()),
 
 		Wbil = torch.zeros(self.Wbil:size()),
@@ -518,6 +526,9 @@ else
 		bw = torch.zeros(self.bw:size()),
 		Ws = torch.zeros(self.Ws:size())
 	}
+	if self.update_L then
+		grad.L = torch.zeros(self.L:size())
+	end
 
 	local cost = 0
 	local nSample = #treebank
@@ -653,7 +664,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 
 		p:printAll()
 
-		if math.mod(iter,50) == 0 then
+		if math.mod(iter,500) == 0 then
 			all,root = self:eval(devtreebank)
 			print('accuracy all ' .. all)
 			print('accuracy root ' .. root)
@@ -661,7 +672,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 		end
 
 		if math.mod(iter, 500) == 0 then
-			--self:save('model/model.' .. iter .. '_' .. self.dim)
+			self:save('model/model.' .. iter .. '_' .. self.dim .. '_' .. learn_rate)
 		end
 
 		collectgarbage()
@@ -713,6 +724,7 @@ end
 	t4 = t4:to_torch_matrices(dic, 5)
 
 	config = {lambda = 1e-3, alpha = 0.8, beta = 0.2}
+	net.update_L = false
 	net:checkGradient({t1,t2,t3,t4},config)
 ]]
 

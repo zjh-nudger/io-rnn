@@ -39,11 +39,12 @@ if #arg == 3 then
 	local net = IORNN:new(struct)
 
 	maxit = 100000
-	lambda = 1e-7
+	lambda = 1e-4
 	batchsize = 100
 	alpha = 0
 	beta = 1
-	
+
+	net.update_L = false
 	net:train_with_adagrad(traintreebank, devtreebank, batchsize,
 			                maxit, learn_rate, lambda, alpha, beta)
 

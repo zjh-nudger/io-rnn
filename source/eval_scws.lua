@@ -10,10 +10,9 @@ function load_gold()
 	local parses = {}
 	local i = 1
 	local id = -1
---[[
+
 	for line in io.lines(parses_path) do
 		if math.mod(i, 3) == 1 then 
-			print(line)
 			id = tonumber(split_string(line, "[0-9]+")[1])
 			parses[id] = {}
 		else
@@ -39,7 +38,7 @@ function load_gold()
 		end
 		i = i + 1
 	end
-]]
+
 	-- load human rates
 	local cases = {}
 	local iter = 0
@@ -58,19 +57,20 @@ function load_gold()
 			human_rates[i-8] = tonumber(comps[i])
 		end
 
-		if word_id[1] ~= 1 and word_id[2] ~= 1 then 
-		-- and parses[case_id][1] ~= nil and parses[case_id][2] ~= nil then
+		if word_id[1] ~= 1 and word_id[2] ~= 1 and parses[case_id][1] ~= nil and parses[case_id][2] ~= nil then
 			cases[#cases+1] = {
 						word_id = word_id,
-						human_rates = human_rates
-						--parse = parses[case_id],
-						--tw_position = tw_positions[case_id] 
+						human_rates = human_rates,
+						word = {comps[2], comps[4]},
+						parse = parses[case_id],
+						tw_position = tw_positions[case_id] 
 					}
+			--print('-------')
 			--print(case_id)
 			--print(comps[2] .. ' ' .. comps[4])
 			--print(word_id)
 		else
-			print(case_id)
+			--print(case_id)
 		end
 	end
 
@@ -101,12 +101,17 @@ function eval( cases , rate_function )
 	local cand_rate = torch.zeros(ncases)
 
 	for i,case in ipairs(cases) do
+		if math.mod(i,100) == 0 then print(i) end
 		human_rate[i] = case.human_rates:mean()
 		cand_rate[i] = rate_function(case)
+
+		--print('-----')
+		--print(case.word)
+		--print(case.word_id)
+		--print(human_rate[i])
+		--print(cand_rate[i] * 10)
 	end
 
-	--print(human_rate)
-	--print(cand_rate)
 	return compute_rho(human_rate, cand_rate)
 end
 
@@ -121,69 +126,87 @@ function rate_wo_context( case )
 end
 
 function rate_context( case )
-end
-
-function compute_score_iornn(case, cand_embs)
-	local tree = net:parse({case.parse})[1]
-	local outer = nil
-	local inner = nil
-	local ncand = cand_embs:size(2)
+	local trees = net:parse(case.parse)
 	
-	local leaf_count = 0
-	for i = 1,tree.n_nodes do
-		if tree.n_children[i] == 0 then
-			leaf_count = leaf_count + 1
-			if leaf_count == case.tw_position then
-				outer = tree.outer[{{},{i}}]:clone()
-				inner = tree.inner[{{},{i}}]:clone()
-				break
+	local outer = {}
+	local inner = {}
+
+	for k = 1,2 do	
+		local tree = trees[k]
+		local leaf_count = 0
+		for i = 1,tree.n_nodes do
+			if tree.n_children[i] == 0 then
+				leaf_count = leaf_count + 1
+				if leaf_count == case.tw_position[k] then
+					outer[k] = tree.outer[{{},{i}}]:clone()
+					inner[k] = tree.inner[{{},{i}}]:clone()
+					break
+				end
 			end
 		end
 	end
 		
 	-- inner score
-	local inner_score = compute_score(cand_embs, 
-						torch.repeatTensor(inner, 1, ncand))
+	--local inner_score = compute_score(inner[1], inner[2])
+	--local outer_score = compute_score(outer[1], outer[2])
 
-	-- outer score
-	local small_WwiL = net.Wwi * cand_embs
-	local word_io = net.func(
-						torch.repeatTensor(net.Wwo*outer, 1, ncand)
-						:add(small_WwiL)
-						:add(torch.repeatTensor(net.bw, 1, ncand)))
-	local outer_score = (net.Ws * word_io):reshape(ncand)
+	--local alpha = 0.5
+	--return outer_score*alpha *  inner_score*(1-alpha)
+	
+	--local sem = torch.Tensor(net.dim*2,2)
+	--for k = 1,2 do
+	--	sem[{{1,net.dim},{k}}]:copy(inner[k])
+	--	sem[{{net.dim+1,2*net.dim},{k}}]:copy(outer[k])
+	--end
+	--return compute_score(sem[{{},{1}}], sem[{{},{2}}])
 
-	local alpha = 1
-	return outer_score*alpha +  inner_score*(1-alpha)
+	local sem = torch.Tensor(net.dim,2)
+	alpha = 0.1
+	sem[{{},{1}}]:copy(inner[1] + outer[1]*alpha)
+	sem[{{},{2}}]:copy(inner[2] + outer[2]*alpha)
+
+	return compute_score(sem[{{},{1}}], sem[{{},{2}}])
+
 end
 
-if #arg == 3 then
+if #arg == 4 then
 	dic_emb_path	= arg[1]
 	human_score_path = arg[2] .. '/ratings.txt'
 	tw_position_path = arg[2] .. '/word_pos.txt'
 	parses_path = arg[2] .. '/parse.txt'
 	net_path = arg[3]
+	rate_func_name = arg[4]
 
 	-- load dic & emb
 	print('load dic & emb...')
 	f = torch.DiskFile(dic_emb_path, 'r')
 	dic = f:readObject()
 	setmetatable(dic, Dict_mt)
-	emb = f:readObject()
+	--emb = f:readObject()
 	f:close()
+
+	--print(dic:size())
+	--print(emb:size())
 
 	-- load net
 	print('load net...')
 	net = IORNN:load(net_path)
+	emb = net.L
 
 	-- load gold
 	print('load gold and context...')
 	cases = load_gold()
 
 	-- eval
-	rate_function = rate_wo_context
+	if rate_func_name == "random" then 
+		rate_function = rate_random
+	elseif rate_func_name == "nocontext" then
+		rate_function = rate_wo_context
+	elseif rate_func_name == "context" then
+		rate_function = rate_context
+	end
 	print(eval(cases, rate_function))
 
 else
-	print('<dic_emb_path> <corpus dir> <net path>')
+	print('<dic_emb_path> <corpus dir> <net path> <rate func name>')
 end
