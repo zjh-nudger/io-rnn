@@ -621,15 +621,12 @@ require 'xlua'
 p = xlua.Profiler()
 
 function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
-								maxit, learn_rate, lambda, alpha, beta)
+									maxit, lambda, alpha, beta, prefix,
+									adagrad_config, adagrad_state)
 	local nSample = #traintreebank
 	local j = 0
 
 	print('accuracy = ' .. self:eval(devtreebank)) io.flush()
-	local adagrad_config = {learningRate = learn_rate}
-	local adagrad_state = {}
-
-	self:save('model/model.0_50')
 
 	for iter = 1,maxit do
 		local function func(M)
@@ -672,11 +669,13 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 		end
 
 		if math.mod(iter, 500) == 0 then
-			self:save('model/model.' .. iter .. '_' .. self.dim .. '_' .. learn_rate)
+			self:save(prefix .. '_' .. iter)
 		end
 
 		collectgarbage()
 	end
+
+	return adagrad_config, adagrad_state
 end
 
 function IORNN:parse(treebank) 
