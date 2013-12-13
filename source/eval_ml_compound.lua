@@ -8,40 +8,43 @@ torch.setnumthreads(1)
 function load_gold()
 	-- load human rates
 	local cases = {}
-	local iter = 0
-	for line in io.lines(human_score_path) do
-		iter = iter + 1
-		--if iter > 10 then break end
 
+	for line in io.lines(human_score_path) do
 		local comps = split_string(line)
 
-		local str = '(TOP (NP '..comps[3].. ') (VP '..comps[2]..'))'
-		local parse = Tree:create_from_string(str):to_torch_matrices(dic, 1)
+		if comps[2] == test_type then
+			local str = {'(X (X '..comps[4].. ') (X '..comps[5]..'))', 
+						'(X (X '..comps[6]..') (X '..comps[7]..'))' }
+			if test_type == 'verbobjects' then 
+				str = {'(X (X '..comps[5].. ') (X '..comps[4]..'))',
+						'(X (X '..comps[7].. ') (X '..comps[6]..'))'}
+			end
+			local parse = {Tree:create_from_string(str[1])
+								:to_torch_matrices(dic, 1),
+							Tree:create_from_string(str[2])
+								:to_torch_matrices(dic, 1) }
 
-		local str = '(TOP (NP '..comps[3].. ') (VP '..comps[4]..'))'
-		local parse_lm = Tree:create_from_string(str)
-							:to_torch_matrices(dic, 1)
 
-		local case_id = str .. comps[4]
-		local human_rate = tonumber(comps[5])
-		local is_high = comps[6] == 'high'
+			local case_id = str[1] .. ' ; ' .. str[2]
+			local human_rate = tonumber(comps[8])
+			local level = tonumber(comps[3])
 
-		if cases[case_id] == nil then
-			cases[case_id] = {
+			if cases[case_id] == nil then
+				cases[case_id] = {
 						parse = parse,
-						parse_lm = parse_lm,
-						verb_id = dic:get_id(comps[2]),
-						noun_id = dic:get_id(comps[3]),
-						landmark_id = dic:get_id(comps[4]),
 						human_rates = {human_rate},
-						is_high = is_high 
+						level = level,
+						compound = { 
+								{dic:get_id(comps[4]),dic:get_id(comps[5])},
+								{dic:get_id(comps[6]),dic:get_id(comps[7])}}
 					}
-		else
-			local human_rates = cases[case_id].human_rates
-			human_rates[#human_rates+1] = human_rate
+			else
+				local human_rates = cases[case_id].human_rates
+				human_rates[#human_rates+1] = human_rate
+			end
 		end
 	end
-
+	--print(cases)
 	return cases
 end
 
@@ -78,39 +81,35 @@ function rate_random( case )
 	return math.random()
 end
 
-function rate_nocomp(case) 
-	local sem1 = net.L[{{},{case.verb_id}}]
-	local sem2 = net.L[{{},{case.landmark_id}}]:clone()
-	return compute_score(sem1, sem2)[1]
-end
-
 function rate_add(case) 
-	local sem1 = net.L[{{},{case.verb_id}}] + net.L[{{},{case.noun_id}}]
-	local sem2 = net.L[{{},{case.landmark_id}}]:clone()
+	local sem1 = net.L[{{},{case.compound[1][1]}}] + 
+				net.L[{{},{case.compound[1][2]}}]
+	local sem2 = net.L[{{},{case.compound[2][1]}}] + 
+				net.L[{{},{case.compound[2][2]}}]
 	return compute_score(sem1, sem2)[1]
 end
 
 function rate_multiply(case)
-	local sem1 = torch.cmul(net.L[{{},{case.verb_id}}], 
-							net.L[{{},{case.noun_id}}])
-	local sem2 = net.L[{{},{case.landmark_id}}]:clone()
+	local sem1 = torch.cmul(net.L[{{},{case.compound[1][1]}}],
+							net.L[{{},{case.compound[1][2]}}])
+	local sem2 = torch.cmul(net.L[{{},{case.compound[2][1]}}],
+							net.L[{{},{case.compound[2][2]}}])
 	return compute_score(sem1, sem2)[1]
 end
 
 function rate_iornn( case )
-	local tree = net:parse({case.parse})[1]
-	local tree_lm = net:parse({case.parse_lm})[1]
-	local sem1 = tree.inner[{{},{1}}]
-	--local sem2 = tree_lm.inner[{{},{1}}]
-	local sem2 = tanh(net.L[{{},{case.landmark_id}}])
+	local trees = net:parse(case.parse)
+	local sem1 = trees[1].inner[{{},{1}}]
+	local sem2 = trees[2].inner[{{},{1}}]
 	return compute_score(sem1, sem2)[1]
 end
 
-if #arg == 4 then
+if #arg == 5 then
 	dic_emb_path = arg[1]
 	human_score_path = arg[2]
 	net_path = arg[3]
 	rate_func_name = arg[4]
+	test_type = arg[5]
 
 	-- load dic & emb
 	print('load dic & emb...')
@@ -143,5 +142,5 @@ if #arg == 4 then
 	print(eval(cases, rate_function))
 
 else
-	print('<dic_emb_path> <corpus dir> <net path> <rate func name>')
+	print('<dic_emb_path> <corpus dir> <net path> <rate func name> <test type>')
 end

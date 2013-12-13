@@ -161,7 +161,7 @@ function rate_context( case )
 	--return compute_score(sem[{{},{1}}], sem[{{},{2}}])
 
 	local sem = torch.Tensor(net.dim,2)
-	alpha = 0.1
+	alpha = 0.2
 	sem[{{},{1}}]:copy(inner[1] + outer[1]*alpha)
 	sem[{{},{2}}]:copy(inner[2] + outer[2]*alpha)
 

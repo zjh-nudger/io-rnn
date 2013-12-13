@@ -1,4 +1,3 @@
-participant type ver s1lemma1 s1lemma2 s2lemma1 s2lemma2 rating
 participant1 verbobjects 2 knowledge use influence exercise 5
 participant1 verbobjects 2 war fight battle win 5
 participant1 verbobjects 2 support offer help provide 7
