@@ -157,7 +157,7 @@ end
 function rank_wo_context( case, cand_names )
 	--print(cand_names)
 	local cand_embs = emb:index(2, torch.LongTensor(cand_names))
-	local target_emb = emb[{{},{case.target}}]
+	local target_emb = emb[{{},{case.target}}]:clone()
 	local score = compute_score(cand_embs, 
 						torch.repeatTensor(target_emb, 1, #cand_names))
 	-- sort cand
@@ -190,7 +190,7 @@ function compute_score_iornn(case, cand_embs)
 		end
 	end
 		
-	-- inner score
+	--[[ inner score
 	local inner_score = compute_score(cand_embs, 
 						torch.repeatTensor(inner, 1, ncand))
 
@@ -204,15 +204,21 @@ function compute_score_iornn(case, cand_embs)
 
 	local alpha = 1
 	return outer_score*alpha +  inner_score*(1-alpha)
+]]
+	local alpha = 0.5
+	local sem1 = torch.cmul(inner, outer * alpha)
+	local sem2 = torch.cmul(cand_embs, torch.repeatTensor(outer*alpha, 1, ncand))
+	return compute_score(torch.repeatTensor(sem1, 1, ncand), sem2)
 end
 
-if #arg == 3 then
+if #arg == 4 then
 
 	dic_emb_path	= arg[1]
 	gold_path 		= arg[2] .. '/gold.txt'
 	tw_position_path = arg[2] .. '/lexsub_word_pos.txt'
 	parses_path = arg[2] .. '/lexsub_parse.txt'
 	net_path = arg[3]
+	rank_func_name = arg[4]
 
 	-- load dic & emb
 	print('load dic & emb...')
@@ -231,9 +237,16 @@ if #arg == 3 then
 	cases = load_gold()
 
 	-- eval
-	rank_function = rank_context
+	if rank_func_name == 'random' then
+		rank_function = rank_random
+	elseif rank_func_name == 'nocontext' then
+		rank_function = rank_wo_context
+	elseif rank_func_name == 'context' then
+		rank_function = rank_context
+	end
+
 	print(eval(cases, rank_function))
 
 else
-	print('<dic_emb_path> <lex sub dir> <net path>')
+	print('<dic_emb_path> <lex sub dir> <net path> <rank func name>')
 end
