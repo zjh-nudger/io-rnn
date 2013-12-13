@@ -621,34 +621,43 @@ require 'xlua'
 p = xlua.Profiler()
 
 function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
-									maxit, lambda, alpha, beta, prefix,
+									maxepoch, lambda, alpha, beta, prefix,
 									adagrad_config, adagrad_state)
 	local nSample = #traintreebank
+	print('accuracy = ' .. self:eval(devtreebank)) io.flush()
+	
+	local epoch = 1
 	local j = 0
 
-	print('accuracy = ' .. self:eval(devtreebank)) io.flush()
+	print('===== epoch ' .. epoch .. '=====')
 
-	for iter = 1,maxit do
+	while true do
+		j = j + 1
+		if j > nSample/batchSize then 
+			self:save(prefix .. '_' .. epoch)
+			j = 1 
+			epoch = epoch + 1
+			if epoch > maxepoch then break end
+			print('===== epoch ' .. epoch .. '=====')
+		end
+
+		local subtreebank = {}
+		for k = 1,batchSize do
+			subtreebank[k] = traintreebank[k+(j-1)*batchSize]
+		end
+	
 		local function func(M)
 			self:unfold(M)
 
 			-- extract data
-			j = j + 1
-			if j > nSample/batchSize then j = 1 end
-			local subtreebank = {}
-			for k = 1,batchSize do
-				subtreebank[k] = traintreebank[k+(j-1)*batchSize]
-			end
 			p:start("compute grad")
 			cost, Grad = self:computeCostAndGrad(subtreebank, 
-									{lambda = lambda, alpha = alpha, beta = beta})
+							{lambda = lambda, alpha = alpha, beta = beta})
 			p:lap("compute grad")
 
 			-- for visualization
-			if math.mod(iter,1) == 0 then
-				print('--- iter: ' .. iter)
-				print('cost: ' .. cost)
-				io.flush()
+			if math.mod(j,2) == 0 then
+				print('iter ' .. j .. ': ' .. cost) io.flush()
 			end
 			
 			return cost, Grad
@@ -658,19 +667,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 		M,_ = optim.adagrad(func, self:fold(), adagrad_config, adagrad_state)
 		self:unfold(M)
 		p:lap("optim")
-
 		p:printAll()
-
-		if math.mod(iter,500) == 0 then
-			all,root = self:eval(devtreebank)
-			print('accuracy all ' .. all)
-			print('accuracy root ' .. root)
-			io.flush()
-		end
-
-		if math.mod(iter, 500) == 0 then
-			self:save(prefix .. '_' .. iter)
-		end
 
 		collectgarbage()
 	end

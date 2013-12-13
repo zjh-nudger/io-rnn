@@ -24,7 +24,7 @@ if #arg == 3 then
 						func = tanh, funcPrime = tanhPrime }
 	local net = IORNN:new(struct)
 
-	maxit = 100000
+	maxepoch = 2
 	lambda = 1e-4
 	batchsize = 100
 	alpha = 0
@@ -38,28 +38,30 @@ if #arg == 3 then
 	local devtreebank = {}
 	local adagrad_config = {learningRate = learn_rate}
 	local adagrad_state = {}
-	local model_dir = 'model/'
+	local model_dir = 'model_bnc/'
 	
 	for nepoch = 1,maxnepoch do
 		for i,fn in ipairs(filenames) do
-			local prefix = model_dir..'model_'..tostring(nepoch)..'_'..tostring(i)
+			local prefix = model_dir..'model_'..tostring(nepoch)
+									..'_'..tostring(i)
 			local traintreebank = {}
 
 			print('load trees in file ' .. fn)
 			for line in io.lines(treebank_dir .. '/' .. fn) do
-				tree = Tree:create_from_string(line)
-				tree = tree:to_torch_matrices(dic, n_categories)
-				if tree.n_nodes > 1 then
-					traintreebank[#traintreebank + 1] = tree
+				if line ~= '(TOP())' then
+					tree = Tree:create_from_string(line)
+					tree = tree:to_torch_matrices(dic, n_categories)
+					if tree.n_nodes > 1 then
+						traintreebank[#traintreebank + 1] = tree
+					end
 				end
 			end
 		
 			adagrad_config, adagrad_state = 
-								net:train_with_adagrad(traintreebank, devtreebank, batchsize,
-				                						maxit, lambda, alpha, beta, postfix,
-														adagrad_config, adagrad_state)
+				net:train_with_adagrad(traintreebank, devtreebank, batchsize,
+										1, lambda, alpha, beta, prefix,
+										adagrad_config, adagrad_state)
 		end
-		net:save(prefix)
 	end
 
 else
