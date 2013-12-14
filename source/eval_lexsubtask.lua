@@ -189,8 +189,17 @@ function compute_score_iornn(case, cand_embs)
 			end
 		end
 	end
-		
-	--[[ inner score
+--[[
+	local sem1 = torch.Tensor(2*net.dim,1)
+	sem1[{{1,net.dim},{1}}]:copy(inner)
+	sem1[{{net.dim+1,2*net.dim},{1}}]:copy(outer*alpha)
+
+	local sem2 = torch.Tensor(2*net.dim,ncand)
+	sem2[{{1,net.dim},{}}]:copy(cand_embs)
+	sem2[{{net.dim+1,2*net.dim},{}}]:copy(torch.repeatTensor(outer*alpha,1,ncand))
+	return compute_score(torch.repeatTensor(sem1, 1, ncand), sem2)
+]]	
+	-- inner score
 	local inner_score = compute_score(cand_embs, 
 						torch.repeatTensor(inner, 1, ncand))
 
@@ -202,16 +211,16 @@ function compute_score_iornn(case, cand_embs)
 						:add(torch.repeatTensor(net.bw, 1, ncand)))
 	local outer_score = (net.Ws * word_io):reshape(ncand)
 
-	local alpha = 1
 	return outer_score*alpha +  inner_score*(1-alpha)
-]]
-	local alpha = 0.5
-	local sem1 = torch.cmul(inner, outer * alpha)
-	local sem2 = torch.cmul(cand_embs, torch.repeatTensor(outer*alpha, 1, ncand))
+
+--[[
+	local sem1 = inner + outer * alpha
+	local sem2 = cand_embs + torch.repeatTensor(outer*alpha, 1, ncand)
 	return compute_score(torch.repeatTensor(sem1, 1, ncand), sem2)
+]]
 end
 
-if #arg == 4 then
+if #arg == 5 then
 
 	dic_emb_path	= arg[1]
 	gold_path 		= arg[2] .. '/gold.txt'
@@ -219,6 +228,7 @@ if #arg == 4 then
 	parses_path = arg[2] .. '/lexsub_parse.txt'
 	net_path = arg[3]
 	rank_func_name = arg[4]
+	alpha = tonumber(arg[5])
 
 	-- load dic & emb
 	print('load dic & emb...')
@@ -248,5 +258,5 @@ if #arg == 4 then
 	print(eval(cases, rank_function))
 
 else
-	print('<dic_emb_path> <lex sub dir> <net path> <rank func name>')
+	print('<dic_emb_path> <lex sub dir> <net path> <rank func name> <alpha>')
 end

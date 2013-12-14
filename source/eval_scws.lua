@@ -147,26 +147,26 @@ function rate_context( case )
 		end
 	end
 		
-	-- inner score
-	--local inner_score = compute_score(inner[1], inner[2])
-	--local outer_score = compute_score(outer[1], outer[2])
+	--[[ inner score
+	local inner_score = compute_score(inner[1], inner[2])
+	local outer_score = compute_score(outer[1], outer[2])
+	local alpha = 0.5
+	return outer_score*alpha *  inner_score*(1-alpha)
+]]
 
-	--local alpha = 0.5
-	--return outer_score*alpha *  inner_score*(1-alpha)
-	
-	--local sem = torch.Tensor(net.dim*2,2)
-	--for k = 1,2 do
-	--	sem[{{1,net.dim},{k}}]:copy(inner[k])
-	--	sem[{{net.dim+1,2*net.dim},{k}}]:copy(outer[k])
-	--end
-	--return compute_score(sem[{{},{1}}], sem[{{},{2}}])
+	local sem = torch.Tensor(net.dim*2,2)
+	for k = 1,2 do
+		sem[{{1,net.dim},{k}}]:copy(inner[k])
+		sem[{{net.dim+1,2*net.dim},{k}}]:copy(outer[k] * alpha)
+	end
+	return compute_score(sem[{{},{1}}], sem[{{},{2}}])
 
+--[[
 	local sem = torch.Tensor(net.dim,2)
-	--alpha = 0.1
 	sem[{{},{1}}]:copy(inner[1] + outer[1]*alpha)
 	sem[{{},{2}}]:copy(inner[2] + outer[2]*alpha)
-
 	return compute_score(sem[{{},{1}}], sem[{{},{2}}])
+]]
 
 end
 
@@ -210,5 +210,5 @@ if #arg == 5 then
 	print(eval(cases, rate_function))
 
 else
-	print('<dic_emb_path> <corpus dir> <net path> <rate func name>')
+	print('<dic_emb_path> <corpus dir> <net path> <func name> <alpha>')
 end
