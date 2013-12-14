@@ -2,10 +2,11 @@ require 'dict'
 require 'utils'
 require 'tree'
 require 'iornn'
+require 'cutils'
 
 torch.setnumthreads(1)
 
-function load_gold()
+function load_gold(test_type)
 	-- load human rates
 	local cases = {}
 
@@ -25,7 +26,7 @@ function load_gold()
 								:to_torch_matrices(dic, 1) }
 
 
-			local case_id = str[1] .. ' ; ' .. str[2]
+			local case_id = line --str[1] .. ' ; ' .. str[2]
 			local human_rate = tonumber(comps[8])
 			local level = tonumber(comps[3])
 
@@ -66,7 +67,6 @@ function compute_score(x, y, measure)
 end
 
 function eval( cases , rate_function )
-	print('rating...')
 	local human_rates = {}
 	local cand_rates = {}
 	
@@ -104,12 +104,10 @@ function rate_iornn( case )
 	return compute_score(sem1, sem2)[1]
 end
 
-if #arg == 5 then
+if #arg == 3 then
 	dic_emb_path = arg[1]
 	human_score_path = arg[2]
 	net_path = arg[3]
-	rate_func_name = arg[4]
-	test_type = arg[5]
 
 	-- load dic & emb
 	print('load dic & emb...')
@@ -123,24 +121,23 @@ if #arg == 5 then
 	net = IORNN:load(net_path)
 	emb = net.L
 
-	-- load gold
-	print('load gold and context...')
-	cases = load_gold()
+	-- test
+	func_list = {
+					['add'] = rate_add,
+					['multiply'] = rate_multiply,
+					['iornn'] = rate_iornn 
+				}
 
-	-- eval
-	if rate_func_name == "random" then 
-		rate_function = rate_random
-	elseif rate_func_name == "add" then
-		rate_function = rate_add
-	elseif rate_func_name == "multiply" then
-		rate_function = rate_multiply
-	elseif rate_func_name == "nocomp" then
-		rate_function = rate_nocomp
-	elseif rate_func_name == "iornn" then
-		rate_function = rate_iornn
+	for _,test_type in ipairs({'verbobjects', 'compoundnouns', 'adjectivenouns'}) do
+		print('===== ' .. test_type .. ' =====')
+		cases = load_gold(test_type)
+
+		for f_name,rate_function in pairs(func_list) do
+			rho = eval(cases, rate_function)
+			print(f_name .. ' : ' .. rho)
+		end
 	end
-	print(eval(cases, rate_function))
 
 else
-	print('<dic_emb_path> <corpus dir> <net path> <rate func name> <test type>')
+	print('<dic_emb_path> <data path> <net path>')
 end

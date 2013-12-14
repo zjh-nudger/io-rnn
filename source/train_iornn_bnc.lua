@@ -37,7 +37,7 @@ if #arg == 3 then
 	local devtreebank = {}
 	local adagrad_config = {learningRate = learn_rate}
 	local adagrad_state = {}
-	local model_dir = 'model_bnc/'
+	local model_dir = 'model_bnc_shuf/'
 
 	for nepoch = 1,maxnepoch do
 		for i,fn in ipairs(filenames) do

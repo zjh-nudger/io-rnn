@@ -1,3 +1,5 @@
+require 'cutils'
+
 function split_string( str , pattern )
 	local pattern = pattern or "[^\t ]+"
 	local toks = {}
@@ -22,17 +24,5 @@ function safe_compute_softmax(A)
 	return (A - maxA - B):exp()
 end
 
-function spearman_rho(X, Y)
-	local _,x = X:sort(1); _,x = x:sort(1); x = x:double()
-	local _,y = Y:sort(1); _,y = y:sort(1); y = y:double()
-	local n = x:numel()
-	local x1 = x - torch.Tensor(n):fill(x:mean())
-	local y1 = y - torch.Tensor(n):fill(y:mean())
-	local a = torch.cmul(x1,y1):sum()
-	local b = math.sqrt(x1:pow(2):sum() * y1:pow(2):sum())
 
-	--print(X) print(x)
-	--print(Y) print(y)
 
-	return a/b
-end

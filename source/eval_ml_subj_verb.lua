@@ -1,5 +1,6 @@
 require 'dict'
 require 'utils'
+require 'cutils'
 require 'tree'
 require 'iornn'
 
@@ -22,7 +23,7 @@ function load_gold()
 		local parse_lm = Tree:create_from_string(str)
 							:to_torch_matrices(dic, 1)
 
-		local case_id = str .. comps[4]
+		local case_id = line --str .. comps[4]
 		local human_rate = tonumber(comps[5])
 		local is_high = comps[6] == 'high'
 
@@ -106,11 +107,10 @@ function rate_iornn( case )
 	return compute_score(sem1, sem2)[1]
 end
 
-if #arg == 4 then
+if #arg == 3 then
 	dic_emb_path = arg[1]
 	human_score_path = arg[2]
 	net_path = arg[3]
-	rate_func_name = arg[4]
 
 	-- load dic & emb
 	print('load dic & emb...')
@@ -129,19 +129,16 @@ if #arg == 4 then
 	cases = load_gold()
 
 	-- eval
-	if rate_func_name == "random" then 
-		rate_function = rate_random
-	elseif rate_func_name == "add" then
-		rate_function = rate_add
-	elseif rate_func_name == "multiply" then
-		rate_function = rate_multiply
-	elseif rate_func_name == "nocomp" then
-		rate_function = rate_nocomp
-	elseif rate_func_name == "iornn" then
-		rate_function = rate_iornn
+	rate_func_list = {
+						['nocomp'] = rate_nocomp,
+						['add'] = rate_add,
+						['multiply'] = rate_multiply,
+						['iornn'] = rate_iornn
+					}
+	for fname, rate_function in pairs(rate_func_list) do
+		print(fname .. ' : ' .. eval(cases, rate_function))
 	end
-	print(eval(cases, rate_function))
 
 else
-	print('<dic_emb_path> <corpus dir> <net path> <rate func name>')
+	print('<dic_emb_path> <corpus dir> <net path>')
 end

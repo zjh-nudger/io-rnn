@@ -1,5 +1,6 @@
 require 'dict'
 require 'utils'
+require 'cutils'
 require 'tree'
 require 'iornn'
 
@@ -161,7 +162,7 @@ function rate_context( case )
 	--return compute_score(sem[{{},{1}}], sem[{{},{2}}])
 
 	local sem = torch.Tensor(net.dim,2)
-	alpha = 0.2
+	--alpha = 0.1
 	sem[{{},{1}}]:copy(inner[1] + outer[1]*alpha)
 	sem[{{},{2}}]:copy(inner[2] + outer[2]*alpha)
 
@@ -169,13 +170,14 @@ function rate_context( case )
 
 end
 
-if #arg == 4 then
+if #arg == 5 then
 	dic_emb_path	= arg[1]
 	human_score_path = arg[2] .. '/ratings.txt'
 	tw_position_path = arg[2] .. '/word_pos.txt'
 	parses_path = arg[2] .. '/parse.txt'
 	net_path = arg[3]
 	rate_func_name = arg[4]
+	alpha = tonumber(arg[5])
 
 	-- load dic & emb
 	print('load dic & emb...')
