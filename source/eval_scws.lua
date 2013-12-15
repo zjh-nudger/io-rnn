@@ -99,10 +99,10 @@ function eval( cases , rate_function )
 	print('rating...')
 	local ncases = #cases
 	local human_rate = torch.zeros(ncases)
-	local cand_rate = torch.zeros(ncases)
+	local cand_rate = {}
 
 	for i,case in ipairs(cases) do
-		if math.mod(i,100) == 0 then print(i) end
+		--if math.mod(i,100) == 0 then print(i) end
 		human_rate[i] = case.human_rates:mean()
 		cand_rate[i] = rate_function(case)
 
@@ -113,7 +113,19 @@ function eval( cases , rate_function )
 		--print(cand_rate[i] * 10)
 	end
 
-	return compute_rho(human_rate, cand_rate)
+	if rate_function == rate_context then
+		local rho = {}
+		for alpha = 0,1,0.1 do
+			c_rate = torch.zeros(ncases)
+			for i,case in ipairs(cases) do
+				c_rate[i] = cand_rate[i][alpha]
+			end
+			rho[alpha] = compute_rho(human_rate, c_rate)
+		end
+		return rho
+	else
+		return compute_rho(human_rate, torch.Tensor{cand_rate})
+	end
 end
 
 function rate_random( case )
@@ -154,12 +166,17 @@ function rate_context( case )
 	return outer_score*alpha *  inner_score*(1-alpha)
 ]]
 
-	local sem = torch.Tensor(net.dim*2,2)
-	for k = 1,2 do
-		sem[{{1,net.dim},{k}}]:copy(inner[k])
-		sem[{{net.dim+1,2*net.dim},{k}}]:copy(outer[k] * alpha)
+	local scores = {}	
+
+	for alpha = 0,1,0.1 do
+		local sem = torch.Tensor(net.dim*2,2)
+		for k = 1,2 do
+			sem[{{1,net.dim},{k}}]:copy(inner[k])
+			sem[{{net.dim+1,2*net.dim},{k}}]:copy(outer[k] * alpha)
+		end
+		scores[alpha] = compute_score(sem[{{},{1}}], sem[{{},{2}}])
 	end
-	return compute_score(sem[{{},{1}}], sem[{{},{2}}])
+	return scores
 
 --[[
 	local sem = torch.Tensor(net.dim,2)
@@ -170,14 +187,13 @@ function rate_context( case )
 
 end
 
-if #arg == 5 then
+if #arg == 4 then
 	dic_emb_path	= arg[1]
 	human_score_path = arg[2] .. '/ratings.txt'
 	tw_position_path = arg[2] .. '/word_pos.txt'
 	parses_path = arg[2] .. '/parse.txt'
 	net_path = arg[3]
 	rate_func_name = arg[4]
-	alpha = tonumber(arg[5])
 
 	-- load dic & emb
 	print('load dic & emb...')

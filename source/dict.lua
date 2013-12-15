@@ -77,4 +77,8 @@ function collobert_template(word)
 	end
 end
 
+function turian_template(word)
+	return word	
+end
+
 

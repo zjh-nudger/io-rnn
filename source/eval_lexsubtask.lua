@@ -133,14 +133,15 @@ function eval( cases , rank_function )
 	print('ranking...')
 	for iter,case in pairs(cases) do
 		local name = {}
-		if math.mod(iter, 50) == 0 then print(iter) end
+		--if math.mod(iter, 50) == 0 then print(iter) end
 
 		for ca,_ in pairs(case.cand_list.name) do
 			name[#name+1] = ca
 		end
 
-		rank = rank_function(case, name)
+		rank, score = rank_function(case, name)
 		case.cand_rank = {name = {}}
+		case.cand_score = score
 		for i = 1,#name do
 			case.cand_rank.name[i] = name[rank[{i}]]
 		end
@@ -151,7 +152,7 @@ function eval( cases , rank_function )
 end
 
 function rank_random( case , cand_names )
-	return torch.randperm(#cand_names)
+	return torch.randperm(#cand_names), torch.rand(#cand_names)
 end
 
 function rank_wo_context( case, cand_names )
@@ -162,14 +163,14 @@ function rank_wo_context( case, cand_names )
 						torch.repeatTensor(target_emb, 1, #cand_names))
 	-- sort cand
 	_,rank = score:sort(1, true) 
-	return rank	
+	return rank, score
 end
 
 function rank_context( case, cand_names )
 	local cand_embs = net.L:index(2, torch.LongTensor(cand_names))
 	local score = compute_score_iornn(case, cand_embs)
 	_,rank = score:sort(1, true)
-	return rank
+	return rank, score
 end
 
 function compute_score_iornn(case, cand_embs)
@@ -220,7 +221,7 @@ function compute_score_iornn(case, cand_embs)
 ]]
 end
 
-if #arg == 5 then
+if #arg == 4 then
 
 	dic_emb_path	= arg[1]
 	gold_path 		= arg[2] .. '/gold.txt'
@@ -228,7 +229,6 @@ if #arg == 5 then
 	parses_path = arg[2] .. '/lexsub_parse.txt'
 	net_path = arg[3]
 	rank_func_name = arg[4]
-	alpha = tonumber(arg[5])
 
 	-- load dic & emb
 	print('load dic & emb...')
@@ -255,7 +255,11 @@ if #arg == 5 then
 		rank_function = rank_context
 	end
 
-	print(eval(cases, rank_function))
+	alpha = 0
+	for al = 0.1,0.1,0.1 do
+		alpha = al
+		print(alpha .. ' : ' .. eval(cases, rank_function))
+	end
 
 else
 	print('<dic_emb_path> <lex sub dir> <net path> <rank func name> <alpha>')

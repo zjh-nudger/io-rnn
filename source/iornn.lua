@@ -675,8 +675,11 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	return adagrad_config, adagrad_state
 end
 
-function IORNN:parse(treebank) 
+function IORNN:parse(treebank)
+	local old_uL = self.update_L
+	self.update_L = false
 	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true})
+	self.update_L = old_uL
 	return treebank
 end
 

@@ -4,7 +4,7 @@ require 'utils'
 require 'dict'
 require 'optim'
 
-if #arg == 3 then
+if #arg == 4 then
 	torch.setnumthreads(1)
 
 	we_path = arg[1]
@@ -37,7 +37,7 @@ if #arg == 3 then
 	local devtreebank = {}
 	local adagrad_config = {learningRate = learn_rate}
 	local adagrad_state = {}
-	local model_dir = 'model_bnc_shuf/'
+	local model_dir = arg[4]
 
 	for nepoch = 1,maxnepoch do
 		for i,fn in ipairs(filenames) do
@@ -68,5 +68,5 @@ if #arg == 3 then
 	end
 
 else
-	print("invalid arugments: [wordemb path] [treebank dir] [learning rate]")
+	print("invalid arugments: [wordemb path] [treebank dir] [learning rate] [model dir]")
 end
