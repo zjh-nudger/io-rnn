@@ -1,0 +1,50 @@
+\begin{thebibliography}{}
+
+\bibitem[Collobert et~al., 2011]{collobert_natural_2011}
+Collobert, R., Weston, J., Bottou, L., Karlen, M., Kavukcuoglu, K., and Kuksa,
+  P. (2011).
+\newblock Natural language processing (almost) from scratch.
+\newblock {\em The Journal of Machine Learning Research}, 12:2493–2537.
+
+\bibitem[Duchi et~al., 2011]{duchi2011adaptive}
+Duchi, J., Hazan, E., and Singer, Y. (2011).
+\newblock Adaptive subgradient methods for online learning and stochastic
+  optimization.
+\newblock {\em The Journal of Machine Learning Research}, 999999:2121--2159.
+
+\bibitem[Goller and Kuchler, 1996]{goller_learning_1996}
+Goller, C. and Kuchler, A. (1996).
+\newblock Learning task-dependent distributed representations by
+  backpropagation through structure.
+\newblock In {\em Neural Networks, 1996., {IEEE} International Conference on},
+  volume~1, page 347–352.
+
+\bibitem[Socher et~al., 2013a]{socher2013parsing}
+Socher, R., Bauer, J., Manning, C.~D., and Ng, A.~Y. (2013a).
+\newblock Parsing with compositional vector grammars.
+\newblock In {\em Annual Meeting of the Association for Computational
+  Linguistics (ACL)}.
+
+\bibitem[Socher et~al., 2010]{socher_learning_2010}
+Socher, R., Manning, C.~D., and Ng, A.~Y. (2010).
+\newblock Learning continuous phrase representations and syntactic parsing with
+  recursive neural networks.
+\newblock In {\em Proceedings of the {NIPS-2010} Deep Learning and Unsupervised
+  Feature Learning Workshop}.
+
+\bibitem[Socher et~al., 2011]{socher2011semi}
+Socher, R., Pennington, J., Huang, E.~H., Ng, A.~Y., and Manning, C.~D. (2011).
+\newblock Semi-supervised recursive autoencoders for predicting sentiment
+  distributions.
+\newblock In {\em Proceedings of the Conference on Empirical Methods in Natural
+  Language Processing}, pages 151--161. Association for Computational
+  Linguistics.
+
+\bibitem[Socher et~al., 2013b]{socher2013recursive}
+Socher, R., Perelygin, A., Wu, J.~Y., Chuang, J., Manning, C.~D., Ng, A.~Y.,
+  and Potts, C. (2013b).
+\newblock Recursive deep models for semantic compositionality over a sentiment
+  treebank.
+\newblock EMNLP.
+
+\end{thebibliography}

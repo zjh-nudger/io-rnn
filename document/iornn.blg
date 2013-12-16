@@ -1,0 +1,51 @@
+This is BibTeX, Version 0.99c (Web2C 7.5.4)
+The top-level auxiliary file: iornn.aux
+The style file: apalike.bst
+Database file #1: ref.bib
+Repeated entry---line 1542 of file ref.bib
+ : @inproceedings{socher2013recursive
+ :                                   ,
+I'm skipping whatever remains of this entry
+Warning--empty booktitle in socher2013recursive
+You've used 7 entries,
+            1935 wiz_defined-function locations,
+            510 strings with 5317 characters,
+and the built_in function-call counts, 3425 in all, are:
+= -- 327
+> -- 171
+< -- 4
++ -- 61
+- -- 60
+* -- 275
+:= -- 569
+add.period$ -- 22
+call.type$ -- 7
+change.case$ -- 65
+chr.to.int$ -- 6
+cite$ -- 8
+duplicate$ -- 145
+empty$ -- 231
+format.name$ -- 69
+if$ -- 694
+int.to.chr$ -- 2
+int.to.str$ -- 0
+missing$ -- 7
+newline$ -- 38
+num.names$ -- 21
+pop$ -- 82
+preamble$ -- 1
+purify$ -- 65
+quote$ -- 0
+skip$ -- 103
+stack$ -- 0
+substring$ -- 198
+swap$ -- 35
+text.length$ -- 3
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 42
+warning$ -- 1
+while$ -- 21
+width$ -- 0
+write$ -- 92
+(There was 1 error message)
