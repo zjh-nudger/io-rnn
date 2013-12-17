@@ -1,4 +1,5 @@
-This is BibTeX, Version 0.99c (Web2C 7.5.4)
+This is BibTeX, Version 0.99d (TeX Live 2012/Debian)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: iornn.aux
 The style file: apalike.bst
 Database file #1: ref.bib
@@ -6,46 +7,50 @@ Repeated entry---line 1542 of file ref.bib
  : @inproceedings{socher2013recursive
  :                                   ,
 I'm skipping whatever remains of this entry
+Repeated entry---line 1568 of file ref.bib
+ : @inproceedings{thater2011word
+ :                              ,
+I'm skipping whatever remains of this entry
 Warning--empty booktitle in socher2013recursive
-You've used 7 entries,
+You've used 11 entries,
             1935 wiz_defined-function locations,
-            510 strings with 5317 characters,
-and the built_in function-call counts, 3425 in all, are:
-= -- 327
-> -- 171
-< -- 4
-+ -- 61
-- -- 60
-* -- 275
-:= -- 569
-add.period$ -- 22
-call.type$ -- 7
-change.case$ -- 65
-chr.to.int$ -- 6
-cite$ -- 8
-duplicate$ -- 145
-empty$ -- 231
-format.name$ -- 69
-if$ -- 694
+            535 strings with 6107 characters,
+and the built_in function-call counts, 5576 in all, are:
+= -- 553
+> -- 243
+< -- 8
++ -- 87
+- -- 84
+* -- 428
+:= -- 889
+add.period$ -- 36
+call.type$ -- 11
+change.case$ -- 97
+chr.to.int$ -- 10
+cite$ -- 12
+duplicate$ -- 252
+empty$ -- 389
+format.name$ -- 99
+if$ -- 1167
 int.to.chr$ -- 2
 int.to.str$ -- 0
-missing$ -- 7
-newline$ -- 38
-num.names$ -- 21
-pop$ -- 82
+missing$ -- 11
+newline$ -- 58
+num.names$ -- 33
+pop$ -- 122
 preamble$ -- 1
-purify$ -- 65
+purify$ -- 97
 quote$ -- 0
-skip$ -- 103
+skip$ -- 194
 stack$ -- 0
-substring$ -- 198
-swap$ -- 35
-text.length$ -- 3
+substring$ -- 359
+swap$ -- 78
+text.length$ -- 6
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 42
+type$ -- 66
 warning$ -- 1
-while$ -- 21
+while$ -- 37
 width$ -- 0
-write$ -- 92
-(There was 1 error message)
+write$ -- 146
+(There were 2 error messages)

@@ -54,8 +54,13 @@ In the next section, we answer these questions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Recursive Neural Network (RNN)}
-\label{section rnn}
+\section{Inside Outside Recursive Neural Network}
+\label{section iornn}
+
+In this section, we answer the three questions raising in Section~\ref{section introduction}.
+
+\subsection{Recursive Neural Network (RNN)}
+\label{subsection rnn}
 \cite{socher_learning_2010} answer the first question ``How to construct phrasal semantics?'' 
 by Recusive Neural Network (RNN) architecture, 
 which is used to compute continuous phrase representations. In other to see how RNN works, 
@@ -103,8 +108,8 @@ the sum of reconstruction errors
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Inside Outside Recursive Neural Network (IORNN)}
-\label{section nlm}
+\subsection{IORNN}
+\label{subsection nlm}
 
 None of the above architectures, RAE or RNN, compute contextual semantics. 
 However, they give us a hint to do that. In this section, we will answer the second 
@@ -170,8 +175,8 @@ Therefore, we name the architecture Inside-Outside Recursive Neural Network.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Training IORNN}
-\label{section train iornn}
+\subsection{Training IORNN}
+\label{subsection train iornn}
 
 This section is to answer the final question ``How to use contextual semantics and 
 lexical semantics to learn compositionality functions?''. 
@@ -214,6 +219,32 @@ the parameters by a gradient descent method. Thanks to the backpropagation
 through structure \cite{goller_learning_1996}, the gradient is efficiently computed. 
 Following \cite{socher2013recursive}, we use AdaGrad \cite{duchi2011adaptive}
 to update the parameters.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Experiments}
+\label{section experiments}
+
+In order to examine how IORNN performs on both compositional semantics learning and 
+meaning in context, we evaluate it on two tasks: phrase similarity and 
+word meaning in context. Because, to our knowledge, there are no frameworks 
+that work for both problems, we use vector addition and pair-wise multiplication 
+as the baselines. These baselines, although to be simple, are reasonable since 
+(1) \cite{blacoe_comparison_2012} show that they perform better than RAE in the 
+phrase similarity task, (2) they are widely used in many applications requiring 
+compositional semantics [cite...], and (3) vector addition is widely used as a method 
+to compute contextual meaning vector \cite{thater2011word}
+
+In the all experiments, we implemented IORNN in Torch-lua \cite{collobert_implementing_2012}.
+We initialled the network with the 50-dim word embeddings\footnote{\url{http://ronan.collobert.com/senna/}} 
+from \cite{collobert_natural_2011}. Then we trained it on a dataset containing 1.5M sentences
+from the BNC corpus (about one fourth of the whole corpus), which were parsed by by the Berkeley parser \cite{petrov2006learning}.
+
+\subsection{Phrase similarity}
+\label{subsection phrase similarity}
+
+
+
 
 \bibliographystyle{apalike}
 \bibliography{ref}

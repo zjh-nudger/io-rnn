@@ -1,5 +1,17 @@
 \begin{thebibliography}{}
 
+\bibitem[Blacoe and Lapata, 2012]{blacoe_comparison_2012}
+Blacoe, W. and Lapata, M. (2012).
+\newblock A comparison of vector-based representations for semantic
+  composition.
+\newblock {\em {RAE}}, 70(68.29):69–10.
+
+\bibitem[Collobert et~al., 2012]{collobert_implementing_2012}
+Collobert, R., Kavukcuoglu, K., and Farabet, C. (2012).
+\newblock Implementing neural networks efficiently.
+\newblock In {\em Neural Networks: Tricks of the Trade}, page 537–557.
+  Springer.
+
 \bibitem[Collobert et~al., 2011]{collobert_natural_2011}
 Collobert, R., Weston, J., Bottou, L., Karlen, M., Kavukcuoglu, K., and Kuksa,
   P. (2011).
@@ -18,6 +30,14 @@ Goller, C. and Kuchler, A. (1996).
   backpropagation through structure.
 \newblock In {\em Neural Networks, 1996., {IEEE} International Conference on},
   volume~1, page 347–352.
+
+\bibitem[Petrov et~al., 2006]{petrov2006learning}
+Petrov, S., Barrett, L., Thibaux, R., and Klein, D. (2006).
+\newblock Learning accurate, compact, and interpretable tree annotation.
+\newblock In {\em Proceedings of the 21st International Conference on
+  Computational Linguistics and the 44th annual meeting of the Association for
+  Computational Linguistics}, pages 433--440. Association for Computational
+  Linguistics.
 
 \bibitem[Socher et~al., 2013a]{socher2013parsing}
 Socher, R., Bauer, J., Manning, C.~D., and Ng, A.~Y. (2013a).
@@ -46,5 +66,10 @@ Socher, R., Perelygin, A., Wu, J.~Y., Chuang, J., Manning, C.~D., Ng, A.~Y.,
 \newblock Recursive deep models for semantic compositionality over a sentiment
   treebank.
 \newblock EMNLP.
+
+\bibitem[Thater et~al., 2011]{thater2011word}
+Thater, S., F{\"u}rstenau, H., and Pinkal, M. (2011).
+\newblock Word meaning in context: A simple and effective vector model.
+\newblock In {\em IJCNLP}, pages 1134--1143.
 
 \end{thebibliography}

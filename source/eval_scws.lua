@@ -143,22 +143,32 @@ function rate_context( case )
 	
 	local outer = {}
 	local inner = {}
+	local avg_ctx = {torch.zeros(net.dim,1), torch.zeros(net.dim,1)}
+	local rt_ctx = {torch.ones(net.dim,1), torch.ones(net.dim,1)}
 
 	for k = 1,2 do	
 		local tree = trees[k]
 		local leaf_count = 0
+		local nleaves = 0
 		for i = 1,tree.n_nodes do
 			if tree.n_children[i] == 0 then
 				leaf_count = leaf_count + 1
 				if leaf_count == case.tw_position[k] then
 					outer[k] = tree.outer[{{},{i}}]:clone()
 					inner[k] = tree.inner[{{},{i}}]:clone()
-					break
+					--break
+				elseif leaf_count >= case.tw_position[k] - 5 and leaf_count <= case.tw_position[k] + 5 then
+					avg_ctx[k]:add(tree.inner[{{},{i}}])
+					rt_ctx[k]:cmul(tree.inner[{{},{i}}])
+					nleaves = nleaves + 1
 				end
 			end
 		end
+		avg_ctx[k]:mul(1/nleaves)
+		--rt_ctx[k]:pow(1/nleaves)
 	end
-		
+
+
 	--[[ inner score
 	local inner_score = compute_score(inner[1], inner[2])
 	local outer_score = compute_score(outer[1], outer[2])
@@ -173,6 +183,8 @@ function rate_context( case )
 		for k = 1,2 do
 			sem[{{1,net.dim},{k}}]:copy(inner[k])
 			sem[{{net.dim+1,2*net.dim},{k}}]:copy(outer[k] * alpha)
+			--sem[{{net.dim+1,2*net.dim},{k}}]:copy(avg_ctx[k] * alpha)
+			--sem[{{2*net.dim+1,3*net.dim},{k}}]:copy(avg_ctx[k] * alpha)
 		end
 		scores[alpha] = compute_score(sem[{{},{1}}], sem[{{},{2}}])
 	end
