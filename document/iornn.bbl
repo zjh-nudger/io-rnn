@@ -6,6 +6,13 @@ Blacoe, W. and Lapata, M. (2012).
   composition.
 \newblock {\em {RAE}}, 70(68.29):69–10.
 
+\bibitem[Borensztajn et~al., 2009]{borensztajn2009hierarchical}
+Borensztajn, G., Zuidema, W., and Bod, R. (2009).
+\newblock The hierarchical prediction network: towards a neural theory of
+  grammar acquisition.
+\newblock In {\em 31th Annual Conference of the Cognitive Science Society}.
+  Citeseer.
+
 \bibitem[Collobert et~al., 2012]{collobert_implementing_2012}
 Collobert, R., Kavukcuoglu, K., and Farabet, C. (2012).
 \newblock Implementing neural networks efficiently.
@@ -57,6 +64,13 @@ Petrov, S., Barrett, L., Thibaux, R., and Klein, D. (2006).
   Computational Linguistics and the 44th annual meeting of the Association for
   Computational Linguistics}, pages 433--440. Association for Computational
   Linguistics.
+
+\bibitem[Reisinger and Mooney, 2010]{reisinger2010multi}
+Reisinger, J. and Mooney, R.~J. (2010).
+\newblock Multi-prototype vector-space models of word meaning.
+\newblock In {\em Human Language Technologies: The 2010 Annual Conference of
+  the North American Chapter of the Association for Computational Linguistics},
+  pages 109--117. Association for Computational Linguistics.
 
 \bibitem[Socher et~al., 2013a]{socher2013parsing}
 Socher, R., Bauer, J., Manning, C.~D., and Ng, A.~Y. (2013a).

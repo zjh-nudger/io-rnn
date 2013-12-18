@@ -15,18 +15,23 @@
 
 \title{Inside Outside Recursive Neural Network: A Unified Framework for 
 Compositional Semantics and Meaning in Context}
-\author{xyz}
+\author{Phong Le, Remko Scha and Willem Zuidema}
 
 \begin{document}
 
 \maketitle
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \section{Introduction}
 \label{section introduction}
 
-[...]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Related Work}
+\label{section introduction}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Research Questions}
+\label{section question}
 
 Firstly, we ask ourselves ``Which evidence is strong enough to be used for 
 learning compositional semantics?'' To answer this question, we rely on the 
@@ -42,13 +47,14 @@ This idea is then encaptured in the following hypothesis
 compositional semantics learning. 
 \end{quote}
 
-Then, there are three questions need to be answered in other to implement the 
+Then, there are three questions need to be answered in order to implement the 
 hypothesis
 \begin{enumerate}
-	\item How to construct phrasal semantics?
-	\item How to construct contextual semantics?
-	\item How to use contextual semantics and lexical semantics to learn 
-	compositionality functions?
+	\item How to construct inner meaning (i.e., phrase representations)?
+	\item How to construct outer meaning (i.e., context representations)?
+	\item How to use inner meaning and outer meaning at the lexicon level to learn 
+	compositionality functions? In other words, how to use the agreement betwen words and 
+	their contexts to learn compositionality functions?
 \end{enumerate}
 In the next section, we answer these questions.
 
@@ -63,7 +69,7 @@ In this section, we answer the three questions raising in Section~\ref{section i
 \label{subsection rnn}
 \cite{socher_learning_2010} answer the first question ``How to construct phrasal semantics?'' 
 by Recusive Neural Network (RNN) architecture, 
-which is used to compute continuous phrase representations. In other to see how RNN works, 
+which is used to compute continuous phrase representations. In order to see how RNN works, 
 let's conside the following example. Assuming that there is a consitutent with parse
 tree $(p_2 \; (p_1 \; x \; y) \; z)$ as in Figure~\ref{figure rnn}. We will use a neural network, 
 which contains a weight matrix $\mathbf{W}_1$ for left children and a weight matrix $\mathbf{W}_2$ 
@@ -354,10 +360,31 @@ For vector addition, we compute the context meaning by averaging the meaning vec
 on the left and 5 words on the right and then concatenate it with the meaning vector of the target 
 word.
 
-Similarly to the 
-first experiment, we also use the cosine distance to measure the semantic similarity
+Similarly to the first experiment, we also use the cosine distance to measure the semantic similarity
 and compute Spearman correlation coefficient $\rho$ between model scores and human judgements.
-Table~\ref{table swsc result} shows the comparison between IORNN and other methods.
+
+We compare IORNN and vector addition with the method proposed by \cite{huang2012improving}
+(HSMN-M AvgSimC) and the one proposed by \cite{reisinger2010multi} (Pruned tf-idf-M AvgSimC).
+These two methods are multi-prototype approaches: the meaning of a word is represented 
+by multiple vectors (i.e., prototypes). In order to extract multipe prototypes for a word, they compute 
+a vector for each context that the word is in, then cluster those context vectors. In this way, a prototype
+corresponds to the centroid of a cluster, and hence represent a sense of the word. 
+In order to compute the word meaning similarity with context, they use AvgSimC metric 
+\begin{align*}
+	&\text{AvgSimC}(w,w') = \\
+	&\frac{1}{k^2} \sum_{i=1}^k \sum_{j=1}^k p(c,w,i)p(c',w',j)d(\mu_i(w),\mu_j(w'))
+\end{align*}
+where $k$ is the number of prototypes of each word, $p(c,w,i)$ is the likelihood that word $w$ is in 
+its cluster $i$ given context $c$, $\mu_i(w)$ is the $i$-th cluster centroid of $w$ and $d(v,v')$ is a function 
+computing similarity between two vectors.
+
+Table~\ref{table swsc result} shows the comparison between the methods.
+It is not surprising to see HSMN-M AvgSimC and Pruned tf-idf-M AvgSimC perform best since disambuguiating
+word sense is the key to success and these methods use different vectors to represent different senses of a word.
+However, IORNN, which represents the meaning of a word by a vector, performs comparably 
+with Pruned tf-idf-M AvgSimC, and higher than the vector addition. It is worth noting the improvement from 
+without using context (C\&W) to using context meaning computed by IORNN (from 58.0 to 60.2), thus 
+confirming the abbility of IORNN in computing word meaning in context.
 
 \begin{table}[!ht]
 	\center
@@ -376,29 +403,113 @@ Table~\ref{table swsc result} shows the comparison between IORNN and other metho
 		IORNN & 60.3 \\ \hline
 		
 	\end{tabular}
-	\caption{...}
+	\caption{Spearman correlation coefficients of model predictions on the SWCS dataset.
+	C\&W is the method to use the Collobert \& Wetson word embeddings without taking context into account. }
 	\label{table swsc result}
 \end{table}
+
+
  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Summary} 
 
 Now, we combine the experimental results presented above to compare IORNN 
-with the two baselines, vector addition and vector pair-wise multiplication.
+with the two baselines, vector addition and vector pair-wise multiplication in 
+Table~\ref{table summary}. In phrase similarity task, IORNN outperforms the both baselines
+on adj-n and v-obj and worse than addition on noun-noun [why???]. In word similarity in context 
+task, IORNN also outperforms the both baselines. These results show us that we can 
+tackle the two problems, compositional semantics and meaning in context, with the unified framework 
+IORNN.
 
 \begin{table}[!ht]
 	\center
-	\begin{tabular}{ccccc}
+	\begin{tabular}{c|ccc|c}
 	Model & \multicolumn{3}{c}{Phrase similarity} & WSC \\ 
-	& adj-n & n-n & v-obj & \\ \hline
+	& adj-n & n-n & v-obj &  \\ \hline
 	
 	add. & 0.30 & \textbf{0.43} & 0.30 & 59.0\\ 
 	mult. & 0.14 & 0.24 & 0.16 & - \\ 
 	IORNN & \textbf{0.38} & 0.36 & \textbf{0.32} & \textbf{60.3} \\ \hline
 	
 	\end{tabular}
+	\caption{Comparison of IORNN against vector addition and pair-wise multiplication
+	in the two tasks.}
+	\label{table summary}
 \end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Discussion}
+\label{section discussion}
+In this section, we will discuss two important issues. The first one is about the cognitive 
+plausibility of IORNN. The second is about potential extensions for it.
+
+\subsection{Cognitive Plausibility}
+\label{subsection cog plau}
+
+We found that it is cognitively plausible to 
+represent context meaning seperatively from phrase/word meaning, which we have called
+\textit{outer meaning} and \textit{inner meaning} respectively. The key point here
+is what is called \textit{dynamic binding} in connectionsim [cite...] where, in our case, 
+outer meaning could be seen as slots and inner meaning as fillers (see Figure~\ref{figure inner outer}). 
+Similar to hierarchical prediction network proposed by \cite{borensztajn2009hierarchical}, 
+if the outer meaning and inner meaning are strongly correlated, a dynamic binding occurs
+and connects the neurons at the tree root node of the phrase to the neurons at the 
+corresponding node of the tree of the context. This explains why a human can use  
+context meaning to predict the meaning of a unknown word, and why (s)he can select a word/phrase 
+to fill in a blank in a uncomplete sentence.
+
+\begin{figure}[h!]
+	\center
+	\includegraphics[scale=0.5]{Inner_outer.png}
+	\caption{If there is a strong correlation between outer meaning and inner meaning, a dynamic
+	binding occurs.}
+	\label{figure inner outer}
+\end{figure}
+
+
+
+\subsection{Potential Extensions / Future Work}
+\label{subsection future work}
+
+Our new architecture IORNN has many potental extensions, some of which are promising to improve 
+the performance in those two tasks presented above, other could lead to important applications. 
+
+\paragraph{At lexicon level} In Subsection~\ref{subsection wsc}, we 
+have seen multi-prototype approaches are potental for computing word meaning in 
+context. Certainly, we can combine these approaches and our framework IORNN at the 
+lexical level in order to reduce ambiguity introducing by lexical semantics. 
+
+\paragraph{At syntax level} IORNN only uses parse trees without grammatical categories. However, 
+Herman \& Blunsom emperically show the important role of syntax in vector space models of 
+compositional semantics. It turns out that it is also easy to extend IORNN in the same way, 
+i.e. using CCG and different parameter sets for different 
+grammatical rules and grammatical types. Thanks to some degree of similarity between IORNN and 
+RAE, we expect that this extension helps IORNN imporve its capacity in capturing compositionality.
+
+\paragraph{At discourse level} In this paper, we propose IORNN as an architecture 
+processing individual sentences; therefore, the outer meaning at the root node is alway a 
+null-context outer meaning vector (i.e., $\mathbf{o}_{root} = \mathbf{o}_{\emptyset}$).
+It turns out that it is easy to extend IORNN to make use of discourse context.
+Figure~\ref{figure dciornn} illustrates how to connect inner and outer meanings 
+of sentences in a discourse. Intuitively, the outer meaning of a sentence is 
+the function of the inner meanings of its neighbour sentences. 
+
+\begin{figure}[h!]
+	\center
+	\includegraphics[scale=0.5]{DC-IO-RNN.png}
+	\caption{IORNN with Discourse Context. 
+	Black rectangles correspond to inner meanings, 
+	white rectangles correspond to outer meanings.}
+	\label{figure dciornn}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Conclusion}
+\label{section conclusion}
 
 
 \bibliographystyle{apalike}
