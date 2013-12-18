@@ -3,54 +3,54 @@ Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: iornn.aux
 The style file: apalike.bst
 Database file #1: ref.bib
-Repeated entry---line 1542 of file ref.bib
+Repeated entry---line 1550 of file ref.bib
  : @inproceedings{socher2013recursive
  :                                   ,
 I'm skipping whatever remains of this entry
-Repeated entry---line 1568 of file ref.bib
+Repeated entry---line 1576 of file ref.bib
  : @inproceedings{thater2011word
  :                              ,
 I'm skipping whatever remains of this entry
 Warning--empty booktitle in socher2013recursive
-You've used 11 entries,
+You've used 14 entries,
             1935 wiz_defined-function locations,
-            535 strings with 6107 characters,
-and the built_in function-call counts, 5576 in all, are:
-= -- 553
-> -- 243
-< -- 8
-+ -- 87
-- -- 84
-* -- 428
-:= -- 889
-add.period$ -- 36
-call.type$ -- 11
-change.case$ -- 97
-chr.to.int$ -- 10
-cite$ -- 12
-duplicate$ -- 252
-empty$ -- 389
-format.name$ -- 99
-if$ -- 1167
+            551 strings with 6736 characters,
+and the built_in function-call counts, 6906 in all, are:
+= -- 687
+> -- 292
+< -- 11
++ -- 105
+- -- 100
+* -- 535
+:= -- 1107
+add.period$ -- 46
+call.type$ -- 14
+change.case$ -- 120
+chr.to.int$ -- 13
+cite$ -- 15
+duplicate$ -- 306
+empty$ -- 485
+format.name$ -- 122
+if$ -- 1439
 int.to.chr$ -- 2
 int.to.str$ -- 0
-missing$ -- 11
-newline$ -- 58
-num.names$ -- 33
-pop$ -- 122
+missing$ -- 14
+newline$ -- 73
+num.names$ -- 42
+pop$ -- 144
 preamble$ -- 1
-purify$ -- 97
+purify$ -- 120
 quote$ -- 0
-skip$ -- 194
+skip$ -- 237
 stack$ -- 0
-substring$ -- 359
-swap$ -- 78
-text.length$ -- 6
+substring$ -- 462
+swap$ -- 90
+text.length$ -- 7
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 66
+type$ -- 84
 warning$ -- 1
-while$ -- 37
+while$ -- 47
 width$ -- 0
-write$ -- 146
+write$ -- 185
 (There were 2 error messages)

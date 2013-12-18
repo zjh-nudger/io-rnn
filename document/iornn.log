@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012/Debian) (format=pdflatex 2013.11.2)  17 DEC 2013 12:21
+This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012/Debian) (format=pdflatex 2013.11.2)  18 DEC 2013 00:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -247,28 +247,39 @@ File: RNN.png Graphic file (type png)
 Package pdftex.def Info: RNN.png used on input line 89.
 (pdftex.def)             Requested size: 215.80571pt x 131.9928pt.
 
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
 <RAE.png, id=2, 321.2pt x 334.24875pt>
 File: RAE.png Graphic file (type png)
  <use RAE.png>
 Package pdftex.def Info: RAE.png used on input line 104.
 (pdftex.def)             Requested size: 160.59961pt x 167.12396pt.
- [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}
 
 
 
-] <IORNN.png, id=17, 401.5pt x 264.99pt>
+]
+<IORNN.png, id=17, 401.5pt x 264.99pt>
 File: IORNN.png Graphic file (type png)
-
-<use IORNN.png>
+ <use IORNN.png>
 Package pdftex.def Info: IORNN.png used on input line 123.
 (pdftex.def)             Requested size: 200.7495pt x 132.49467pt.
 
-Underfull \hbox (badness 3088) in paragraph at lines 134--144
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+Underfull \hbox (badness 3088) in paragraph at lines 135--145
 \OT1/ptm/m/n/10.95 et al., 2010), and (Col-lobert et al., 2011),
  []
 
 [2 <./RNN.png (PNG copy)> <./RAE.png (PNG copy)> <./IORNN.png (PNG copy)>]
-Overfull \hbox (13.91058pt too wide) detected at line 214
+Overfull \hbox (13.91058pt too wide) detected at line 215
 \OML/cmm/m/it/10.95 J\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^R\OT1/cmr/m/n/10
 .95 ) = [] [] [] []\OMS/cmsy/m/n/10.95 f\OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95
  ; \OT1/cmr/m/n/10.95 1 \OMS/cmsy/m/n/10.95 ^^@ \OML/cmm/m/it/10.95 s\OT1/cmr/m
@@ -277,16 +288,63 @@ Overfull \hbox (13.91058pt too wide) detected at line 214
 0.95 o[]\OT1/cmr/m/n/10.95 )\OMS/cmsy/m/n/10.95 g
  []
 
-LaTeX Font Info:    Try loading font information for OT1+pcr on input line 239.
+LaTeX Font Info:    Try loading font information for OT1+pcr on input line 240.
 
 (/usr/share/texlive/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
-) (./iornn.bbl
+)
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+[][]$\OT1/pcr/m/n/9 http : / / homepages . inf . ed . ac . uk /
+ []
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 275--275
+[][]$\OT1/pcr/m/n/9 http : / / homepages . inf . ed . ac . uk /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 275--275
+\OT1/pcr/m/n/9 s1066731 / dl . php ? file = wordVectors .
+ []
+
+
+Underfull \hbox (badness 1052) in paragraph at lines 287--287
+[]\OT1/ptm/m/n/10.95 Table 2: Spear-man cor-re-la-tion co-ef-fi-cients of
+ []
+
+[3]
+Overfull \hbox (17.91989pt too wide) in paragraph at lines 301--317
+ [] 
+ []
+
+
+Underfull \hbox (badness 1052) in paragraph at lines 317--317
+[]\OT1/ptm/m/n/10.95 Table 3: Spear-man cor-re-la-tion co-ef-fi-cients of
+ []
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+Underfull \hbox (badness 1418) in paragraph at lines 321--327
+[]\OT1/ptm/m/n/10.95 IORNN's per-for-mance lies in the range of
+ []
+
+
+Underfull \vbox (badness 2351) has occurred while \output is active []
+
+
+Overfull \hbox (7.54723pt too wide) in paragraph at lines 341--347
+ [] 
+ []
+
+[4] (./iornn.bbl
 Missing character: There is no â in font ptmr7t!
 Missing character: There is no € in font ptmr7t!
 Missing character: There is no “ in font ptmr7t!
-
-[3]
 Missing character: There is no â in font ptmr7t!
 Missing character: There is no € in font ptmr7t!
 Missing character: There is no “ in font ptmr7t!
@@ -301,40 +359,37 @@ Missing character: There is no “ in font ptmr7t!
 Missing character: There is no â in font ptmr7t!
 Missing character: There is no € in font ptmr7t!
 Missing character: There is no “ in font ptmr7t!
-) [4
-
-] (./iornn.aux)
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
- ) 
+Missing character: There is no â in font ptmr7t!
+Missing character: There is no € in font ptmr7t!
+Missing character: There is no “ in font ptmr7t!
+) [5] (./iornn.aux) ) 
 Here is how much of TeX's memory you used:
- 2656 strings out of 495059
- 35000 string characters out of 3182030
- 94360 words of memory out of 3000000
- 5759 multiletter control sequences out of 15000+200000
+ 2665 strings out of 495059
+ 35157 string characters out of 3182030
+ 96496 words of memory out of 3000000
+ 5768 multiletter control sequences out of 15000+200000
  30827 words of font info for 81 fonts, out of 3000000 for 9000
  14 hyphenation exceptions out of 8191
- 38i,9n,23p,231b,242s stack positions out of 5000i,500n,10000p,200000b,50000s
-{/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/share/texliv
-e/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/share/texlive/texm
-f-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist
-/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts
-/type1/public/amsfonts/cm/cmmi6.pfb></usr/share/texlive/texmf-dist/fonts/type1/
-public/amsfonts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/
-amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfont
-s/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr
-8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
-</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/s
-hare/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/sh
-are/texlive/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/share/texlive/t
-exmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts
-/type1/urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/time
-s/utmri8a.pfb>
-Output written on iornn.pdf (4 pages, 185803 bytes).
+ 38i,9n,23p,266b,248s stack positions out of 5000i,500n,10000p,200000b,50000s
+{/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc
+}</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr
+/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share
+/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texli
+ve/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/share/texlive/texm
+f-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/
+fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/t
+ype1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsf
+onts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/c
+m/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/
+msbm10.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></
+usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texli
+ve/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/f
+onts/type1/urw/times/utmri8a.pfb>
+Output written on iornn.pdf (5 pages, 199151 bytes).
 PDF statistics:
- 81 PDF objects out of 1000 (max. 8388607)
- 56 compressed objects within 1 object stream
+ 84 PDF objects out of 1000 (max. 8388607)
+ 58 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  16 words of extra memory for PDF output out of 10000 (max. 10000000)
 

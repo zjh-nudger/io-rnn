@@ -15,7 +15,7 @@
 
 \title{Inside Outside Recursive Neural Network: A Unified Framework for 
 Compositional Semantics and Meaning in Context}
-\author{Phong Le, Willem Zuidema}
+\author{xyz}
 
 \begin{document}
 
@@ -84,10 +84,10 @@ over parameters is efficiently computed thanks to the backpropagation through st
 (and its extensions), Socher and colleagues succesfully reach 
 state-of-the-art results in syntactic parsing \cite{socher2013parsing} and 
 sentiment analysis \cite{socher2013recursive}. 
-\begin{figure}
+\begin{figure}[h!]
 	\center
 	\includegraphics[scale=0.5]{RNN.png}
-	\caption{Example of RNN.}
+	\caption{Recursive Neural Network (RNN).}
 	\label{figure rnn}
 \end{figure}
 
@@ -99,10 +99,10 @@ input (see Figure~\ref{figure rae}). Training a RAE is therefore to minmize
 the sum of reconstruction errors 
 (i.e., $\|[\mathbf{x}';\mathbf{y}'] - [\mathbf{x};\mathbf{y}]\|^2$) at all internall nodes. 
 
-\begin{figure}
+\begin{figure}[h!]
 	\center
 	\includegraphics[scale=0.5]{RAE.png}
-	\caption{Example of RAE.}
+	\caption{Recursive Autoencoder (RAE).}
 	\label{figure rae}
 \end{figure}
 
@@ -121,7 +121,8 @@ $(p_2 \; (p_1 \; x \; y) \; z)$ (see Figure~\ref{figure iornn}).
 \begin{figure}[h!]
 	\center
 	\includegraphics[scale=0.5]{IORNN.png}
-	\caption{Inside-Outside Recursive Neural Network. Black rectangles correspond to inner meanings, 
+	\caption{Inside-Outside Recursive Neural Network (IORNN). 
+	Black rectangles correspond to inner meanings, 
 	white rectangles correspond to outer meanings.}
 	\label{figure iornn}
 \end{figure}
@@ -228,9 +229,9 @@ to update the parameters.
 In order to examine how IORNN performs on both compositional semantics learning and 
 meaning in context, we evaluate it on two tasks: phrase similarity and 
 word meaning in context. Because, to our knowledge, there are no frameworks 
-that work for both problems, we use vector addition and pair-wise multiplication 
-as the baselines. These baselines, although to be simple, are reasonable since 
-(1) \cite{blacoe_comparison_2012} show that they perform better than RAE in the 
+that tackle both problems, we use vector addition and pair-wise multiplication 
+as our baselines. Although these methods are simple, choose them as baselines 
+are reasonable since (1) \cite{blacoe_comparison_2012} show that they perform better than RAE in the 
 phrase similarity task, (2) they are widely used in many applications requiring 
 compositional semantics [cite...], and (3) vector addition is widely used as a method 
 to compute contextual meaning vector \cite{thater2011word}
@@ -238,12 +239,166 @@ to compute contextual meaning vector \cite{thater2011word}
 In the all experiments, we implemented IORNN in Torch-lua \cite{collobert_implementing_2012}.
 We initialled the network with the 50-dim word embeddings\footnote{\url{http://ronan.collobert.com/senna/}} 
 from \cite{collobert_natural_2011}. Then we trained it on a dataset containing 1.5M sentences
-from the BNC corpus (about one fourth of the whole corpus), which were parsed by by the Berkeley parser \cite{petrov2006learning}.
-
-\subsection{Phrase similarity}
+from the BNC corpus (about one fourth of the whole corpus), which were parsed by 
+the Berkeley parser \cite{petrov2006learning}. 
+	
+\subsection{Phrase Similarity}
 \label{subsection phrase similarity}
 
+Phrase similarity is the task in which one is asked to compute the meanings of (short) phrases 
+and measure their semantic similarities. Its goodness is measured by comparing its judgements with 
+human judgements. In this experiment, we used the dataset\footnote{\url{http://homepages.inf.ed.ac.uk/s0453356/share}} from 
+\cite{mitchell_composition_2010} which contains 5832 human judgements on semantic similarity 
+for noun-noun, verb-object, and adjective-noun phrases. There are 108 items; each contains a phrase pair
+and human ratings from 1 (very low similarity) to 7 (very high similarity) (see Table~\ref{table compounds}).
 
+In this task, we use the cosine distance to measure the semantic similarity, 
+i.e. $d(a,b) = \cos(\mathbf{i}_a,\mathbf{i}_b)$. Following \cite{blacoe_comparison_2012}, 
+\cite{hermann2013role} and many others, we compute Spearman correlation coefficient $\rho$
+between model scores and human judgements.
+
+
+\begin{table}[h!]
+	\center
+	\begin{tabular}{ccccc}
+		type & phrase 1 & phrase 2 & rating \\ \hline 
+		v-obj & remember name &  pass time & 3 \\ 
+		adj-n & dark eye & left arm & 5 \\ 
+		n-n & county council & town hall & 4 \\ \hline
+	\end{tabular}
+	\caption{Items in the dataset from \cite{mitchell_composition_2010}.}
+	\label{table compounds}
+\end{table}	
+
+First of all, we focus on the results reported by \cite{blacoe_comparison_2012}. Blacoe \& Lapata 
+claims that RAE performs worse than addition and pair-wise multiplication in all of their three settings. 
+Here, we used their third setting, and, to be fair, we trained IORNN with their neural language model word embeddings\footnote{\url{http://homepages.inf.ed.ac.uk/s1066731/dl.php?file=wordVectors.emnlp2012.zip&db=1}}.
+The results are given in Table~\ref{table blacoe}. IORNN is the best on adj-n and v-obj, and second on noun-noun.
+\begin{table}[h!]
+	\center
+	\begin{tabular}{ccccc}
+		dim. & model & adj-n & n-n & v-obj \\ \hline 
+		50 & add. & 0.28 & \textbf{0.26} & 0.24 \\ 
+		50 & mult. & 0.26 & 0.22 & 0.18 \\ 
+		100 & RAE & 0.20 & 0.18 & 0.14 \\ \hline
+		50 & IORNN & \textbf{0.30} & 0.23 & \textbf{0.28} \\ \hline
+	\end{tabular}
+	\caption{Spearman correlation coefficients of model predictions for the phrase similarity task
+	with neural language model word embeddings from \cite{blacoe_comparison_2012}.}
+	\label{table blacoe}
+\end{table}
+
+\cite{hermann2013role} extend RAE with the help of Combinatory Categorial Grammar (CCG). 
+Their models, named Combinatory Categorial Autoencoder (CCAE), are similar 
+to RAE but use different parameter sets for different grammatical rules and grammatical types. 
+Thank to this semantic-related grammar, their models outperform RAE and score towards 
+the upper end of the range of addition and pair-wise multiplication. Table~\ref{table hermann}
+shows the comparison between IORNN and other methods whose results are copied from 
+the corresponding papers. 
+
+\begin{table}[h!]
+	\center
+	\begin{tabular}{ccccc}
+		\hline
+		model & adj-n & n-n & v-obj \\ \hline \hline
+		
+		\multicolumn{4}{l}{Blacoe \& Lapata} & \\
+		a./m. & 0.21 - 0.48 & 0.22 - 0.50 & 0.18 - 0.35 \\ 
+		RAE & 0.19 - 0.31 & 0.24 - 0.30 & 0.09 - 0.28 \\ \hline 
+		
+		\multicolumn{4}{l}{Hermann \& Blunsom} & \\
+		CCAEs & 0.38 - 0.41 & 0.41 - 0.44 & 0.23 - 0.34 \\ \hline 
+			
+		\multicolumn{4}{l}{Our implementation} & \\
+		add. & 0.30 & 0.43 & 0.30 \\ 
+		mult. & 0.14 & 0.24 & 0.16 \\ 
+		IORNN & 0.38 & 0.36 & 0.32 \\ \hline
+	\end{tabular}
+	\caption{Spearman correlation coefficients of model predictions for the phrase similarity task.}
+	\label{table hermann}
+\end{table}
+
+IORNN's performance lies in the range of CCAEs on adj-n and v-obj, 
+but worse on noun-noun. However, it is worth emphasizing that IORNN uses one 
+parameter set for all grammatical rules (similarly to RAE). 
+From the difference of performance between RAE and CCAEs, we expect that extending 
+IORNN in the same way (i.e., using CCG and different parameter sets for different 
+grammatical rules and grammatical types) will lead to better performance.
+
+%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Word Similarity in Context}
+\label{subsection wsc} 
+
+Differing from the first task, this task focuses on word meaning in context: 
+it examines how well a model can make use of context to disambiguate word meaning. 
+In this experiment, we use the Stanford Word Similarity in Context (SWSC) dataset
+from \cite{huang2012improving} which contains 2003 word pairs, their sentential 
+contexts, and human ratings from 0 to 10 (see Table~\ref{table swsc}).
+
+\begin{table*}[!ht]
+	\center
+	\begin{tabular}{|p{6cm}|p{6cm}|p{3cm}|}
+		\hline
+		word 1 & word 2 & human ratings \\ \hline \hline
+		
+		 Located downtown along the east \textit{bank} of the Des Moines River, the plaza is available for parties, ... & This is the basis of all \textit{ money} laundering, ... &  0.0, 0.0, 3.0, 10.0, 8.0, 0.0, 4.0, 0.0, 0.0, 0.0 \\ \hline
+	\end{tabular}
+	\caption{An example in the SWSC dataset.}
+	\label{table swsc}
+\end{table*}
+
+For IORNN, we represent the meaning of a word in its sentential context by concatenate its inner 
+and outer meanings, i.e. $\mathbf{m}_w = [\mathbf{i}_w;\mathbf{o}_w]$. 
+For vector addition, we compute the context meaning by averaging the meaning vectors of 5 words
+on the left and 5 words on the right and then concatenate it with the meaning vector of the target 
+word.
+
+Similarly to the 
+first experiment, we also use the cosine distance to measure the semantic similarity
+and compute Spearman correlation coefficient $\rho$ between model scores and human judgements.
+Table~\ref{table swsc result} shows the comparison between IORNN and other methods.
+
+\begin{table}[!ht]
+	\center
+	\begin{tabular}{cc}
+		\hline
+		Model & $\rho \times 100$ \\ \hline \hline
+
+		C\&W (w/o context) & 58.0 \\ \hline
+		
+		\multicolumn{2}{l}{Huang et al.} \\
+		HSMN-M AvgSimC & 65.7 \\ 
+		Pruned tf-idf-M AvgSimC & 60.5 \\ \hline 
+		
+		\multicolumn{2}{l}{Our implementation} \\
+		add. & 59.0 \\
+		IORNN & 60.3 \\ \hline
+		
+	\end{tabular}
+	\caption{...}
+	\label{table swsc result}
+\end{table}
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Summary} 
+
+Now, we combine the experimental results presented above to compare IORNN 
+with the two baselines, vector addition and vector pair-wise multiplication.
+
+\begin{table}[!ht]
+	\center
+	\begin{tabular}{ccccc}
+	Model & \multicolumn{3}{c}{Phrase similarity} & WSC \\ 
+	& adj-n & n-n & v-obj & \\ \hline
+	
+	add. & 0.30 & \textbf{0.43} & 0.30 & 59.0\\ 
+	mult. & 0.14 & 0.24 & 0.16 & - \\ 
+	IORNN & \textbf{0.38} & 0.36 & \textbf{0.32} & \textbf{60.3} \\ \hline
+	
+	\end{tabular}
+\end{table}
 
 
 \bibliographystyle{apalike}

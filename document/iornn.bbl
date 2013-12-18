@@ -31,6 +31,25 @@ Goller, C. and Kuchler, A. (1996).
 \newblock In {\em Neural Networks, 1996., {IEEE} International Conference on},
   volume~1, page 347–352.
 
+\bibitem[Hermann and Blunsom, 2013]{hermann2013role}
+Hermann, K.~M. and Blunsom, P. (2013).
+\newblock The role of syntax in vector space models of compositional semantics.
+\newblock {\em Proceedings of ACL, Sofia, Bulgaria, August. Association for
+  Computational Linguistics}.
+
+\bibitem[Huang et~al., 2012]{huang2012improving}
+Huang, E.~H., Socher, R., Manning, C.~D., and Ng, A.~Y. (2012).
+\newblock Improving word representations via global context and multiple word
+  prototypes.
+\newblock In {\em Proceedings of the 50th Annual Meeting of the Association for
+  Computational Linguistics: Long Papers-Volume 1}, pages 873--882. Association
+  for Computational Linguistics.
+
+\bibitem[Mitchell and Lapata, 2010]{mitchell_composition_2010}
+Mitchell, J. and Lapata, M. (2010).
+\newblock Composition in distributional models of semantics.
+\newblock {\em Cognitive Science}, 34(8):1388–1429.
+
 \bibitem[Petrov et~al., 2006]{petrov2006learning}
 Petrov, S., Barrett, L., Thibaux, R., and Klein, D. (2006).
 \newblock Learning accurate, compact, and interpretable tree annotation.
