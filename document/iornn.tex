@@ -50,10 +50,9 @@ compositional semantics learning.
 Then, there are three questions need to be answered in order to implement the 
 hypothesis
 \begin{enumerate}
-	\item How to construct inner meaning (i.e., phrase representations)?
-	\item How to construct outer meaning (i.e., context representations)?
-	\item How to use inner meaning and outer meaning at the lexicon level to learn 
-	compositionality functions? In other words, how to use the agreement betwen words and 
+	\item How to construct phrase representations?
+	\item How to construct context representations?
+	\item How to use the agreement betwen words and 
 	their contexts to learn compositionality functions?
 \end{enumerate}
 In the next section, we answer these questions.
@@ -209,10 +208,13 @@ Using the same method proposed by \cite{collobert_natural_2011}, we train the ne
 such that it gives a higher score to the correct target word rather than to incorrect ones. 
 The score $s(x,\mathbf{o}_w)$ given to a candidate word $x$ for a specific context 
 $\mathbf{o}_w$ is computed by 
-\begin{align}
-	u(x,\mathbf{o}_w) & = f(\mathbf{W}_u^o \mathbf{o}_w + \mathbf{W}_u^i \mathbf{i}_x + \mathbf{b}_u) \\
-	s(x,\mathbf{o}_w) & = \mathbf{W}_s u(x,\mathbf{o}_w) + \mathbf{b}_s
-\end{align}
+\begin{equation}
+	u(x,\mathbf{o}_w) = f(\mathbf{W}_u^o \mathbf{o}_w + \mathbf{W}_u^i \mathbf{i}_x + \mathbf{b}_u) 
+\end{equation}
+\begin{equation}
+	\label{equation score}
+	s(x,\mathbf{o}_w) = \mathbf{W}_s u(x,\mathbf{o}_w) + \mathbf{b}_s
+\end{equation}
 where $\mathbf{W}_u^o,\mathbf{W}_u^i$ are $n \times k$ real matrices, $ \mathbf{W}_s$ is 
 a $k \times 1$ matrix, and $\mathbf{b}_u, \mathbf{b}_s$ are bias vectors. (We fix $k=2n$.) 
 Now, the objective function is the ranking criterion with respect to $\theta$
@@ -236,7 +238,7 @@ In order to examine how IORNN performs on both compositional semantics learning 
 meaning in context, we evaluate it on two tasks: phrase similarity and 
 word meaning in context. Because, to our knowledge, there are no frameworks 
 that tackle both problems, we use vector addition and pair-wise multiplication 
-as our baselines. Although these methods are simple, choose them as baselines 
+as our baselines. Although these methods are simple, choosing them as baselines 
 are reasonable since (1) \cite{blacoe_comparison_2012} show that they perform better than RAE in the 
 phrase similarity task, (2) they are widely used in many applications requiring 
 compositional semantics [cite...], and (3) vector addition is widely used as a method 
@@ -246,7 +248,50 @@ In the all experiments, we implemented IORNN in Torch-lua \cite{collobert_implem
 We initialled the network with the 50-dim word embeddings\footnote{\url{http://ronan.collobert.com/senna/}} 
 from \cite{collobert_natural_2011}. Then we trained it on a dataset containing 1.5M sentences
 from the BNC corpus (about one fourth of the whole corpus), which were parsed by 
-the Berkeley parser \cite{petrov2006learning}. 
+the Berkeley parser \cite{petrov2006learning} and binarized.
+
+\subsection{Qualitative Evaluations}
+\label{subsection qualitative eval}
+
+In order to show that IORNN is cabable to use contex to predict the meaning of a unknown word, 
+we run the trained network on the WSJ section 22 and measured the average predicted rank of 
+target/gold-standard words. 
+(We did not use sentences from the BNC corpus because we also wanted to examine the generality of IORNN: 
+``Does it work on different domains?'')
+For each target word, we create a list of 20,000 candidate words 
+consisting of 19,999 words randomly selected from the vocabulary and the target word itself. Then, 
+we use the scores given in Equation~\ref{equation score} to rank those candidates. 
+
+We found the average predicted rank of target words is 187.3 over 20,000 ($< 1\%$), which means that 
+the context meaning computed by IORNN tends to prefer the correct word. Looking into details 
+(see Table~\ref{table top 10}), we discovered that IORNN tends to predict correctly word class (e.g., 
+noun in examples 1 and 2, verb in example 4, adverb in example 3), word form (e.g., plural in example 1 and 3, 
+bare verb in example 4). This is interesting because gramatical categories are totally ignored in both training 
+and test phases. In addition, in some cases, high rank words seems to be logical in corresponding 
+contexts (e.g., example 3).
+
+\begin{table*}[!ht]
+	\center
+	\begin{tabular}{c|p{9cm}|p{6cm}}
+		ID & word & top 10 candidates \\ \hline
+		
+		1 & Institutional investors and bankers [...] were cautiously optimistic after the mild 1.8\% decline in Tokyo stock \textit{prices}. & standards, hours, projects, roads,  members, duty, restrictions, \textit{prices}, house, locations \\ \hline
+		
+		2 & That is \textit{why} everybody was a little surprised by the storm of sell orders from small private investors [...] & at, over, when, since, \textit{why}, why, one, was, a \\ \hline
+
+		3 & That is why everybody was a little surprised by the storm of sell orders from small private \textit{investors}, '' said Norbert Braeuer [...] & men, companies, courts, camps, businesses, sports, jobs, parks, partners, air \\ \hline
+	
+		4 & [...] most investors wanted to see what would \textit{happen} in New York before acting. &  go, say, try, and, want, ',', work, invest, to, forget 
+	
+	\end{tabular}
+	\caption{Words, their contexts, and top 10 candidates.}
+	\label{table top 10}
+\end{table*}
+
+%Table~\ref{table phrases} shows examples of 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	
 \subsection{Phrase Similarity}
 \label{subsection phrase similarity}

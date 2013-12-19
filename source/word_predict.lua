@@ -97,17 +97,22 @@ if #arg == 3 then
 				local word_score = (Ws * word_io):reshape(n)
 				_,id = word_score:sort(true)
 			
-				_,id = id:max(1)
-				rank = rank + id[1]
+				_,targ_id = id:max(1)
+				rank = rank + targ_id[1]
 				total = total + 1
 				print(rank / total)
 
-				--[[print('------------')
-				print(word_score)
-				print(word_score:sort(true))
-				print(id[1])
-				print(dic.id2word[word_id])
-				print(word_id) ]]
+				print('------------')
+				--print(word_score)
+				--print(word_score:sort(true))
+				print('target word :' .. dic.id2word[word_id])
+				for k = 1,10 do
+					if id[k] <= n-1 then
+						print(dic.id2word[index[id[k]]])
+					else
+						print(dic.id2word[word_id])
+					end
+				end
 			end
 		end
 		collectgarbage()

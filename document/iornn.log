@@ -1,4 +1,4 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2008.4.10)  18 DEC 2013 21:16
+This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2008.4.10)  19 DEC 2013 14:25
 entering extended mode
 **iornn.tex
 (./iornn.tex
@@ -213,10 +213,16 @@ Underfull \hbox (badness 1194) in paragraph at lines 36--45
  []
 
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10.95> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 68.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 67.
 <RNN.png, id=1, 431.6125pt x 263.98625pt>
 File: RNN.png Graphic file (type png)
  <use RNN.png>
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+<RAE.png, id=2, 321.2pt x 334.24875pt>
+File: RAE.png Graphic file (type png)
+ <use RAE.png>
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
@@ -225,22 +231,19 @@ LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
 ]
-<RAE.png, id=27, 321.2pt x 334.24875pt>
-File: RAE.png Graphic file (type png)
- <use RAE.png>
-<IORNN.png, id=28, 401.5pt x 264.99pt>
+<IORNN.png, id=34, 401.5pt x 264.99pt>
 File: IORNN.png Graphic file (type png)
  <use IORNN.png>
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
-Underfull \hbox (badness 3088) in paragraph at lines 141--151
+Underfull \hbox (badness 3088) in paragraph at lines 140--150
 \OT1/ptm/m/n/10.95 et al., 2010), and (Col-lobert et al., 2011),
  []
 
 [2 <./RNN.png> <./RAE.png> <./IORNN.png>]
-Overfull \hbox (13.91058pt too wide) detected at line 221
+Overfull \hbox (13.91058pt too wide) detected at line 223
 \OML/cmm/m/it/10.95 J\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^R\OT1/cmr/m/n/10
 .95 ) = [] [] [] []\OMS/cmsy/m/n/10.95 f\OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95
  ; \OT1/cmr/m/n/10.95 1 \OMS/cmsy/m/n/10.95 ^^@ \OML/cmm/m/it/10.95 s\OT1/cmr/m
@@ -249,37 +252,37 @@ Overfull \hbox (13.91058pt too wide) detected at line 221
 0.95 o[]\OT1/cmr/m/n/10.95 )\OMS/cmsy/m/n/10.95 g
  []
 
-LaTeX Font Info:    Try loading font information for OT1+pcr on input line 246.
+LaTeX Font Info:    Try loading font information for OT1+pcr on input line 248.
 
 (/usr/share/texmf/tex/latex/psnfss/ot1pcr.fd
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
 )
-Underfull \hbox (badness 10000) in paragraph at lines 256--256
-[][]$\OT1/pcr/m/n/9 http : / / homepages . inf . ed . ac . uk /
+Underfull \hbox (badness 1062) in paragraph at lines 256--264
+\OT1/ptm/m/n/10.95 wanted to ex-am-ine the gen-er-al-ity of IORNN:
  []
 
 [3]
-Underfull \hbox (badness 10000) in paragraph at lines 281--281
-[][]$\OT1/pcr/m/n/9 http : / / homepages . inf . ed . ac . uk /
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 281--281
-\OT1/pcr/m/n/9 s1066731 / dl . php ? file = wordVectors .
- []
-
-
-Underfull \hbox (badness 1052) in paragraph at lines 293--293
-[]\OT1/ptm/m/n/10.95 Table 2: Spear-man cor-re-la-tion co-ef-fi-cients of
- []
-
-
-Overfull \hbox (17.91989pt too wide) in paragraph at lines 307--323
+Overfull \hbox (19.0994pt too wide) in paragraph at lines 275--287
  [] 
  []
 
 
-Underfull \hbox (badness 1052) in paragraph at lines 323--323
+Underfull \hbox (badness 10000) in paragraph at lines 301--301
+[][]$\OT1/pcr/m/n/9 http : / / homepages . inf . ed . ac . uk /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 326--326
+[][]$\OT1/pcr/m/n/9 http : / / homepages . inf . ed . ac . uk /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 326--326
+\OT1/pcr/m/n/9 s1066731 / dl . php ? file = wordVectors .
+ []
+
+
+Underfull \hbox (badness 1052) in paragraph at lines 338--338
 []\OT1/ptm/m/n/10.95 Table 3: Spear-man cor-re-la-tion co-ef-fi-cients of
  []
 
@@ -287,47 +290,64 @@ Underfull \hbox (badness 1052) in paragraph at lines 323--323
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
-Underfull \hbox (badness 1418) in paragraph at lines 327--333
-[]\OT1/ptm/m/n/10.95 IORNN's per-for-mance lies in the range of
- []
-
-
-Overfull \hbox (7.54723pt too wide) in paragraph at lines 347--353
+Overfull \hbox (17.91989pt too wide) in paragraph at lines 352--368
  [] 
  []
 
 
-Underfull \hbox (badness 1112) in paragraph at lines 366--373
+Underfull \hbox (badness 1052) in paragraph at lines 368--368
+[]\OT1/ptm/m/n/10.95 Table 4: Spear-man cor-re-la-tion co-ef-fi-cients of
+ []
+
+
+Underfull \hbox (badness 1418) in paragraph at lines 372--378
+[]\OT1/ptm/m/n/10.95 IORNN's per-for-mance lies in the range of
+ []
+
+
+Overfull \hbox (7.54723pt too wide) in paragraph at lines 392--398
+ [] 
+ []
+
+[4]
+Underfull \hbox (badness 1112) in paragraph at lines 411--418
 \OT1/ptm/m/n/10.95 (Reisinger and Mooney, 2010) (Pruned tf-idf-
  []
 
 
-Underfull \hbox (badness 1412) in paragraph at lines 366--373
+Underfull \hbox (badness 1412) in paragraph at lines 411--418
 \OT1/ptm/m/n/10.95 M AvgSimC). These two meth-ods are multi-
  []
 
-[4]
-Underfull \hbox (badness 1052) in paragraph at lines 407--407
-[]\OT1/ptm/m/n/10.95 Table 5: Spear-man cor-re-la-tion co-ef-fi-cients of
+
+Underfull \hbox (badness 1052) in paragraph at lines 452--452
+[]\OT1/ptm/m/n/10.95 Table 6: Spear-man cor-re-la-tion co-ef-fi-cients of
  []
 
-
-Underfull \hbox (badness 2435) in paragraph at lines 451--462
+[5]
+Underfull \hbox (badness 2435) in paragraph at lines 496--507
 \OT1/ptm/m/n/10.95 We found that it is cog-ni-tively plau-si-ble to
  []
 
 
-Underfull \hbox (badness 5147) in paragraph at lines 451--462
+Underfull \hbox (badness 5147) in paragraph at lines 496--507
 \OT1/ptm/m/n/10.95 rep-re-sent con-text mean-ing seper-a-tively from
  []
 
-<Inner_outer.png, id=62, 429.605pt x 243.91125pt>
+<Inner_outer.png, id=65, 429.605pt x 243.91125pt>
 File: Inner_outer.png Graphic file (type png)
  <use Inner_outer.png>
-[5] <DC-IO-RNN.png, id=66, 456.70625pt x 165.61874pt>
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+Underfull \vbox (badness 3158) has occurred while \output is active []
+
+
+<DC-IO-RNN.png, id=66, 456.70625pt x 165.61874pt>
 File: DC-IO-RNN.png Graphic file (type png)
  <use DC-IO-RNN.png>
-Overfull \hbox (9.26643pt too wide) in paragraph at lines 501--504
+Overfull \hbox (9.26643pt too wide) in paragraph at lines 546--549
  [] 
  []
 
@@ -338,6 +358,10 @@ LaTeX Warning: `!h' float specifier changed to `!ht'.
 Missing character: There is no â in font ptmr7t!
 Missing character: There is no € in font ptmr7t!
 Missing character: There is no “ in font ptmr7t!
+
+Underfull \vbox (badness 1484) has occurred while \output is active []
+
+ [6 <./Inner_outer.png>]
 Missing character: There is no â in font ptmr7t!
 Missing character: There is no € in font ptmr7t!
 Missing character: There is no “ in font ptmr7t!
@@ -355,26 +379,24 @@ Missing character: There is no “ in font ptmr7t!
 Missing character: There is no â in font ptmr7t!
 Missing character: There is no € in font ptmr7t!
 Missing character: There is no “ in font ptmr7t!
-[6 <./Inner_outer.png> <./DC-IO-RNN.png>]
+
 Underfull \hbox (badness 1264) in paragraph at lines 69--74
 []\OT1/ptm/m/n/10 Reisinger, J. and Mooney, R. J. (2010).  Multi-
  []
 
-) [7
-
-] (./iornn.aux)
+) [7 <./DC-IO-RNN.png>] (./iornn.aux)
 
 LaTeX Warning: There were multiply-defined labels.
 
  ) 
 Here is how much of TeX's memory you used:
- 2071 strings out of 94500
- 24356 string characters out of 1169920
- 77767 words of memory out of 1000000
- 5190 multiletter control sequences out of 10000+50000
+ 2074 strings out of 94500
+ 24415 string characters out of 1169920
+ 79793 words of memory out of 1000000
+ 5193 multiletter control sequences out of 10000+50000
  30845 words of font info for 81 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
- 27i,10n,22p,266b,248s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 27i,10n,22p,277b,248s stack positions out of 1500i,500n,5000p,200000b,5000s
 PDF statistics:
  73 PDF objects out of 300000
  0 named destinations out of 131072
@@ -390,4 +412,4 @@ sky/cm/cmr8.pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmmi10.pfb></usr/share
 /texmf/fonts/type1/bluesky/cm/cmr10.pfb></usr/share/texmf/fonts/type1/urw/times
 /utmri8a.pfb></usr/share/texmf/fonts/type1/urw/times/utmr8a.pfb></usr/share/tex
 mf/fonts/type1/urw/times/utmb8a.pfb>
-Output written on iornn.pdf (7 pages, 183641 bytes).
+Output written on iornn.pdf (7 pages, 186900 bytes).
