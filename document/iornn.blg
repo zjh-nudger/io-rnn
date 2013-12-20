@@ -1,55 +1,64 @@
-This is BibTeX, Version 0.99c (Web2C 7.5.4)
+This is BibTeX, Version 0.99d (TeX Live 2012/Debian)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: iornn.aux
 The style file: apalike.bst
 Database file #1: ref.bib
-Repeated entry---line 1567 of file ref.bib
+Repeated entry---line 1421 of file ref.bib
+ : @inproceedings{DBLP:conf/coling/LeZ12
+ :                                      ,
+I'm skipping whatever remains of this entry
+Repeated entry---line 1580 of file ref.bib
  : @inproceedings{socher2013recursive
  :                                   ,
 I'm skipping whatever remains of this entry
-Repeated entry---line 1593 of file ref.bib
+Repeated entry---line 1606 of file ref.bib
  : @inproceedings{thater2011word
  :                              ,
 I'm skipping whatever remains of this entry
+A bad cross reference---entry "DBLP:conf/coling/LeZ12"
+refers to entry "DBLP:conf/coling/2012", which doesn't exist
+Warning--I didn't find a database entry for "DBLP:conf/coling/2012"
+Warning--empty journal in baroni_frege_2012
 Warning--empty booktitle in socher2013recursive
-You've used 16 entries,
+You've used 26 entries,
             1935 wiz_defined-function locations,
-            562 strings with 7216 characters,
-and the built_in function-call counts, 7820 in all, are:
-= -- 782
-> -- 323
-< -- 13
-+ -- 117
-- -- 110
-* -- 600
-:= -- 1251
-add.period$ -- 54
-call.type$ -- 16
-change.case$ -- 135
-chr.to.int$ -- 15
-cite$ -- 17
-duplicate$ -- 351
-empty$ -- 556
-format.name$ -- 136
-if$ -- 1635
-int.to.chr$ -- 2
+            619 strings with 8916 characters,
+and the built_in function-call counts, 12239 in all, are:
+= -- 1219
+> -- 506
+< -- 20
++ -- 182
+- -- 172
+* -- 943
+:= -- 1978
+add.period$ -- 83
+call.type$ -- 26
+change.case$ -- 216
+chr.to.int$ -- 24
+cite$ -- 28
+duplicate$ -- 545
+empty$ -- 852
+format.name$ -- 212
+if$ -- 2538
+int.to.chr$ -- 3
 int.to.str$ -- 0
-missing$ -- 16
-newline$ -- 83
-num.names$ -- 48
-pop$ -- 165
+missing$ -- 26
+newline$ -- 132
+num.names$ -- 78
+pop$ -- 246
 preamble$ -- 1
-purify$ -- 135
+purify$ -- 216
 quote$ -- 0
-skip$ -- 267
+skip$ -- 435
 stack$ -- 0
-substring$ -- 520
-swap$ -- 101
-text.length$ -- 8
+substring$ -- 809
+swap$ -- 159
+text.length$ -- 11
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 96
-warning$ -- 1
-while$ -- 54
+type$ -- 156
+warning$ -- 2
+while$ -- 84
 width$ -- 0
-write$ -- 212
-(There were 2 error messages)
+write$ -- 337
+(There were 4 error messages)

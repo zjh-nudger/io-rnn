@@ -1,5 +1,9 @@
 \begin{thebibliography}{}
 
+\bibitem[Baroni et~al., 2012]{baroni_frege_2012}
+Baroni, M., Bernardi, R., and Zamparelli, R. (2012).
+\newblock Frege in space: A program for compositional distributional semantics.
+
 \bibitem[Blacoe and Lapata, 2012]{blacoe_comparison_2012}
 Blacoe, W. and Lapata, M. (2012).
 \newblock A comparison of vector-based representations for semantic
@@ -13,6 +17,12 @@ Borensztajn, G., Zuidema, W., and Bod, R. (2009).
 \newblock In {\em 31th Annual Conference of the Cognitive Science Society}.
   Citeseer.
 
+\bibitem[Brown et~al., 1992]{brown1992class}
+Brown, P.~F., Desouza, P.~V., Mercer, R.~L., Pietra, V. J.~D., and Lai, J.~C.
+  (1992).
+\newblock Class-based n-gram models of natural language.
+\newblock {\em Computational linguistics}, 18(4):467--479.
+
 \bibitem[Collobert et~al., 2012]{collobert_implementing_2012}
 Collobert, R., Kavukcuoglu, K., and Farabet, C. (2012).
 \newblock Implementing neural networks efficiently.
@@ -24,6 +34,12 @@ Collobert, R., Weston, J., Bottou, L., Karlen, M., Kavukcuoglu, K., and Kuksa,
   P. (2011).
 \newblock Natural language processing (almost) from scratch.
 \newblock {\em The Journal of Machine Learning Research}, 12:2493–2537.
+
+\bibitem[Dhillon et~al., 2012]{dhillon2012two}
+Dhillon, P., Rodu, J., Foster, D., and Ungar, L. (2012).
+\newblock Two step cca: A new spectral method for estimating vector models of
+  words.
+\newblock {\em arXiv preprint arXiv:1206.6403}.
 
 \bibitem[Duchi et~al., 2011]{duchi2011adaptive}
 Duchi, J., Hazan, E., and Singer, Y. (2011).
@@ -37,6 +53,12 @@ Goller, C. and Kuchler, A. (1996).
   backpropagation through structure.
 \newblock In {\em Neural Networks, 1996., {IEEE} International Conference on},
   volume~1, page 347–352.
+
+\bibitem[Grefenstette et~al., 2013]{grefenstette_multi-step_2013}
+Grefenstette, E., Dinu, G., Zhang, Y.-Z., Sadrzadeh, M., and Baroni, M. (2013).
+\newblock Multi-step regression learning for compositional distributional
+  semantics.
+\newblock {\em {arXiv} preprint {arXiv:1301.6939}}.
 
 \bibitem[Hermann and Blunsom, 2013]{hermann2013role}
 Hermann, K.~M. and Blunsom, P. (2013).
@@ -52,10 +74,35 @@ Huang, E.~H., Socher, R., Manning, C.~D., and Ng, A.~Y. (2012).
   Computational Linguistics: Long Papers-Volume 1}, pages 873--882. Association
   for Computational Linguistics.
 
+\bibitem[Landauer et~al., 1998]{landauer1998introduction}
+Landauer, T.~K., Foltz, P.~W., and Laham, D. (1998).
+\newblock An introduction to latent semantic analysis.
+\newblock {\em Discourse processes}, 25(2-3):259--284.
+
+\bibitem[Le and Zuidema, 2012]{DBLP:conf/coling/LeZ12}
+Le, P. and Zuidema, W. (2012).
+\newblock Learning compositional semantics for open domain semantic parsing.
+\newblock In {\em COLING}, pages 1535--1552.
+
+\bibitem[Lenci, 2008]{lenci_distributional_2008}
+Lenci, A. (2008).
+\newblock Distributional semantics in linguistic and cognitive research.
+\newblock {\em Italian journal of linguistics}, 20(1):1–31.
+
+\bibitem[Mitchell and Lapata, 2008]{mitchell_vector-based_2008}
+Mitchell, J. and Lapata, M. (2008).
+\newblock Vector-based models of semantic composition.
+\newblock {\em proceedings of {ACL-08:} {HLT}}, page 236–244.
+
 \bibitem[Mitchell and Lapata, 2010]{mitchell_composition_2010}
 Mitchell, J. and Lapata, M. (2010).
 \newblock Composition in distributional models of semantics.
 \newblock {\em Cognitive Science}, 34(8):1388–1429.
+
+\bibitem[Partee, 1995]{partee_lexical_1995}
+Partee, B. (1995).
+\newblock Lexical semantics and compositionality.
+\newblock {\em An invitation to cognitive science: Language}, 1:311–360.
 
 \bibitem[Petrov et~al., 2006]{petrov2006learning}
 Petrov, S., Barrett, L., Thibaux, R., and Klein, D. (2006).
@@ -85,8 +132,17 @@ Socher, R., Manning, C.~D., and Ng, A.~Y. (2010).
 \newblock In {\em Proceedings of the {NIPS-2010} Deep Learning and Unsupervised
   Feature Learning Workshop}.
 
-\bibitem[Socher et~al., 2011]{socher2011semi}
-Socher, R., Pennington, J., Huang, E.~H., Ng, A.~Y., and Manning, C.~D. (2011).
+\bibitem[Socher et~al., 2011a]{socher_semi-supervised_2011}
+Socher, R., Pennington, J., Huang, E.~H., Ng, A.~Y., and Manning, C.~D.
+  (2011a).
+\newblock Semi-supervised recursive autoencoders for predicting sentiment
+  distributions.
+\newblock In {\em Proceedings of the Conference on Empirical Methods in Natural
+  Language Processing}, page 151–161.
+
+\bibitem[Socher et~al., 2011b]{socher2011semi}
+Socher, R., Pennington, J., Huang, E.~H., Ng, A.~Y., and Manning, C.~D.
+  (2011b).
 \newblock Semi-supervised recursive autoencoders for predicting sentiment
   distributions.
 \newblock In {\em Proceedings of the Conference on Empirical Methods in Natural

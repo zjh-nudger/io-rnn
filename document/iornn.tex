@@ -5,17 +5,13 @@
 \usepackage{latexsym}
 \usepackage{graphicx}
 
-%\documentclass[10pt]{article}
-%\usepackage[margin=1in]{geometry}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
-%\usepackage{graphicx}
-%\usepackage{natbib}
 
 \title{Inside Outside Recursive Neural Network: A Unified Framework for 
 Compositional Semantics and Meaning in Context}
-\author{Phong Le, Remko Scha and Willem Zuidema}
+\author{Phong Le, Remko Scha \textnormal{and} Willem Zuidema}
 
 \begin{document}
 
@@ -25,9 +21,128 @@ Compositional Semantics and Meaning in Context}
 \section{Introduction}
 \label{section introduction}
 
+The reader should not have any problem to understand \textit{this} sentence although 
+(s)he has never seen it. This is evidence that natural languages are compositional.
+In order to capture this phenomenon, compositional semantics which relies on the principle 
+of compositionality ``The meaning of a whole is a function of the meanings of the parts 
+and of the way they are syntactically combined'' \cite{partee_lexical_1995}
+was introduced. Research on computational semantics therefore focuses on two problems
+(1) how to learn word representations, and (2) how to learn compositionality functions.
+
+Phrase/word meaning in context, on the other hand, is about how meaning of a phrase/word
+is changed by affect of it contexts. For instance, at the word level, the word `bank' in 
+the two following constituents has different meanings
+\begin{enumerate}
+	\item xyz
+	\item uvw
+\end{enumerate}
+At the phrase level, depending on context, a phrase can have a literal meaning or figurative
+meaning
+\begin{enumerate}
+	\item xyz
+	\item uvw
+\end{enumerate}
+
+It is not difficult to realize that computational semantics and meaning in context 
+have a strong relation. To meaning in context, compositionality is helpful to compute 
+context representations. In addition, if the target is a phrase, compositionality is 
+essential for computing its representation. To computational semantics, context can be 
+used to disambiguate word senses, thus lead to more reliable composition.
+However, it is surprising that there are no attempts tackling both problems. 
+
+In this paper, we propose a new framework, namely Inside Outside Recursive 
+Neural Network (IORNN). IORNN is able to compute phrase representations 
+as well as context representations, thus tackles the both challenges at the same time
+in a unified framework.
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Related Work}
-\label{section introduction}
+
+\section{Background}
+\label{section background}
+
+\subsection{Compositional Semantics}
+
+Formal semantics, which uses formal languages to represent constituents, 
+is the first attempt and well fits this principle [cite Montague].
+It firstly assumes that 
+words are represented by lambda expressions, e.g. $\text{John :- } \lambda x.john(x)$,
+$\text{walks :- } \lambda P \lambda y. walks(y) \wedge P(y)$. Then, using  
+the lambda beta reduction rule as the compositionality function, it easily  
+computes the meaning of the constituent ``John walks'' 
+$\lambda y. john(y) \wedge walks(y)$. 
+This approach, although being sound with human beings and having a simple but 
+powerful compositionality function, is very 
+challenging to computers since automatically learning word representation 
+is a difficult task \cite{DBLP:conf/coling/LeZ12}. 
+%\cite{DBLP:conf/coling/LeZ12} propose a new approach, named
+%Dependency-based Semantic Composition using Graphs (DeSCoG) to balance the difficulty 
+%between lexical learning and compositionality, 
+In addition, formal semantics only supports the truth values (True and False) 
+and ignores lexical semantics restricts it to a short list of applications.
+
+On the other extreme, distributional semantics, based on 
+the \textit{distributional hypothesis} \cite{lenci_distributional_2008}
+``The degree of semantic similarity between two linguistic expressions A and B is a function
+of the similarity of the linguistic contexts in which A and B can appear'',
+is widely used for learning word meaning, which is represented in a vector space.
+Firstly, it has strong support from not only linguistics but
+also cognitive science \cite{lenci_distributional_2008}. Secondly, word representations 
+can be learnt 
+from unannotated data, which are redundant and free on the Internet, thanks to 
+the flourish of unsupervised learning techniques, such as  Latent semantic analysis 
+\cite{landauer1998introduction}, neural network 
+language modelling \cite{collobert_natural_2011,huang2012improving}, Brown clustering
+algorithm \cite{brown1992class}, and 
+spectral learning \cite{dhillon2012two}. And finally, the fact that it supports 
+semantic similarity makes it have a wide range of application: information retrieval,
+sentiment analysis, machine translation, etc. 
+The distributional hypothesis, however, is not able to apply to phrasal semantics 
+because of the the sparsity of data: the number of semantically plausible phrases is 
+infinitive whereas available data is finite.
+
+The most visible approach to tackle compositional semantics problem is to combine 
+formal semantics and distributional semantics: the former for compositionality, the 
+latter for leaning word representations. [cite Erk, ...] It turns out this is 
+not trivial since the the two kinds of semantics have very different forms of representations
+so that how to combine these forms is itself a difficult problem.
+
+Another approach, which has been intensively studied recently, is distributional 
+compositional semantics: 
+if $\overrightarrow{a}, \overrightarrow{b}$ are vectors representing the meanings of 
+the two items $a,b$, then the meaning vector $\overrightarrow{ab}$ of their constituent $ab$, 
+yielded by the grammar rule $R$, is computed by \cite{mitchell_composition_2010}
+\begin{equation}
+\label{equation: general composition}
+    \overrightarrow{ab} = f(\overrightarrow{a}, \overrightarrow{b}, R, K)
+\end{equation}
+where $f$ is a to-be-defined function and $K$ is background knowledge.
+
+There are a wide range of approaches to learn compositionality functions $f$. 
+The most simple approach is use vector addition and multiplication as compositionality functions
+\cite{mitchell_vector-based_2008}. Those functions, although no parameters need to be optimized, 
+are too simple to capture real compositionality. 
+
+Socher and colleagues propose two neural network frameworks: recursive auto encoder (RAE) 
+\cite{socher_semi-supervised_2011} for 
+unsupervised learning, and recursive neural network for supervised learning with task-based 
+training signal \cite{socher_learning_2010}
+(e.g., for sentiment analysis, the training signal is the sentiment given by voters). 
+The key idea of the RAE framework is that: a compositionality function is a compression function, 
+such that an input is able to be recovered from the output by a decompression function. 
+
+\cite{baroni_frege_2012}, \cite{grefenstette_multi-step_2013} and others attempt the challenge 
+in a different way. 
+They use tensors to represent functor words (i.e., verbs, adjectives, etc.), 
+linear maps as compositionality functions, and use contexts (in a similar way with 
+distributional lexical semantics) for estimating tensors' elements and 
+functions' parameters. 
+
+\subsection{Meaning in Context}
+\label{subsection meaning in context}
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Research Questions}
