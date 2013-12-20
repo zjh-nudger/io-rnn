@@ -47,6 +47,12 @@ Duchi, J., Hazan, E., and Singer, Y. (2011).
   optimization.
 \newblock {\em The Journal of Machine Learning Research}, 999999:2121--2159.
 
+\bibitem[Garrette et~al., 2012]{garrette2012formal}
+Garrette, D., Erk, K., and Mooney, R. (2012).
+\newblock A formal approach to linking logical form and vector-space lexical
+  semantics.
+\newblock {\em Computing Meaning}, 4.
+
 \bibitem[Goller and Kuchler, 1996]{goller_learning_1996}
 Goller, C. and Kuchler, A. (1996).
 \newblock Learning task-dependent distributed representations by
@@ -99,6 +105,11 @@ Mitchell, J. and Lapata, M. (2010).
 \newblock Composition in distributional models of semantics.
 \newblock {\em Cognitive Science}, 34(8):1388–1429.
 
+\bibitem[Montague, 1970]{montague1970english}
+Montague, R. (1970).
+\newblock English as a formal language.
+\newblock {\em Linguaggi nella societae nella tecnica}, pages 189--224.
+
 \bibitem[Partee, 1995]{partee_lexical_1995}
 Partee, B. (1995).
 \newblock Lexical semantics and compositionality.
@@ -118,6 +129,22 @@ Reisinger, J. and Mooney, R.~J. (2010).
 \newblock In {\em Human Language Technologies: The 2010 Annual Conference of
   the North American Chapter of the Association for Computational Linguistics},
   pages 109--117. Association for Computational Linguistics.
+
+\bibitem[{\v{S}}ari{\'c} et~al., 2012]{vsaric2012takelab}
+{\v{S}}ari{\'c}, F., Glava{\v{s}}, G., Karan, M., {\v{S}}najder, J., and
+  Ba{\v{s}}i{\'c}, B.~D. (2012).
+\newblock Takelab: Systems for measuring semantic text similarity.
+\newblock In {\em Proceedings of the First Joint Conference on Lexical and
+  Computational Semantics-Volume 1: Proceedings of the main conference and the
+  shared task, and Volume 2: Proceedings of the Sixth International Workshop on
+  Semantic Evaluation}, pages 441--448. Association for Computational
+  Linguistics.
+
+\bibitem[Smolensky, 1990]{smolensky1990tensor}
+Smolensky, P. (1990).
+\newblock Tensor product variable binding and the representation of symbolic
+  structures in connectionist systems.
+\newblock {\em Artificial intelligence}, 46(1):159--216.
 
 \bibitem[Socher et~al., 2013a]{socher2013parsing}
 Socher, R., Bauer, J., Manning, C.~D., and Ng, A.~Y. (2013a).

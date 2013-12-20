@@ -102,8 +102,8 @@ function rate_iornn( case )
 	local tree = net:parse({case.parse})[1]
 	local tree_lm = net:parse({case.parse_lm})[1]
 	local sem1 = tree.inner[{{},{1}}]
-	--local sem2 = tree_lm.inner[{{},{1}}]
-	local sem2 = tanh(net.L[{{},{case.landmark_id}}])
+	local sem2 = tree_lm.inner[{{},{1}}]
+	--local sem2 = tanh(net.L[{{},{case.landmark_id}}])
 	return compute_score(sem1, sem2)[1]
 end
 

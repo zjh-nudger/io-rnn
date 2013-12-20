@@ -17,38 +17,55 @@ Compositional Semantics and Meaning in Context}
 
 \maketitle
 
+\begin{abstract}
+Although compositional semantics and meaning in context have a strong relation, 
+it is surprising that there are no attempts tackling both. In this paper, we
+propose a novel framework, Inside Outside Recursive Neural Network, 
+which is able to compute phrase representations and context representations, 
+thus solving the both challenges. Center to our framework is a new hypothesis that, 
+according to our experimental results, is promising to lead to efficient unsupervised learning 
+schemes for neural compositional semantics. 
+
+\end{abstract}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 \label{section introduction}
 
-The reader should not have any problem to understand \textit{this} sentence although 
+The reader should not have any problems to understand \textit{this} sentence although 
 (s)he has never seen it. This is evidence that natural languages are compositional.
 In order to capture this phenomenon, compositional semantics which relies on the principle 
-of compositionality ``The meaning of a whole is a function of the meanings of the parts 
-and of the way they are syntactically combined'' \cite{partee_lexical_1995}
-was introduced. Research on computational semantics therefore focuses on two problems
+of compositionality \emph{``The meaning of a whole is a function of the meanings of the parts 
+and of the way they are syntactically combined''} \cite{partee_lexical_1995}
+was introduced. Research on compositional semantics therefore focuses on two problems
 (1) how to learn word representations, and (2) how to learn compositionality functions.
 
 Phrase/word meaning in context, on the other hand, is about how meaning of a phrase/word
-is changed by affect of it contexts. For instance, at the word level, the word `bank' in 
+is changed by effect of it contexts. For instance, at the word level, the word `bank' in 
 the two following constituents has different meanings
 \begin{enumerate}
-	\item xyz
-	\item uvw
+	\item along the east \textit{bank} of the river
+	\item some big institutions, including \textit{banks}
 \end{enumerate}
-At the phrase level, depending on context, a phrase can have a literal meaning or figurative
-meaning
-\begin{enumerate}
-	\item xyz
-	\item uvw
-\end{enumerate}
+At the phrase level, depending on its context, a phrase should be understood literally or 
+figuratively. %; e.g.,
+%\begin{enumerate}
+%	\item xyz
+%	\item uvw
+%\end{enumerate}
 
-It is not difficult to realize that computational semantics and meaning in context 
+It is not difficult to realize that compositional semantics and meaning in context 
 have a strong relation. To meaning in context, compositionality is helpful to compute 
 context representations. In addition, if the target is a phrase, compositionality is 
-essential for computing its representation. To computational semantics, context can be 
+essential for computing its meaning. To compositional semantics, context can be 
 used to disambiguate word senses, thus lead to more reliable composition.
-However, it is surprising that there are no attempts tackling both problems. 
+However, it is surprising that there are no attempts tackling both problems\footnote{
+The work of \newcite{mitchell_vector-based_2008} is often considered 
+as tackling both problems. However, to our opinion, their work is only for 
+compositional semantics since comparing the meaning of a sentence (e.g, 
+``The fire glowed'') to the meaning of a word (e.g., ``burned'') is an improper way 
+to tackle meaning in context: the semantic similarity is not clear to be between
+``the fire'' and ``burned'' or ``glowed'' and ``burned''.}.
 
 In this paper, we propose a new framework, namely Inside Outside Recursive 
 Neural Network (IORNN). IORNN is able to compute phrase representations 
@@ -65,100 +82,110 @@ in a unified framework.
 \subsection{Compositional Semantics}
 
 Formal semantics, which uses formal languages to represent constituents, 
-is the first attempt and well fits this principle [cite Montague].
+is the first attempt and well fits the principle of compositionality \cite{montague1970english}.
 It firstly assumes that 
-words are represented by lambda expressions, e.g. $\text{John :- } \lambda x.john(x)$,
-$\text{walks :- } \lambda P \lambda y. walks(y) \wedge P(y)$. Then, using  
+words are represented by lambda expressions, e.g. $\text{``John'' :- } \lambda x.john(x)$,
+$\text{``walks'' :- } \lambda P \lambda y. walks(y) \wedge P(y)$. Then, using  
 the lambda beta reduction rule as the compositionality function, it easily  
-computes the meaning of the constituent ``John walks'' 
-$\lambda y. john(y) \wedge walks(y)$. 
+computes the meaning of a constituent ($\text{``John walks'' :- }
+\lambda y. john(y) \wedge walks(y)$). 
 This approach, although being sound with human beings and having a simple but 
 powerful compositionality function, is very 
-challenging to computers since automatically learning word representation 
+challenging to computers since automatically learning word representations 
 is a difficult task \cite{DBLP:conf/coling/LeZ12}. 
 %\cite{DBLP:conf/coling/LeZ12} propose a new approach, named
 %Dependency-based Semantic Composition using Graphs (DeSCoG) to balance the difficulty 
 %between lexical learning and compositionality, 
-In addition, formal semantics only supports the truth values (True and False) 
+In addition, the fact that formal semantics only supports the truth values (True and False) 
 and ignores lexical semantics restricts it to a short list of applications.
 
-On the other extreme, distributional semantics, based on 
-the \textit{distributional hypothesis} \cite{lenci_distributional_2008}
-``The degree of semantic similarity between two linguistic expressions A and B is a function
-of the similarity of the linguistic contexts in which A and B can appear'',
-is widely used for learning word meaning, which is represented in a vector space.
-Firstly, it has strong support from not only linguistics but
-also cognitive science \cite{lenci_distributional_2008}. Secondly, word representations 
+At the other extreme, distributional semantics, based on 
+the distributional hypothesis \cite{lenci_distributional_2008}
+\emph{``The degree of semantic similarity between two linguistic expressions A and B is a function
+of the similarity of the linguistic contexts in which A and B can appear''},
+is widely used for learning word meanings, which are represented in vector spaces.
+That is because it has strong support from not only linguistics but
+also cognitive science \cite{lenci_distributional_2008}. In addition, word representations 
 can be learnt 
 from unannotated data, which are redundant and free on the Internet, thanks to 
-the flourish of unsupervised learning techniques, such as  Latent semantic analysis 
+the flourish of unsupervised learning techniques, such as  latent semantic analysis 
 \cite{landauer1998introduction}, neural network 
-language modelling \cite{collobert_natural_2011,huang2012improving}, Brown clustering
+language model \cite{collobert_natural_2011,huang2012improving}, Brown clustering
 algorithm \cite{brown1992class}, and 
-spectral learning \cite{dhillon2012two}. And finally, the fact that it supports 
-semantic similarity makes it have a wide range of application: information retrieval,
-sentiment analysis, machine translation, etc. 
+spectral learning \cite{dhillon2012two}. And after all, due to the fact that it supports 
+semantic similarity, distributional semantics has a wide range of applications: 
+information retrieval, sentiment analysis, machine translation, etc. 
 The distributional hypothesis, however, is not able to apply to phrasal semantics 
-because of the the sparsity of data: the number of semantically plausible phrases is 
-infinitive whereas available data is finite.
+because of the sparsity of data: the number of phrases is 
+infinite whereas available data is finite.
 
 The most visible approach to tackle compositional semantics problem is to combine 
 formal semantics and distributional semantics: the former for compositionality, the 
-latter for leaning word representations. [cite Erk, ...] It turns out this is 
-not trivial since the the two kinds of semantics have very different forms of representations
+latter for word representations \cite{garrette2012formal}. It turns out this is 
+not trivial since the two kinds of semantics have very different forms of representations
 so that how to combine these forms is itself a difficult problem.
 
 Another approach, which has been intensively studied recently, is distributional 
 compositional semantics: 
 if $\overrightarrow{a}, \overrightarrow{b}$ are vectors representing the meanings of 
 the two items $a,b$, then the meaning vector $\overrightarrow{ab}$ of their constituent $ab$, 
-yielded by the grammar rule $R$, is computed by \cite{mitchell_composition_2010}
+yielded by the grammar rule $R$, is computed by \cite{mitchell_vector-based_2008}
 \begin{equation}
 \label{equation: general composition}
     \overrightarrow{ab} = f(\overrightarrow{a}, \overrightarrow{b}, R, K)
 \end{equation}
-where $f$ is a to-be-defined function and $K$ is background knowledge.
-
-There are a wide range of approaches to learn compositionality functions $f$. 
-The most simple approach is use vector addition and multiplication as compositionality functions
-\cite{mitchell_vector-based_2008}. Those functions, although no parameters need to be optimized, 
-are too simple to capture real compositionality. 
+where $f$ is a compositionality function and $K$ is background knowledge.
+Many approaches were proposed to learn compositionality functions $f$. 
+The most simple one is to use vector addition and multiplication as compositionality functions
+\cite{mitchell_vector-based_2008}. 
+%Those functions, although no parameters need to be optimized, 
+%are too simple to capture real compositionality. 
 
 Socher and colleagues propose two neural network frameworks: recursive auto encoder (RAE) 
 \cite{socher_semi-supervised_2011} for 
-unsupervised learning, and recursive neural network for supervised learning with task-based 
+unsupervised learning, and recursive neural network (RNN) for supervised learning with task-based 
 training signal \cite{socher_learning_2010}
-(e.g., for sentiment analysis, the training signal is the sentiment given by voters). 
-The key idea of the RAE framework is that: a compositionality function is a compression function, 
+(e.g., for sentiment analysis, the training signal is the sentiments given by voters). 
+The key idea of the RAE framework is: a compositionality function is a compression function, 
 such that an input is able to be recovered from the output by a decompression function. 
 
-\cite{baroni_frege_2012}, \cite{grefenstette_multi-step_2013} and others attempt the challenge 
+\newcite{baroni_frege_2012}, \newcite{grefenstette_multi-step_2013} and others attempt the challenge 
 in a different way. 
 They use tensors to represent functor words (i.e., verbs, adjectives, etc.), 
-linear maps as compositionality functions, and use contexts (in a similar way with 
+linear maps as compositionality functions, and use contexts of phrases (in a similar way as in
 distributional lexical semantics) for estimating tensors' elements and 
 functions' parameters. 
 
+Our work has some common points with the two approaches above. Similarly to the work of 
+Socher and colleagues, IORNN uses recursive network architecture to construct 
+phrase representations, but different in that it also constructs context representations and 
+is trained in a very different manner. The training has the same key idea with the works of 
+\newcite{baroni_frege_2012}, \newcite{grefenstette_multi-step_2013}: context is used 
+as training signal. However, we only use contexts of words and thus avoid 
+the sparsity of data.
+
+
 \subsection{Meaning in Context}
 \label{subsection meaning in context}
-
+[TODO...]
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Research Questions}
 \label{section question}
 
-Firstly, we ask ourselves ``Which evidence is strong enough to be used for 
-learning compositional semantics?'' To answer this question, we rely on the 
+First of all, we ask ourselves ``Which evidence is strong enough to be used for 
+learning compositional semantics?'' %TODO: why not RAE, tensor...???
+To answer this, we rely on the 
 following observation: a human being can guess the meaning of an unknown 
 word by making use of the meaning of its context. In other words, he computes 
-(in his brain) the meaning of the context and then use it to predict the meaning 
-of the target unknown word (by setting some contrains to narrow down a list of 
+(in his brain) the meaning of the context and then uses it to predict the meaning 
+of the target unknown word (by setting some constraints to narrow down a list of 
 possible meanings). Hence, if he correctly predicts the meaning of the unknown word, 
-we can, at some level of belief, say that he coherends the meaning of the context. 
-This idea is then encaptured in the following hypothesis
+we can, at some degree of belief, say that he comprehends the meaning of the context. 
+This idea is then captured in the following hypothesis
 \begin{quote}
-\textit{Hypothesis 1:} The agreement betwen words and contexts provides evidence for unsupervised 
+\textit{Hypothesis 1:} The agreement between words and contexts provides evidence for unsupervised 
 compositional semantics learning. 
 \end{quote}
 
@@ -167,33 +194,33 @@ hypothesis
 \begin{enumerate}
 	\item How to construct phrase representations?
 	\item How to construct context representations?
-	\item How to use the agreement betwen words and 
+	\item How to use the agreement between words and 
 	their contexts to learn compositionality functions?
 \end{enumerate}
-In the next section, we answer these questions.
+We present our answers in the next section.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Inside Outside Recursive Neural Network}
-\label{section iornn}
-
-In this section, we answer the three questions raising in Section~\ref{section introduction}.
-
+\section{Methodology}
+\label{section methodology}
 \subsection{Recursive Neural Network (RNN)}
 \label{subsection rnn}
-\cite{socher_learning_2010} answer the first question ``How to construct phrasal semantics?'' 
-by Recusive Neural Network (RNN) architecture, 
-which is used to compute continuous phrase representations. In order to see how RNN works, 
-let's conside the following example. Assuming that there is a consitutent with parse
-tree $(p_2 \; (p_1 \; x \; y) \; z)$ as in Figure~\ref{figure rnn}. We will use a neural network, 
-which contains a weight matrix $\mathbf{W}_1$ for left children and a weight matrix $\mathbf{W}_2$ 
-for right children, to compute parents in a bottom up manner. Firstly, we use this network 
-to compute $p_1$ based on its children $x$ and $y$
+\newcite{socher_learning_2010} answer the first question ``How to construct phrase representation?'' 
+by Recursive Neural Network (RNN) architecture. 
+In order to see how RNN works, 
+let's consider the following example. Assuming that there is a constituent with parse
+tree $(p_2 \; (p_1 \; x \; y) \; z)$ (Figure~\ref{figure rnn}), and $\mathbf{x},\mathbf{y},\mathbf{z} \in \mathbb{R}^{n \times 1}$
+are respectively the meanings of the three words $x$, $y$ and $z$. 
+We will use a neural network 
+which contains a weight matrix $\mathbf{W}_1  \in \mathbb{R}^{n \times n}$ for left children and 
+a weight matrix $\mathbf{W}_2  \in \mathbb{R}^{n \times n}$ for right children 
+to compute parents in a bottom up manner. Firstly, we use this network 
+to compute $p_1$'s meaning
 \begin{equation}
 	\mathbf{p}_1 = f(\mathbf{W}_1 \mathbf{x} + \mathbf{W}_2 \mathbf{y} + \mathbf{b})
 \end{equation}
-where $\mathbf{b}$ is a bias, $f$ is an activation function (e.g. \textit{tanh} or \textit{logistic}).
-Then, we use the same network to compute $p_2$ based on its children $p_1$ and $z$
+where $\mathbf{b}$ is a bias vector, $f$ is an activation function (e.g. \textit{tanh} or \textit{logistic}).
+Then, we use the same network to compute $p_2$'s meaning
 \begin{equation}
 	\mathbf{p}_2 = f(\mathbf{W}_1 \mathbf{p}_1 + \mathbf{W}_2 \mathbf{z} + \mathbf{b})
 \end{equation}
@@ -201,7 +228,7 @@ This process is continued until we reach the root node.  This network is trained
 a gradient-based optimization method (e.g., gradient descent) where the gradient 
 over parameters is efficiently computed thanks to the backpropagation through structure
 \cite{goller_learning_1996}. Using this architecture 
-(and its extensions), Socher and colleagues succesfully reach 
+(and its extensions), Socher and colleagues successfully reach 
 state-of-the-art results in syntactic parsing \cite{socher2013parsing} and 
 sentiment analysis \cite{socher2013recursive}. 
 \begin{figure}[h!]
@@ -212,7 +239,7 @@ sentiment analysis \cite{socher2013recursive}.
 \end{figure}
 
 In order to use this architecture in an unsupervised learning manner, 
-\cite{socher2011semi} replace neural network in RNN by autoencoder 
+\newcite{socher2011semi} replace the neural network in RNN by an autoencoder 
 (and hence the new architecture is called Recursive Autoencoder - RAE), 
 which is a feedforward neural network trained by forcing output equal to 
 input (see Figure~\ref{figure rae}). Training a RAE is therefore to minmize 
@@ -228,14 +255,14 @@ the sum of reconstruction errors
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{IORNN}
+\subsection{Inside Outside Recursive Neural Network (IORNN)}
 \label{subsection nlm}
 
-None of the above architectures, RAE or RNN, compute contextual semantics. 
+None of the above architectures, RAE or RNN, compute contex representations. 
 However, they give us a hint to do that. In this section, we will answer the second 
-question ``How to construct contextual semantics?'' by a new neural network 
+question ``How to construct context representation?'' by a new neural network 
 architecture, namely Inside Outside Recursive Neural Network (IORNN). We also 
-present this architecture by using an example of a constituent and parse tree 
+present this architecture by using the example of a constituent and parse tree 
 $(p_2 \; (p_1 \; x \; y) \; z)$ (see Figure~\ref{figure iornn}).
 
 \begin{figure}[h!]
@@ -253,7 +280,7 @@ called \textit{outer meaning}, denotes the meaning of the context; the second on
 called \textit{inner meaning}, denotes the meaning of the phrase that the node covers.
 
 \paragraph{Word embeddings} (e.g., $\mathbf{i}_x$)
-Similar to \cite{socher_learning_2010}, and \cite{collobert_natural_2011}, given a string of binary
+Similar to \newcite{socher_learning_2010,collobert_natural_2011}, given a string of binary
 representations of words $(a, b, ..., w)$ (i.e., all of the entries of $w$ are zero except the one 
 corresponding to the index of the word in the dictionary), 
 we first compute a string of vectors $(\mathbf{i}_{a},...,\mathbf{i}_{w})$ 
@@ -264,7 +291,7 @@ This look-up table $\mathbf{L}$ could be seen as a storage of lexical semantics 
 is a vector representation of a word. Hence, 
 \begin{equation}
     \label{equation compute word vector}
-    \mathbf{i}_{w} = \mathbf{L} w \in \mathbb{R}^n
+    \mathbf{i}_{w} = \mathbf{L} w \in \mathbb{R}^{n \times 1}
 \end{equation}
 
 \paragraph{Computing inner meaning} The inner meaning of a non-terminal node, say $p_1$, is given by
@@ -273,34 +300,36 @@ is a vector representation of a word. Hence,
 	\label{equation inner}
 \end{equation}
 where $\mathbf{W}_1^i, \mathbf{W}_2^i$ are $n \times n$ real matrices, 
-$\mathbf{b}^i$ is a bias vector, and $f(.)$ is an activation function, e.g. $tanh$ 
+$\mathbf{b}^i$ is a bias vector, and $f$ is an activation function, e.g. $tanh$ 
 function. Intuitively, the inner meaning of a parent node is the function of the inner meanings 
-of its children. This is similar to what \cite{socher_learning_2010} call recursive neural network.
+of its children. This is similar to RNN.
 
-\paragraph{Computing outer meaning} The outer meaning of the root node, $\mathbf{o}_{root}$, is initially 
-set randomly, and then learnt later. To a node which is not the root, say $p_1$, the outer meaning is given by
+\paragraph{Computing outer meaning} Because we process sentences individually, there is no information 
+about discourse context. Therefore, the outer meaning of the root node, $\mathbf{o}_{root}$, is set to $\mathbf{o}_{\emptyset}$
+, which is randomly initialized and then learnt later. 
+To a node which is not the root, say $p_1$, the outer meaning is given by
 \begin{equation}
 	\mathbf{o}_{p_1} = g(\mathbf{W}_1^o \mathbf{o}_{p_2} + \mathbf{W}_2^o \mathbf{i}_{z} + \mathbf{b}^o)
 	\label{equation outer}
 \end{equation}
 where $\mathbf{W}_1^o, \mathbf{W}_2^o$ are $n \times n$ real matrices, 
-$\mathbf{b}^o$ is a bias vector, and $g(.)$ is an activation function, e.g. $tanh$ 
+$\mathbf{b}^o$ is a bias vector, and $g$ is an activation function, e.g. $tanh$ 
 function. Informally speaking, the outer meaning of a node (i.e., the meaning of 
 its context) is the function of the outer meaning of its parent and the inner meaning 
 of its sister. 
 
-The reader, if familiar with syntactic parsing, could recognizes the similarity between 
+The reader could recognize the similarity between 
 Equation~\ref{equation inner}, ~\ref{equation outer}
 and the inside, outside probabilities given a parse tree.
-Therefore, we name the architecture Inside-Outside Recursive Neural Network.
+That is why we name the architecture Inside-Outside Recursive Neural Network.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Training IORNN}
 \label{subsection train iornn}
 
-This section is to answer the final question ``How to use contextual semantics and 
-lexical semantics to learn compositionality functions?''. 
+This section is to answer the final question ``How to use words and their contexts to 
+learn compositionality functions?''. 
 
 According to Hypothesis 1, there must be a strong correlation 
 between $\mathbf{o}_{w}$ and $\mathbf{i}_{w}$ where $w$ is any word in 
@@ -314,34 +343,34 @@ where $D$ is a set of training sentences and $\theta$ are the network parameters
 However, that could be problematic because 
 the meaning of context is not necessary the meaning of the target word.
 
-Here, based on the observation that the meaning of context sets contraints on 
+Here, based on the observation that the meaning of context sets constraints on 
 selecting a word to fill in the blank, one could suggest put a \textit{softmax} neuron 
 unit on the top of each $\mathbf{o}_w$ in order to compute the probability $P(x|\mathbf{o}_w)$. 
-Unfortunately, as pointed out by \cite{collobert_natural_2011}, it might not work. 
+Unfortunately, as pointed out by \newcite{collobert_natural_2011}, it might not work. 
 
-Using the same method proposed by \cite{collobert_natural_2011}, we train the network 
-such that it gives a higher score to the correct target word rather than to incorrect ones. 
+Using the same method proposed by \newcite{collobert_natural_2011}, we train the network 
+such that it gives to the correct target word a score higher than scores given to other words
+by a margin of 1. 
 The score $s(x,\mathbf{o}_w)$ given to a candidate word $x$ for a specific context 
 $\mathbf{o}_w$ is computed by 
 \begin{equation}
-	u(x,\mathbf{o}_w) = f(\mathbf{W}_u^o \mathbf{o}_w + \mathbf{W}_u^i \mathbf{i}_x + \mathbf{b}_u) 
+	u(x,\mathbf{o}_w) = f(\mathbf{W}^u_1 \mathbf{o}_w + \mathbf{W}^u_2 \mathbf{i}_x + \mathbf{b}^u) 
 \end{equation}
 \begin{equation}
 	\label{equation score}
-	s(x,\mathbf{o}_w) = \mathbf{W}_s u(x,\mathbf{o}_w) + \mathbf{b}_s
+	s(x,\mathbf{o}_w) = \mathbf{W}^s u(x,\mathbf{o}_w) + \mathbf{b}^s
 \end{equation}
-where $\mathbf{W}_u^o,\mathbf{W}_u^i$ are $n \times k$ real matrices, $ \mathbf{W}_s$ is 
-a $k \times 1$ matrix, and $\mathbf{b}_u, \mathbf{b}_s$ are bias vectors. (We fix $k=2n$.) 
+where $\mathbf{W}_1^u,\mathbf{W}_2^u$ are $n \times k$ real matrices, $ \mathbf{W}^s$ is 
+a $k \times 1$ matrix, and $\mathbf{b}^u, \mathbf{b}^s$ are bias vectors. (We fix $k=2n$.) 
 Now, the objective function is the ranking criterion with respect to $\theta$
 \begin{equation}
 	J(\theta) = \sum_{s \in D} \sum_{w \in s} \sum_{x \in V} \max \{0, 1 - s(w,\mathbf{o}_w) + s(x,\mathbf{o}_w) \}
 \end{equation}
 
 To minimize the above objective function, we randomly pick up a word 
-in the dictionary as a corrupt example, compute the gradient, and update 
-the parameters by a gradient descent method. Thanks to the backpropagation 
-through structure \cite{goller_learning_1996}, the gradient is efficiently computed. 
-Following \cite{socher2013recursive}, we use AdaGrad \cite{duchi2011adaptive}
+in the vocabulary as a corrupt example, then compute the gradient by the 
+backpropagation through structure \cite{goller_learning_1996}. 
+Following \newcite{socher2013recursive}, we use AdaGrad \cite{duchi2011adaptive}
 to update the parameters.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -349,46 +378,46 @@ to update the parameters.
 \section{Experiments}
 \label{section experiments}
 
-In order to examine how IORNN performs on both compositional semantics learning and 
-meaning in context, we evaluate it on two tasks: phrase similarity and 
+In order to examine how IORNN performs for both compositional semantics learning and 
+meaning in context, we evaluated it in two tasks: phrase similarity and 
 word meaning in context. Because, to our knowledge, there are no frameworks 
 that tackle both problems, we use vector addition and pair-wise multiplication 
 as our baselines. Although these methods are simple, choosing them as baselines 
-are reasonable since (1) \cite{blacoe_comparison_2012} show that they perform better than RAE in the 
-phrase similarity task, (2) they are widely used in many applications requiring 
-compositional semantics [cite...], and (3) vector addition is widely used as a method 
-to compute contextual meaning vector \cite{thater2011word}
+are reasonable since (1) \newcite{blacoe_comparison_2012} show that they perform better than RAE in the 
+phrase similarity task, (2) they are used in applications requiring 
+compositional semantics, e.g. in the work of \newcite{vsaric2012takelab}, 
+and (3) vector addition is used as a method to compute contextualized vectors \cite{thater2011word}.
 
 In the all experiments, we implemented IORNN in Torch-lua \cite{collobert_implementing_2012}.
-We initialled the network with the 50-dim word embeddings\footnote{\url{http://ronan.collobert.com/senna/}} 
-from \cite{collobert_natural_2011}. Then we trained it on a dataset containing 1.5M sentences
+We initialized the network with the 50-dim Collobert \& Weston (C\&W) word embeddings\footnote{\url{http://ronan.collobert.com/senna/}} 
+from \newcite{collobert_natural_2011}. Then we trained it on a dataset containing 1.5M sentences
 from the BNC corpus (about one fourth of the whole corpus), which were parsed by 
 the Berkeley parser \cite{petrov2006learning} and binarized.
 
 \subsection{Qualitative Evaluations}
 \label{subsection qualitative eval}
 
-In order to show that IORNN is cabable to use contex to predict the meaning of a unknown word, 
+First of all, to show that IORNN is capable to use context to predict the meaning of a unknown word, 
 we run the trained network on the WSJ section 22 and measured the average predicted rank of 
 target/gold-standard words. 
 (We did not use sentences from the BNC corpus because we also wanted to examine the generality of IORNN: 
 ``Does it work on different domains?'')
 For each target word, we create a list of 20,000 candidate words 
 consisting of 19,999 words randomly selected from the vocabulary and the target word itself. Then, 
-we use the scores given in Equation~\ref{equation score} to rank those candidates. 
+we use the scores given by Equation~\ref{equation score} to rank those candidates. 
 
-We found the average predicted rank of target words is 187.3 over 20,000 ($< 1\%$), which means that 
+We found the average predicted rank of target words is 203.4 over 20,000 ($\simeq 1\%$), which means that 
 the context meaning computed by IORNN tends to prefer the correct word. Looking into details 
 (see Table~\ref{table top 10}), we discovered that IORNN tends to predict correctly word class (e.g., 
-noun in examples 1 and 2, verb in example 4, adverb in example 3), word form (e.g., plural in example 1 and 3, 
-bare verb in example 4). This is interesting because gramatical categories are totally ignored in both training 
+noun in examples 1 and 3, verb in example 4, adverb in example 2), word form (e.g., plural in example 1 and 3, 
+bare verb in example 4). This is interesting because grammatical categories are totally ignored in both training 
 and test phases. In addition, in some cases, high rank words seems to be logical in corresponding 
 contexts (e.g., example 3).
 
 \begin{table*}[!ht]
 	\center
 	\begin{tabular}{c|p{9cm}|p{6cm}}
-		ID & word & top 10 candidates \\ \hline
+		ID & word & top 10 candidates (out of 20,000) \\ \hline
 		
 		1 & Institutional investors and bankers [...] were cautiously optimistic after the mild 1.8\% decline in Tokyo stock \textit{prices}. & standards, hours, projects, roads,  members, duty, restrictions, \textit{prices}, house, locations \\ \hline
 		
@@ -413,15 +442,14 @@ contexts (e.g., example 3).
 
 Phrase similarity is the task in which one is asked to compute the meanings of (short) phrases 
 and measure their semantic similarities. Its goodness is measured by comparing its judgements with 
-human judgements. In this experiment, we used the dataset\footnote{\url{http://homepages.inf.ed.ac.uk/s0453356/share}} from 
-\cite{mitchell_composition_2010} which contains 5832 human judgements on semantic similarity 
+human judgments. In this experiment, we used the dataset\footnote{\url{http://homepages.inf.ed.ac.uk/s0453356/share}} from \newcite{mitchell_composition_2010} which contains 5832 human judgments on semantic similarity 
 for noun-noun, verb-object, and adjective-noun phrases. There are 108 items; each contains a phrase pair
 and human ratings from 1 (very low similarity) to 7 (very high similarity) (see Table~\ref{table compounds}).
 
 In this task, we use the cosine distance to measure the semantic similarity, 
-i.e. $d(a,b) = \cos(\mathbf{i}_a,\mathbf{i}_b)$. Following \cite{blacoe_comparison_2012}, 
-\cite{hermann2013role} and many others, we compute Spearman correlation coefficient $\rho$
-between model scores and human judgements.
+i.e. $d(a,b) = \cos(\mathbf{i}_a,\mathbf{i}_b)$. Following \newcite{blacoe_comparison_2012}, 
+\newcite{hermann2013role} and many others, we compute Spearman's correlation coefficient $\rho$
+between model scores and human judgments.
 
 
 \begin{table}[h!]
@@ -432,14 +460,15 @@ between model scores and human judgements.
 		adj-n & dark eye & left arm & 5 \\ 
 		n-n & county council & town hall & 4 \\ \hline
 	\end{tabular}
-	\caption{Items in the dataset from \cite{mitchell_composition_2010}.}
+	\caption{Items in the dataset from \newcite{mitchell_composition_2010}.}
 	\label{table compounds}
 \end{table}	
 
-First of all, we focus on the results reported by \cite{blacoe_comparison_2012}. Blacoe \& Lapata 
-claims that RAE performs worse than addition and pair-wise multiplication in all of their three settings. 
+First of all, we focus on the results reported by \newcite{blacoe_comparison_2012}. They 
+claim that RAE performs worse than addition and pair-wise multiplication in all of their three settings. 
 Here, we used their third setting, and, to be fair, we trained IORNN with their neural language model word embeddings\footnote{\url{http://homepages.inf.ed.ac.uk/s1066731/dl.php?file=wordVectors.emnlp2012.zip&db=1}}.
-The results are given in Table~\ref{table blacoe}. IORNN is the best on adj-n and v-obj, and second on noun-noun.
+The results\footnote{\newcite{blacoe_comparison_2012} provide their erratum at \url{http://homepages.inf.ed.ac.uk/s1066731/pdf/emnlp2012erratum.pdf}} 
+are given in Table~\ref{table blacoe}. IORNN is the best for adj-n and v-obj, and second for noun-noun.
 \begin{table}[h!]
 	\center
 	\begin{tabular}{ccccc}
@@ -449,17 +478,17 @@ The results are given in Table~\ref{table blacoe}. IORNN is the best on adj-n an
 		100 & RAE & 0.20 & 0.18 & 0.14 \\ \hline
 		50 & IORNN & \textbf{0.30} & 0.23 & \textbf{0.28} \\ \hline
 	\end{tabular}
-	\caption{Spearman correlation coefficients of model predictions for the phrase similarity task
-	with neural language model word embeddings from \cite{blacoe_comparison_2012}.}
+	\caption{Spearman's correlation coefficients of model predictions for the phrase similarity task
+	with neural language model word embeddings from \newcite{blacoe_comparison_2012}.}
 	\label{table blacoe}
 \end{table}
 
-\cite{hermann2013role} extend RAE with the help of Combinatory Categorial Grammar (CCG). 
+\newcite{hermann2013role} extend RAE with the help of Combinatory Categorial Grammar (CCG). 
 Their models, named Combinatory Categorial Autoencoder (CCAE), are similar 
 to RAE but use different parameter sets for different grammatical rules and grammatical types. 
 Thank to this semantic-related grammar, their models outperform RAE and score towards 
 the upper end of the range of addition and pair-wise multiplication. Table~\ref{table hermann}
-shows the comparison between IORNN and other methods whose results are copied from 
+shows the comparison between IORNN and other methods which results are copied from 
 the corresponding papers. 
 
 \begin{table}[h!]
@@ -470,7 +499,7 @@ the corresponding papers.
 		
 		\multicolumn{4}{l}{Blacoe \& Lapata} & \\
 		a./m. & 0.21 - 0.48 & 0.22 - 0.50 & 0.18 - 0.35 \\ 
-		RAE & 0.19 - 0.31 & 0.24 - 0.30 & 0.09 - 0.28 \\ \hline 
+		RAE & 0.20 - 0.34 & 0.18 - 0.29 & 0.06 - 0.32 \\ \hline 
 		
 		\multicolumn{4}{l}{Hermann \& Blunsom} & \\
 		CCAEs & 0.38 - 0.41 & 0.41 - 0.44 & 0.23 - 0.34 \\ \hline 
@@ -480,12 +509,12 @@ the corresponding papers.
 		mult. & 0.14 & 0.24 & 0.16 \\ 
 		IORNN & 0.38 & 0.36 & 0.32 \\ \hline
 	\end{tabular}
-	\caption{Spearman correlation coefficients of model predictions for the phrase similarity task.}
+	\caption{Spearman's correlation coefficients of model predictions for the phrase similarity task.}
 	\label{table hermann}
 \end{table}
 
-IORNN's performance lies in the range of CCAEs on adj-n and v-obj, 
-but worse on noun-noun. However, it is worth emphasizing that IORNN uses one 
+IORNN's performance lies in the range of CCAEs for adj-n and v-obj, 
+but worse for noun-noun. However, it is worth emphasizing that IORNN uses one 
 parameter set for all grammatical rules (similarly to RAE). 
 From the difference of performance between RAE and CCAEs, we expect that extending 
 IORNN in the same way (i.e., using CCG and different parameter sets for different 
@@ -497,9 +526,9 @@ grammatical rules and grammatical types) will lead to better performance.
 \label{subsection wsc} 
 
 Differing from the first task, this task focuses on word meaning in context: 
-it examines how well a model can make use of context to disambiguate word meaning. 
+it examines how well a model can make use of context to disambiguate word senses. 
 In this experiment, we use the Stanford Word Similarity in Context (SWSC) dataset
-from \cite{huang2012improving} which contains 2003 word pairs, their sentential 
+from \newcite{huang2012improving} which contains 2003 word pairs, their sentential 
 contexts, and human ratings from 0 to 10 (see Table~\ref{table swsc}).
 
 \begin{table*}[!ht]
@@ -510,7 +539,7 @@ contexts, and human ratings from 0 to 10 (see Table~\ref{table swsc}).
 		
 		 Located downtown along the east \textit{bank} of the Des Moines River, the plaza is available for parties, ... & This is the basis of all \textit{ money} laundering, ... &  0.0, 0.0, 3.0, 10.0, 8.0, 0.0, 4.0, 0.0, 0.0, 0.0 \\ \hline
 	\end{tabular}
-	\caption{An example in the SWSC dataset.}
+	\caption{An example from the SWSC dataset.}
 	\label{table swsc}
 \end{table*}
 
@@ -521,14 +550,14 @@ on the left and 5 words on the right and then concatenate it with the meaning ve
 word.
 
 Similarly to the first experiment, we also use the cosine distance to measure the semantic similarity
-and compute Spearman correlation coefficient $\rho$ between model scores and human judgements.
+and compute Spearman's correlation coefficient $\rho$ between model scores and human judgments.
 
-We compare IORNN and vector addition with the method proposed by \cite{huang2012improving}
-(HSMN-M AvgSimC) and the one proposed by \cite{reisinger2010multi} (Pruned tf-idf-M AvgSimC).
+We compare IORNN and vector addition with HSMN-M AvgSimC proposed by \newcite{huang2012improving}
+and Pruned tf-idf-M AvgSimC proposed by \newcite{reisinger2010multi}.
 These two methods are multi-prototype approaches: the meaning of a word is represented 
-by multiple vectors (i.e., prototypes). In order to extract multipe prototypes for a word, they compute 
+by multiple vectors (i.e., prototypes). In order to extract multiple prototypes for a word, they compute 
 a vector for each context that the word is in, then cluster those context vectors. In this way, a prototype
-corresponds to the centroid of a cluster, and hence represent a sense of the word. 
+corresponding to the centroid of a cluster represents a sense of the word. 
 In order to compute the word meaning similarity with context, they use AvgSimC metric 
 \begin{align*}
 	&\text{AvgSimC}(w,w') = \\
@@ -539,12 +568,12 @@ its cluster $i$ given context $c$, $\mu_i(w)$ is the $i$-th cluster centroid of 
 computing similarity between two vectors.
 
 Table~\ref{table swsc result} shows the comparison between the methods.
-It is not surprising to see HSMN-M AvgSimC and Pruned tf-idf-M AvgSimC perform best since disambuguiating
+It is not surprising to see HSMN-M AvgSimC and Pruned tf-idf-M AvgSimC perform best since disambiguating
 word sense is the key to success and these methods use different vectors to represent different senses of a word.
 However, IORNN, which represents the meaning of a word by a vector, performs comparably 
 with Pruned tf-idf-M AvgSimC, and higher than the vector addition. It is worth noting the improvement from 
 without using context (C\&W) to using context meaning computed by IORNN (from 58.0 to 60.2), thus 
-confirming the abbility of IORNN in computing word meaning in context.
+confirms the ability of IORNN in computing word meaning in context.
 
 \begin{table}[!ht]
 	\center
@@ -563,7 +592,7 @@ confirming the abbility of IORNN in computing word meaning in context.
 		IORNN & 60.3 \\ \hline
 		
 	\end{tabular}
-	\caption{Spearman correlation coefficients of model predictions on the SWCS dataset.
+	\caption{Spearman's correlation coefficients of model predictions on the SWCS dataset.
 	C\&W is the method to use the Collobert \& Wetson word embeddings without taking context into account. }
 	\label{table swsc result}
 \end{table}
@@ -575,10 +604,10 @@ confirming the abbility of IORNN in computing word meaning in context.
 \subsection{Summary} 
 
 Now, we combine the experimental results presented above to compare IORNN 
-with the two baselines, vector addition and vector pair-wise multiplication in 
-Table~\ref{table summary}. In phrase similarity task, IORNN outperforms the both baselines
-on adj-n and v-obj and worse than addition on noun-noun [why???]. In word similarity in context 
-task, IORNN also outperforms the both baselines. These results show us that we can 
+with the two baselines, vector addition and vector pair-wise multiplication 
+(see Table~\ref{table summary}). IORNN outperforms the both baselines for adj-n, v-obj
+in phrase similarity task and in word meaning in context task, 
+and worse than vector addition for noun-noun. These results show us that we can 
 tackle the two problems, compositional semantics and meaning in context, with the unified framework 
 IORNN.
 
@@ -593,7 +622,7 @@ IORNN.
 	IORNN & \textbf{0.38} & 0.36 & \textbf{0.32} & \textbf{60.3} \\ \hline
 	
 	\end{tabular}
-	\caption{Comparison of IORNN against vector addition and pair-wise multiplication
+	\caption{Comparison of IORNN with vector addition and pair-wise multiplication
 	in the two tasks.}
 	\label{table summary}
 \end{table}
@@ -609,16 +638,18 @@ plausibility of IORNN. The second is about potential extensions for it.
 \label{subsection cog plau}
 
 We found that it is cognitively plausible to 
-represent context meaning seperatively from phrase/word meaning, which we have called
+represent context meaning separately from phrase/word meaning, which we have called
 \textit{outer meaning} and \textit{inner meaning} respectively. The key point here
-is what is called \textit{dynamic binding} in connectionsim [cite...] where, in our case, 
-outer meaning could be seen as slots and inner meaning as fillers (see Figure~\ref{figure inner outer}). 
-Similar to hierarchical prediction network proposed by \cite{borensztajn2009hierarchical}, 
-if the outer meaning and inner meaning are strongly correlated, a dynamic binding occurs
+is what is called \textit{variable binding} in connectionsim \cite{smolensky1990tensor} 
+where, in our case, 
+outer meanings could be seen as slots and inner meanings as fillers 
+(see Figure~\ref{figure inner outer}). 
+Similar to hierarchical prediction network proposed by \newcite{borensztajn2009hierarchical}, 
+if an outer meaning and an inner meaning are strongly correlated, a binding occurs
 and connects the neurons at the tree root node of the phrase to the neurons at the 
-corresponding node of the tree of the context. This explains why a human can use  
+corresponding node of the tree of the context. This explains why a human being can use  
 context meaning to predict the meaning of a unknown word, and why (s)he can select a word/phrase 
-to fill in a blank in a uncomplete sentence.
+to fill in a blank in a incomplete sentence.
 
 \begin{figure}[h!]
 	\center
@@ -633,33 +664,33 @@ to fill in a blank in a uncomplete sentence.
 \subsection{Potential Extensions / Future Work}
 \label{subsection future work}
 
-Our new architecture IORNN has many potental extensions, some of which are promising to improve 
+Our new architecture IORNN has many potential extensions, some of which are promising to improve 
 the performance in those two tasks presented above, other could lead to important applications. 
 
 \paragraph{At lexicon level} In Subsection~\ref{subsection wsc}, we 
-have seen multi-prototype approaches are potental for computing word meaning in 
-context. Certainly, we can combine these approaches and our framework IORNN at the 
-lexical level in order to reduce ambiguity introducing by lexical semantics. 
+have seen multi-prototype approaches are promising for computing word meaning in 
+context. Certainly, we can combine these approaches with our framework IORNN at the 
+lexical level in order to disambiguate word senses. 
 
 \paragraph{At syntax level} IORNN only uses parse trees without grammatical categories. However, 
-Herman \& Blunsom emperically show the important role of syntax in vector space models of 
+\newcite{hermann2013role} empirically show the important role of syntax in vector space models of 
 compositional semantics. It turns out that it is also easy to extend IORNN in the same way, 
 i.e. using CCG and different parameter sets for different 
 grammatical rules and grammatical types. Thanks to some degree of similarity between IORNN and 
-RAE, we expect that this extension helps IORNN imporve its capacity in capturing compositionality.
+RAE, we expect that this extension helps IORNN improve its capacity in capturing compositionality.
 
 \paragraph{At discourse level} In this paper, we propose IORNN as an architecture 
 processing individual sentences; therefore, the outer meaning at the root node is alway a 
 null-context outer meaning vector (i.e., $\mathbf{o}_{root} = \mathbf{o}_{\emptyset}$).
-It turns out that it is easy to extend IORNN to make use of discourse context.
+Beyond that, we can extend IORNN to make use of discourse context.
 Figure~\ref{figure dciornn} illustrates how to connect inner and outer meanings 
 of sentences in a discourse. Intuitively, the outer meaning of a sentence is 
-the function of the inner meanings of its neighbour sentences. 
+the function of the inner meanings of its neighbours.
 
 \begin{figure}[h!]
 	\center
 	\includegraphics[scale=0.5]{DC-IO-RNN.png}
-	\caption{IORNN with Discourse Context. 
+	\caption{IORNN with discourse context. 
 	Black rectangles correspond to inner meanings, 
 	white rectangles correspond to outer meanings.}
 	\label{figure dciornn}
@@ -670,6 +701,16 @@ the function of the inner meanings of its neighbour sentences.
 
 \section{Conclusion}
 \label{section conclusion}
+
+In this paper, we presented a unified framework, namely Inside Outside Recursive
+Neural Network, that tackles both compositional semantics and meaning in context. 
+Similar to RNN, IORNN uses recursive network architecture to construct 
+phrase representations, but different in that it also constructs context representations and 
+is trained in a very different manner. The training, based on our new hypothesis, 
+only needs contexts of words and thus avoids the sparsity of data, unlike the works of 
+\newcite{baroni_frege_2012}, \newcite{grefenstette_multi-step_2013}.
+
+
 
 
 \bibliographystyle{apalike}
