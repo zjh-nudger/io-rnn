@@ -89,17 +89,19 @@ function IORNN:new(struct)
 end
 
 -- save net into a bin file
-function IORNN:save( filename )
+function IORNN:save( filename , binary )
+	local binary = binary or false
 	local file = torch.DiskFile(filename, 'w')
-	file:binary()
+	if binary then file:binary() end
 	file:writeObject(self)
 	file:close()
 end
 
 -- create net from file
-function IORNN:load( filename , func, funcPrime )
+function IORNN:load( filename , binary, func, funcPrime )
+	local binary = binary or false
 	local file = torch.DiskFile(filename, 'r')
-	file:binary()
+	if binary then file:binary() end
 	local net = file:readObject()
 	setmetatable(net, IORNN_mt)
 	file:close()

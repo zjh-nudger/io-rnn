@@ -205,7 +205,7 @@ We present our answers in the next section.
 \label{section methodology}
 \subsection{Recursive Neural Network (RNN)}
 \label{subsection rnn}
-\newcite{socher_learning_2010} answer the first question ``How to construct phrase representation?'' 
+\newcite{socher_learning_2010} answer the first question ``How to construct phrase representations?'' 
 by Recursive Neural Network (RNN) architecture. 
 In order to see how RNN works, 
 let's consider the following example. Assuming that there is a constituent with parse
@@ -260,9 +260,9 @@ the sum of reconstruction errors
 
 None of the above architectures, RAE or RNN, compute contex representations. 
 However, they give us a hint to do that. In this section, we will answer the second 
-question ``How to construct context representation?'' by a new neural network 
+question ``How to construct context representations?'' by a new neural network 
 architecture, namely Inside Outside Recursive Neural Network (IORNN). We also 
-present this architecture by using the example of a constituent and parse tree 
+present this architecture by using the same example of constituent and parse tree 
 $(p_2 \; (p_1 \; x \; y) \; z)$ (see Figure~\ref{figure iornn}).
 
 \begin{figure}[h!]
@@ -282,12 +282,12 @@ called \textit{inner meaning}, denotes the meaning of the phrase that the node c
 \paragraph{Word embeddings} (e.g., $\mathbf{i}_x$)
 Similar to \newcite{socher_learning_2010,collobert_natural_2011}, given a string of binary
 representations of words $(a, b, ..., w)$ (i.e., all of the entries of $w$ are zero except the one 
-corresponding to the index of the word in the dictionary), 
+corresponding to the index of the word in the vocabulary), 
 we first compute a string of vectors $(\mathbf{i}_{a},...,\mathbf{i}_{w})$ 
 representing inner meanings of those words by using 
 a look-up table (i.e., word embeddings) $\mathbf{L} \in \mathbb{R}^{n \times |V|}$, 
 where $|V|$ is the size of the vocabulary and $n$ is the dimensionality of the vectors. 
-This look-up table $\mathbf{L}$ could be seen as a storage of lexical semantics where each column 
+This look-up table $\mathbf{L}$ could be seen as a storage of word meanings where each column 
 is a vector representation of a word. Hence, 
 \begin{equation}
     \label{equation compute word vector}
@@ -300,8 +300,8 @@ is a vector representation of a word. Hence,
 	\label{equation inner}
 \end{equation}
 where $\mathbf{W}_1^i, \mathbf{W}_2^i$ are $n \times n$ real matrices, 
-$\mathbf{b}^i$ is a bias vector, and $f$ is an activation function, e.g. $tanh$ 
-function. Intuitively, the inner meaning of a parent node is the function of the inner meanings 
+$\mathbf{b}^i$ is a bias vector, and $f$ is an activation function, e.g. $tanh$. 
+Intuitively, the inner meaning of a parent node is the function of the inner meanings 
 of its children. This is similar to RNN.
 
 \paragraph{Computing outer meaning} Because we process sentences individually, there is no information 
@@ -313,8 +313,8 @@ To a node which is not the root, say $p_1$, the outer meaning is given by
 	\label{equation outer}
 \end{equation}
 where $\mathbf{W}_1^o, \mathbf{W}_2^o$ are $n \times n$ real matrices, 
-$\mathbf{b}^o$ is a bias vector, and $g$ is an activation function, e.g. $tanh$ 
-function. Informally speaking, the outer meaning of a node (i.e., the meaning of 
+$\mathbf{b}^o$ is a bias vector, and $g$ is an activation function. 
+Informally speaking, the outer meaning of a node (i.e., the meaning of 
 its context) is the function of the outer meaning of its parent and the inner meaning 
 of its sister. 
 
@@ -388,8 +388,8 @@ phrase similarity task, (2) they are used in applications requiring
 compositional semantics, e.g. in the work of \newcite{vsaric2012takelab}, 
 and (3) vector addition is used as a method to compute contextualized vectors \cite{thater2011word}.
 
-In the all experiments, we implemented IORNN in Torch-lua \cite{collobert_implementing_2012}.
-We initialized the network with the 50-dim Collobert \& Weston (C\&W) word embeddings\footnote{\url{http://ronan.collobert.com/senna/}} 
+In the all experiments, we implemented IORNN in Torch-Lua \cite{collobert_implementing_2012}.
+We initialized the network with the Collobert \& Weston (C\&W) 50-dim word embeddings\footnote{\url{http://ronan.collobert.com/senna/}} 
 from \newcite{collobert_natural_2011}. Then we trained it on a dataset containing 1.5M sentences
 from the BNC corpus (about one fourth of the whole corpus), which were parsed by 
 the Berkeley parser \cite{petrov2006learning} and binarized.
@@ -606,7 +606,7 @@ confirms the ability of IORNN in computing word meaning in context.
 Now, we combine the experimental results presented above to compare IORNN 
 with the two baselines, vector addition and vector pair-wise multiplication 
 (see Table~\ref{table summary}). IORNN outperforms the both baselines for adj-n, v-obj
-in phrase similarity task and in word meaning in context task, 
+in phrase similarity task and in word similarity in context task, 
 and worse than vector addition for noun-noun. These results show us that we can 
 tackle the two problems, compositional semantics and meaning in context, with the unified framework 
 IORNN.
@@ -639,7 +639,7 @@ plausibility of IORNN. The second is about potential extensions for it.
 
 We found that it is cognitively plausible to 
 represent context meaning separately from phrase/word meaning, which we have called
-\textit{outer meaning} and \textit{inner meaning} respectively. The key point here
+outer meaning and inner meaning respectively. The key point here
 is what is called \textit{variable binding} in connectionsim \cite{smolensky1990tensor} 
 where, in our case, 
 outer meanings could be seen as slots and inner meanings as fillers 
