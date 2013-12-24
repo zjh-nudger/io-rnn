@@ -90,7 +90,7 @@ end
 
 -- save net into a bin file
 function IORNN:save( filename , binary )
-	local binary = binary or false
+	local binary = binary or true
 	local file = torch.DiskFile(filename, 'w')
 	if binary then file:binary() end
 	file:writeObject(self)
@@ -99,7 +99,7 @@ end
 
 -- create net from file
 function IORNN:load( filename , binary, func, funcPrime )
-	local binary = binary or false
+	local binary = binary or true
 	local file = torch.DiskFile(filename, 'r')
 	if binary then file:binary() end
 	local net = file:readObject()
