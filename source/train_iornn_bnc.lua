@@ -20,10 +20,12 @@ if #arg == 4 then
 	f:close()
 
 -- create net
+--[[	
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
 						func = tanh, funcPrime = tanhPrime }
 	local net = IORNN:new(struct)
-
+]]
+	local net = IORNN:load('model_bnc_full_cw_50_next/model_init')
 	lambda = 1e-4
 	batchsize = 100
 	alpha = 0
@@ -42,8 +44,8 @@ if #arg == 4 then
 	for nepoch = 1,maxnepoch do
 		for i,fn in ipairs(filenames) do
 			local prefix = model_dir..'model_'..tostring(nepoch)
-									..'_'..tostring(i)
 			local traintreebank = {}
+			print(prefix .. '_' .. i)
 
 			print('load trees in file ' .. fn)
 			for line in io.lines(treebank_dir .. '/' .. fn) do
