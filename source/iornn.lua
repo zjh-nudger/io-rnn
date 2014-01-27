@@ -188,34 +188,20 @@ end
 --	tree : compact tree, a list of nodes
 --output:
 --	Tree
-function IORNN:forward(tree)
 
-	local Wbil = self.Wbil; local Wbir = self.Wbir; local bbi = self.bbi
-	local Wbol = self.Wbol; local Wbor = self.Wbor; local Wbop = self.Wbop; 
-	local bbol = self.bbol; local bbor = self.bbor
-	local Wui = self.Wui; local bui = self.bui; 
-	local WCat = self.WCat; local bCat = self.bCat
-	local Wwi = self.Wwi; local Wwo = self.Wwo; local bw = self.bw
-	local Ws = self.Ws
-	local L = self.L
+function IORNN:forward_inside(tree)
+	if tree.inner == nil then
+		tree.inner = torch.zeros(self.dim, tree.n_nodes)
+	else
+		tree.inner:fill(0)
+	end
 
-	local func = self.func
-	local funcPrime = self.funcPrime
-
-	local dim = self.dim
-	local wrdDicLen = self.wrdDicLen
-	local nCat = self.nCat
-
-	local n_nodes = tree.n_nodes
-
-	--################### inside ###############--
-	tree.inner = torch.Tensor(dim, tree.n_nodes)
 	for i = tree.n_nodes,1,-1 do 
 		local col_i = {{},{i}}
 
 		-- for leaves
 		if tree.n_children[i] == 0 then
-			tree.inner[col_i]:copy(L[{{},{tree.word_id[i]}}])
+			tree.inner[col_i]:copy(self.L[{{},{tree.word_id[i]}}])
 
 		-- for internal nodes
 		else
@@ -223,53 +209,57 @@ function IORNN:forward(tree)
 			if tree.n_children[i] == 2 then
 				local c1inner = tree.inner[{{},{tree.children_id[{1,i}]}}]
 				local c2inner = tree.inner[{{},{tree.children_id[{2,i}]}}]
-				input = (Wbil*c1inner):add(Wbir*c2inner):add(bbi)
+				input = (self.Wbil*c1inner):add(self.Wbir*c2inner):add(self.bbi)
 
 			elseif tree.n_children[i] == 1 then
 				local cinner = tree.inner[{{},{tree.children_id[{1,i}]}}]
-				input = (Wui*cinner):add(bui)
+				input = (self.Wui*cinner):add(self.bui)
 
 			else error('accept only binary trees') end
 		
-			tree.inner[col_i]:copy(func(input))
+			tree.inner[col_i]:copy(self.func(input))
 		end
 	end
+end
 
-	-- compute classification error
-	tree.cat_predict = safe_compute_softmax(
-						(WCat*tree.inner)
-						:add(torch.repeatTensor(bCat, 1, tree.n_nodes)))
-	tree.cat_error = (-torch.cmul(tree.category, torch.log(tree.cat_predict))):sum(1)
-
-	--################# outside ################--
-	tree.outer = torch.Tensor(dim, tree.n_nodes)
+function IORNN:forward_outside(tree, bag_of_subtrees)
+	-- for substitued subtrees
+	--tree.stt_id = -torch.linspace(1,tree.n_nodes,tree.n_nodes) + tree.n_nodes+1
+	tree.stt_id = torch.rand(tree.n_nodes):mul(#bag_of_subtrees):add(1):floor()
+	--tree.stt_id = torch.randperm(#bag_of_subtrees)[{{1,tree.n_nodes}}]
 	
-	-- for substitued word
-	tree.stt_word_id = torch.rand(tree.n_nodes):mul(self.wrdDicLen):add(1):floor()
-	--tree.stt_word_id = torch.Tensor(tree.n_nodes):fill(3) -- for gradient checking only
-	tree.stt_word_emb = torch.Tensor(dim, tree.n_nodes)
-	tree.stt_word_score = torch.zeros(tree.n_nodes)
-	tree.stt_word_io = torch.zeros(Ws:size(2), tree.n_nodes)	-- combination of inner and outer meanings
+	if tree.outer == nil then 
+		tree.outer = torch.Tensor(self.dim, tree.n_nodes)
+		tree.stt_score = torch.zeros(tree.n_nodes)
+		tree.stt_io = torch.zeros(self.Ws:size(2), tree.n_nodes)	-- combination of inner and outer meanings
 
-	-- for gold standard word
-	tree.word_score = torch.zeros(n_nodes)
-	tree.word_io = torch.zeros(Ws:size(2), tree.n_nodes)
+		-- for gold standard subtrees
+		tree.gold_score = torch.zeros(tree.n_nodes)
+		tree.gold_io = torch.zeros(self.Ws:size(2), tree.n_nodes)
+		tree.stt_error = torch.zeros(tree.n_nodes)
+	else
+		tree.outer:fill(0)
+		tree.stt_score:fill(0)
+		tree.stt_io:fill(0)
+		tree.gold_score:fill(0)
+		tree.gold_io:fill(0)
+		tree.stt_error:fill(0)
+	end
 
 	-- process
 	tree.outer[{{},{1}}]:copy(self.root_outer)
-	tree.word_error = torch.zeros(tree.n_nodes)
 
 	for i = 2,tree.n_nodes do
 		local col_i = {{},{i}}
 		local input = nil
 
 		if tree.sister_id[i] > 0 then
-			input = Wbop * tree.outer[{{},{tree.parent_id[i]}}]
+			input = self.Wbop * tree.outer[{{},{tree.parent_id[i]}}]
 
 			if tree.child_pos[i] == 1 then
-				input:add(Wbol * tree.inner[{{},{tree.sister_id[i]}}]):add(bbol)
+				input:add(self.Wbol * tree.inner[{{},{tree.sister_id[i]}}]):add(self.bbol)
 			elseif tree.child_pos[i] == 2 then
-				input:add(Wbor * tree.inner[{{},{tree.sister_id[i]}}]):add(bbor)
+				input:add(self.Wbor * tree.inner[{{},{tree.sister_id[i]}}]):add(self.bbor)
 			else
 				error('accept only binary tree')
 			end
@@ -277,23 +267,44 @@ function IORNN:forward(tree)
 			error("unary branching: not implement yet")
 		end
 
-		tree.outer[col_i]:copy(func(input))
+		tree.outer[col_i]:copy(self.func(input))
 
-		-- leaf: compute word score
-		if tree.n_children[i] == 0 then
-			tree.word_io[col_i]:copy(func(	(Wwo * tree.outer[col_i])
-											:add(Wwi * tree.inner[col_i]):add(bw)))
-			tree.word_score[i] = Ws * tree.word_io[col_i]
+		-- compute stt error / the criterion could be the sizes of subtrees (e.g. containing less than 4 words)
+		local len = tree.cover[{2,i}] - tree.cover[{1,i}] + 1
+		if len < 4  then
+			-- compute gold score
+			tree.gold_io[col_i]:copy(self.func(	(self.Wwo * tree.outer[col_i])
+											:add(self.Wwi * tree.inner[col_i]):add(self.bw)))
+			tree.gold_score[i] = self.Ws * tree.gold_io[col_i]
 
-			tree.stt_word_emb[col_i]:copy(L[{{},{tree.stt_word_id[i]}}])
-			tree.stt_word_io[col_i]:copy(func(	
-											(Wwo * tree.outer[col_i])
-											:add(Wwi * tree.stt_word_emb[col_i]):add(bw)))
-			tree.stt_word_score[i] = Ws * tree.stt_word_io[col_i]
+			-- compute stt score
+			local stt_subtree = bag_of_subtrees[tree.stt_id[i]]
+			self:forward_inside(stt_subtree)
+			tree.stt_io[col_i]:copy(self.func((self.Wwo * tree.outer[col_i])
+										:add(self.Wwi * stt_subtree.inner[{{},{1}}]):add(self.bw)))
+			tree.stt_score[i] = self.Ws * tree.stt_io[col_i]
 
-			tree.word_error[i] = math.max(0, 1 - tree.word_score[i] + tree.stt_word_score[i])
+			-- error
+			tree.stt_error[i] = math.max(0, 1 - tree.gold_score[i] + tree.stt_score[i])
+		else
+			tree.stt_id[i] = 0
 		end
 	end
+end
+
+function IORNN:forward(tree, bag_of_subtrees)
+	-- inside 
+	self:forward_inside(tree)
+
+	--[[ compute classification error
+	tree.cat_predict = safe_compute_softmax(
+						(self.WCat*tree.inner)
+						:add(torch.repeatTensor(self.bCat, 1, tree.n_nodes)))
+	tree.cat_error = (-torch.cmul(tree.category, torch.log(tree.cat_predict))):sum(1)
+]]
+
+	-- outside
+	self:forward_outside(tree, bag_of_subtrees)
 end
 
 --*********************** backpropagate *********************--
@@ -301,93 +312,87 @@ end
 -- input:
 -- 	tree : result of the parse function
 -- output:
-function IORNN:backpropagate(tree, grad, alpha, beta)
 
-	local dim = self.dim
-	local wrdDicLen = self.wrdDicLen
-	local nCat = self.nCat
+function IORNN:backpropagate_outside(tree, grad, bag_of_subtrees) --[[, alpha, beta)]]
+	local alpha = 0; beta = 1
 
-	local Wbil = self.Wbil; local Wbir = self.Wbir; local bbi = self.bbi
-	local Wbol = self.Wbol; local Wbor = self.Wbor; local Wbop = self.Wbop; 
-	local bbol = self.bbol; local bbor = self.bbor
-	local Wui = self.Wui; local bui = self.bui
-	local WCat = self.WCat; local bCat = self.bCat
-	local Wwo = self.Wwo; local Wwi = self.Wwi; local bw = self.bw
-	local Ws = self.Ws
-	local L = self.L
+	if tree.gradZo == nil then
+		tree.gradZo = torch.zeros(self.dim, tree.n_nodes)
+		tree.grad_i = torch.zeros(self.dim, tree.n_nodes)
+	else
+		tree.gradZo:fill(0)
+		tree.grad_i:fill(0)
+	end
 
-	local func = self.func
-	local funcPrime = self.funcPrime
-
-	-- compute costs = alpha * cat cost + (beta) * word_cost
-	local cat_cost = tree.cat_error:sum()
-	local word_cost = tree.word_error:sum()
-
-	local cost = alpha*cat_cost + beta*word_cost
-
-
-	--*************** outside *************-
-	local tree_gradZo = torch.zeros(dim, tree.n_nodes)
+	for i = 1,tree.n_nodes do
+		if tree.stt_id[i] > 0 then
+			local stt_subtree = bag_of_subtrees[tree.stt_id[i]]
+			if stt_subtree.grad_i == nil then
+				stt_subtree.grad_i = torch.zeros(self.dim, stt_subtree.n_nodes)
+				stt_subtree.gradZo = torch.zeros(self.dim, stt_subtree.n_nodes)
+			else
+				stt_subtree.grad_i:fill(0)
+				stt_subtree.gradZo:fill(0)
+			end	
+		end
+	end
 
 	for i = tree.n_nodes, 2, -1 do
 		local col_i = {{},{i}}
-		local gZo = torch.zeros(dim, 1)
+		local gZo = torch.zeros(self.dim, 1)
 
-		-- leaf: word ranking error
-		if tree.n_children[i] == 0 and tree.word_error[i] > 0 then
-			local word_io_prime = funcPrime(tree.word_io[col_i])
-			local stt_word_io_prime = funcPrime(tree.stt_word_io[col_i])
+		-- subtree ranking error
+		if tree.stt_error[i] > 0 then
+			local stt_subtree = bag_of_subtrees[tree.stt_id[i]]
+			local gold_io_prime = self.funcPrime(tree.gold_io[col_i])
+			local stt_io_prime = self.funcPrime(tree.stt_io[col_i])
 
 			-- Ws
-			local gWs = (tree.stt_word_io[col_i] - tree.word_io[col_i]):t()
+			local gWs = (tree.stt_io[col_i] - tree.gold_io[col_i]):t()
 			grad.Ws:add(gWs * beta)
 
 			-- Wwo, Wwi, bw
-			local gbw = (stt_word_io_prime - word_io_prime):cmul(Ws:t())
+			local gbw = (stt_io_prime - gold_io_prime):cmul(self.Ws:t())
 			grad.bw:add(gbw * beta)
 			local gWwo = gbw * tree.outer[col_i]:t()
 			grad.Wwo:add(gWwo * beta)
 
-			local gWwi = torch.cmul(Ws:t(), stt_word_io_prime) * tree.stt_word_emb[col_i]:t()
-						- torch.cmul(Ws:t(), word_io_prime) * tree.inner[col_i]:t()
+			local gWwi = torch.cmul(self.Ws:t(), stt_io_prime) * stt_subtree.inner[{{},{1}}]:t()
+						- torch.cmul(self.Ws:t(), gold_io_prime) * tree.inner[col_i]:t()
 			grad.Wwi:add(gWwi * beta)
 	
-			-- gradZo
-			gZo = funcPrime(tree.outer[col_i]):cmul(Wwo:t() * gbw):mul(beta)
-			tree_gradZo[col_i]:copy(gZo)
+			-- gradZo before multiplied by fprime
+			gZo = (self.Wwo:t() * gbw):mul(beta)
 
-			-- update lexsem
-			if self.update_L then
-				grad.L[{{},{tree.word_id[i]}}]
-							:add((Wwi:t() * torch.cmul(Ws:t(),-word_io_prime)):mul(beta))
-				grad.L[{{},{tree.stt_word_id[i]}}]
-							:add((Wwi:t() * torch.cmul(Ws:t(),stt_word_io_prime)):mul(beta))
-			end
+			-- update grad_i
+			tree.grad_i[col_i]
+						:copy((self.Wwi:t() * torch.cmul(self.Ws:t(),-gold_io_prime)):mul(beta))
+			stt_subtree.grad_i[{{},{1}}]
+						:copy((self.Wwi:t() * torch.cmul(self.Ws:t(),stt_io_prime)):mul(beta))
+		end
+
+		-- nonterminal node
+		if tree.n_children[i] == 0 then
+			gZo:cmul(self.funcPrime(tree.outer[col_i]))
+			tree.gradZo[col_i]:copy(gZo)
 
 		-- nonterminal node
 		elseif tree.n_children[i] > 0 then
 			if tree.n_children[i] == 1 then
 				error("unary branching: not implement yet")
 			elseif tree.n_children[i] == 2 then
-				gZo = Wbop:t() * (	tree_gradZo[{{},{tree.children_id[{1,i}]}}] 
-									+ tree_gradZo[{{},{tree.children_id[{2,i}]}}])
+				gZo:add(self.Wbop:t() * (	tree.gradZo[{{},{tree.children_id[{1,i}]}}] 
+									+ tree.gradZo[{{},{tree.children_id[{2,i}]}}]))
 			else
 				error('only binary trees')
 			end
-			gZo:cmul(funcPrime(tree.outer[col_i]))
-			tree_gradZo[col_i]:copy(gZo)
+			gZo:cmul(self.funcPrime(tree.outer[col_i]))
+			tree.gradZo[col_i]:add(gZo)
 		end
 
 		-- Wbop, Wbol, Wbor, bbol, bbor
 		-- binary
 		if tree.sister_id[i] > 0 then
-			if gZo == nil then
-				print(i)
-				for k,v in pairs(tree) do
-					print(k)
-					print(v)
-				end
-			end
 			local gWbop = gZo * tree.outer[{{},{tree.parent_id[i]}}]:t()
 			grad.Wbop:add(gWbop)
 
@@ -411,44 +416,52 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 	-- root
 	local gZo = nil
 	if tree.n_children[1] == 2 then
-		gZo = Wbop:t() * (	tree_gradZo[{{},{tree.children_id[{1,1}]}}] 
-							+ tree_gradZo[{{},{tree.children_id[{2,1}]}}] )
+		gZo = self.Wbop:t() * (	tree.gradZo[{{},{tree.children_id[{1,1}]}}] 
+							+ tree.gradZo[{{},{tree.children_id[{2,1}]}}] )
 	else
 		error("not implement yet")
 	end
 	grad.root_outer:add(gZo)
+end
 
+function IORNN:backpropagate_inside(tree, grad) --[[, alpha, beta)]]
+	local alpha = 0; beta = 1
 
-	--*************** inside ****************
 	-- gradient over Z of softmax nodes
-	local tree_gradZi = torch.zeros(dim, tree.n_nodes)
-	local tree_gradZCat = (tree.cat_predict - tree.category):mul(alpha)
+	if tree.gradZi == nil then
+		tree.gradZi = torch.zeros(self.dim, tree.n_nodes)
+	else
+		tree.gradZi:fill(0)
+	end
+
+	--tree.gradZCat = (tree.cat_predict - tree.category):mul(alpha)
 
 	for i = 1,tree.n_nodes do
 		local col_i = {{},{i}}
-		local gZCat = tree_gradZCat[col_i]
+		--local gZCat = tree.gradZCat[col_i]
+		
+		local gZi = --[[self.WCat:t() * gZCat +]]  tree.grad_i[col_i]
+		if tree.parent_id[i] > 0 then
+			if tree.child_pos[i] == 1 then
+				gZi:add(self.Wbil:t()* tree.gradZi[{{},{tree.parent_id[i]}}])
+				if tree.sister_id[i] > 0 then
+					gZi:add(self.Wbor:t() * tree.gradZo[{{},{tree.sister_id[i]}}])
+				end
+			else
+				gZi:add(self.Wbir:t()* tree.gradZi[{{},{tree.parent_id[i]}}])
+				gZi:add(self.Wbol:t()* tree.gradZo[{{},{tree.sister_id[i]}}])
+			end	
+		end
 
 		-- for internal node
 		if tree.n_children[i] > 0 then	
-			-- gradZi
-			local gZi = WCat:t() * gZCat
-			if tree.parent_id[i] > 0 then
-				if tree.child_pos[i] == 1 then
-					gZi:add(Wbil:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
-					if tree.sister_id[i] > 0 then
-						gZi:add(Wbor:t() * tree_gradZo[{{},{tree.sister_id[i]}}])
-					end
-				else
-					gZi:add(Wbir:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
-					gZi:add(Wbol:t()* tree_gradZo[{{},{tree.sister_id[i]}}])
-				end	
-			end
-			gZi:cmul(funcPrime(tree.inner[col_i]))
-			tree_gradZi[col_i]:copy(gZi)
+			gZi:cmul(self.funcPrime(tree.inner[col_i]))
+			tree.gradZi[col_i]:copy(gZi)
 
-			-- WCat, bCat
+			--[[ WCat, bCat
 			grad.WCat:add(gZCat * tree.inner[col_i]:t())
 			grad.bCat:add(gZCat)
+			]]
 
 			-- binary tree
 			-- Wbil, Wbir, bbi
@@ -469,34 +482,43 @@ function IORNN:backpropagate(tree, grad, alpha, beta)
 			else error('accept only binary trees') end
 
 		else -- leaf
-			-- gradZi
-			local gZi = WCat:t() * gZCat
-			if tree.parent_id[i] > 0 then
-				if tree.child_pos[i] == 1 then
-					gZi:add(Wbil:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
-					if tree.sister_id[i] > 0 then
-						gZi:add(Wbor:t() * tree_gradZo[{{},{tree.sister_id[i]}}])
-					end
-				else
-					gZi:add(Wbir:t()* tree_gradZi[{{},{tree.parent_id[i]}}])
-					gZi:add(Wbol:t()* tree_gradZo[{{},{tree.sister_id[i]}}])
-				end	
-			end
-			tree_gradZi[col_i]:copy(gZi)
+			tree.gradZi[col_i]:copy(gZi)
 
-			-- compute gradient
+			--[[ compute gradient
 			grad.WCat:add(gZCat * tree.inner[col_i]:t())
 			grad.bCat:add(gZCat)
+			]]
+
 			if self.update_L then
 				grad.L[{{},{tree.word_id[i]}}]:add(gZi)
 			end
 		end
 	end
-	
+end
+
+function IORNN:backpropagate(tree, grad, bag_of_subtrees) --[[, alpha, beta)]]
+	local alpha = 0; beta = 1
+
+	-- compute costs = alpha * cat cost + (beta) * word_cost
+	local cat_cost = 0 --tree.cat_error:sum()
+	local word_cost = tree.stt_error:sum()
+	local cost = alpha*cat_cost + beta*word_cost
+
+	--print(tree.stt_id)
+	self:backpropagate_outside(tree, grad, bag_of_subtrees) --, alpha, beta)
+	self:backpropagate_inside(tree, grad) --, alpha, beta)
+
+	for i = 2,tree.n_nodes do
+		if tree.stt_id[i] > 0 then
+			local stt_subtree = bag_of_subtrees[tree.stt_id[i]]	
+			self:backpropagate_inside(stt_subtree, grad) --, alpha, beta)
+		end
+	end
+
 	return cost
 end
 
-function IORNN:computeCostAndGrad(treebank, config)
+function IORNN:computeCostAndGrad(treebank, config, bag_of_subtrees)
 	local parse = config.parse or false
 	
 if NPROCESS > 1 then
@@ -533,9 +555,9 @@ else
 	local cost = 0
 	local nSample = #treebank
 	for i, tree in ipairs(treebank)  do
-		self:forward(tree)
+		self:forward(tree, bag_of_subtrees)
 		if parse == false then
-			cost = cost + self:backpropagate(tree, grad, config.alpha, config.beta)
+			cost = cost + self:backpropagate(tree, grad, bag_of_subtrees) --, config.alpha, config.beta)
 		end
 	end
 
@@ -552,7 +574,7 @@ end
 end
 
 -- check gradient
-function IORNN:checkGradient(treebank, config)
+function IORNN:checkGradient(treebank, config, bag_of_subtrees)
 	local epsilon = 1e-4
 
 	local dim = self.dim
@@ -560,7 +582,7 @@ function IORNN:checkGradient(treebank, config)
 	local nCat = self.nCat
 
 	local Theta = self:fold()
-	local _, gradTheta = self:computeCostAndGrad(treebank, config)
+	local _, gradTheta = self:computeCostAndGrad(treebank, config, bag_of_subtrees)
 
 	local n = Theta:nElement()
 	local numGradTheta = torch.zeros(n)
@@ -568,11 +590,11 @@ function IORNN:checkGradient(treebank, config)
 		local index = {{i}}
 		Theta[index]:add(epsilon)
 		self:unfold(Theta)
-		local costPlus,_ = self:computeCostAndGrad(treebank, config)
+		local costPlus,_ = self:computeCostAndGrad(treebank, config, bag_of_subtrees)
 		
 		Theta[index]:add(-2*epsilon)
 		self:unfold(Theta)
-		local costMinus,_ = self:computeCostAndGrad(treebank, config)
+		local costMinus,_ = self:computeCostAndGrad(treebank, config, bag_of_subtrees)
 		Theta[index]:add(epsilon)
 		self:unfold(Theta)
 
@@ -589,7 +611,7 @@ function IORNN:checkGradient(treebank, config)
 end
 
 
---***************************** eval **************************
+--[[***************************** eval **************************
 function IORNN:eval(treebank)
 	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true})
 	local total_all = 0
@@ -614,6 +636,7 @@ function IORNN:eval(treebank)
 
 	return correct_all / total_all, correct_root / total_root
 end
+]]
 
 --**************************** training ************************--
 require 'optim'
@@ -622,9 +645,9 @@ p = xlua.Profiler()
 
 function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
 									maxepoch, lambda, alpha, beta, prefix,
-									adagrad_config, adagrad_state)
+									adagrad_config, adagrad_state, bag_of_subtrees)
 	local nSample = #traintreebank
-	print('accuracy = ' .. self:eval(devtreebank)) io.flush()
+	--print('accuracy = ' .. self:eval(devtreebank)) io.flush()
 	
 	local epoch = 1
 	local j = 0
@@ -652,7 +675,8 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			-- extract data
 			p:start("compute grad")
 			cost, Grad = self:computeCostAndGrad(subtreebank, 
-							{lambda = lambda, alpha = alpha, beta = beta})
+							{lambda = lambda, alpha = alpha, beta = beta}, 
+							bag_of_subtrees)
 			p:lap("compute grad")
 
 			-- for visualization
@@ -683,8 +707,7 @@ function IORNN:parse(treebank)
 	return treebank
 end
 
---*********************************** test ******************************--
---[[
+--[[*********************************** test ******************************--
 	torch.setnumthreads(1)
 	word2id = {
 		['yet'] = 1,
@@ -707,25 +730,29 @@ end
 
 	struct = {Lookup = torch.randn(3,17), nCategory = 5, func = tanh, funcPrime = tanhPrime}
 	net = IORNN:new(struct)
-	t1 = Tree:create_from_string("(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))")
-	t2 = Tree:create_from_string("(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))")
-	t3 = Tree:create_from_string("(2 (4 (1 the) (2 act)) (1 screenplay))")
-	t4 = Tree:create_from_string("(3 (2 (1 is) (1 more)) (3 (2 than) (3 here)))")
 
+	treebank = {}
+	treebank[1] = Tree:create_from_string("(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))")
+	treebank[2] = Tree:create_from_string("(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))")
+	treebank[3] = Tree:create_from_string("(2 (4 (1 the) (2 act)) (1 screenplay))")
+	treebank[4] = Tree:create_from_string("(3 (2 (1 is) (1 more)) (3 (2 than) (3 here)))")
 
 	require "dict"
 	dic = Dict:new(huang_template)
 	dic.word2id = word2id
+
+	bag_of_subtrees = {}
+	for _,tree in ipairs(treebank) do
+		for _,subtree in ipairs(tree:all_nodes()) do
+			bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(dic, 5)
+		end
+	end
 	
-	t1 = t1:to_torch_matrices(dic, 5)
-	t2 = t2:to_torch_matrices(dic, 5)
-	t3 = t3:to_torch_matrices(dic, 5)
-	t4 = t4:to_torch_matrices(dic, 5)
+	for i = 1,#treebank do
+		treebank[i] = treebank[i]:to_torch_matrices(dic, 5)
+	end
 
-	config = {lambda = 1e-3, alpha = 0.8, beta = 0.2}
-	net.update_L = false
-	net:checkGradient({t1,t2,t3,t4},config)
+	config = {lambda = 1e-3, alpha = 0, beta = 1}
+	net.update_L = true
+	net:checkGradient(treebank, config, bag_of_subtrees)
 ]]
-
-
-

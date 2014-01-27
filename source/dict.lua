@@ -72,6 +72,12 @@ end
 function collobert_template(word)
 	if word == 'UNKNOWN' or word == 'PADDING' then 
 		return word
+	elseif word == '-LRB-' then return '('
+	elseif word == '-RRB-' then return ')'
+	elseif word == '-LSB-' then return '['
+	elseif word == '-RSB-' then return ']'
+	elseif word == '-LCB-' then return '{'
+	elseif word == '-RCB-' then return '}'
 	else
 		return string.lower(string.gsub(word, '[0-9]', '0'))
 	end

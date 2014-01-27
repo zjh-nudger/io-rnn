@@ -20,12 +20,11 @@ if #arg == 4 then
 	f:close()
 
 -- create net
---[[	
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
 						func = tanh, funcPrime = tanhPrime }
 	local net = IORNN:new(struct)
-]]
-	local net = IORNN:load('model_bnc_full_cw_50_next/model_init')
+
+	--local net = IORNN:load('model_bnc_full_cw_50_next/model_init')
 	lambda = 1e-4
 	batchsize = 100
 	alpha = 0
@@ -41,17 +40,47 @@ if #arg == 4 then
 	local adagrad_state = {}
 	local model_dir = arg[4]
 
+	-- create bag of subtrees
+	local bag_of_subtrees = {}
+	local n_subtrees = 2*dic:size()
+
+	for i = 1,dic:size() do
+		local word = dic.id2word[i]
+		if word == '(' then word = '-LRB-'
+		elseif word == ')' then word = '-RRB-'
+		elseif word == '[' then word = '-LSB-'
+		elseif word == ']' then word = '-RSB-'
+		elseif word == '{' then word = '-LCB-' 
+		elseif word == '}' then word = '-RCB-' end
+
+		local str = '(X ' .. word .. ')' --print(str)
+		local t = Tree:create_from_string(str)
+		bag_of_subtrees[i] = t:to_torch_matrices(dic, n_categories)
+	end
+
 	for nepoch = 1,maxnepoch do
 		for i,fn in ipairs(filenames) do
-			local prefix = model_dir..'model_'..tostring(nepoch)
+			local prefix = model_dir..'/model_'..tostring(nepoch)
 			local traintreebank = {}
 			print(prefix .. '_' .. i)
+				
+			-- reset bag of subtrees
+			local next_id_bos = dic:size() + 1
 
 			print('load trees in file ' .. fn)
 			for line in io.lines(treebank_dir .. '/' .. fn) do
 				if line ~= '(TOP())' then
 					local tree = nil
 					if pcall(function() tree = Tree:create_from_string(line) end) then
+						-- extract subtrees 
+						for _,subtree in ipairs(tree:all_nodes()) do
+							local len = subtree.cover[2]-subtree.cover[1]+1
+							if len>1 and len<4 and math.random()>1/6 then
+								bag_of_subtrees[next_id_bos] = subtree:to_torch_matrices(dic, n_categories)
+								next_id_bos = next_id_bos + 1
+							end
+						end
+		
 						tree = tree:to_torch_matrices(dic, n_categories)
 						if tree.n_nodes > 1 then
 							traintreebank[#traintreebank + 1] = tree
@@ -61,11 +90,12 @@ if #arg == 4 then
 					end
 				end
 			end
-		
+
+			print(#bag_of_subtrees)	
 			adagrad_config, adagrad_state = 
 				net:train_with_adagrad(traintreebank, devtreebank, batchsize,
 										1, lambda, alpha, beta, prefix,
-										adagrad_config, adagrad_state)
+										adagrad_config, adagrad_state, bag_of_subtrees)
 		end
 	end
 

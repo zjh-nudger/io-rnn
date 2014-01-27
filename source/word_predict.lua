@@ -51,6 +51,9 @@ if #arg == 3 then
 	local treebank = {}
 	for line in io.lines(treebank_path) do
 		tree = Tree:create_from_string(line)
+		tree:binarize(true,true)
+		print(tree:to_string())
+
 		n_words = tree.cover[2] - tree.cover[1] + 1
 		tree = tree:to_torch_matrices(dic, 1)
 		treebank[#treebank+1] = tree
@@ -75,8 +78,7 @@ if #arg == 3 then
 	local vocabsize = L:size(2)
 
 	local WwiL = Wwi * L
-	local n = 20000
-	local big_bw = torch.repeatTensor(bw, 1, n)
+	local big_bw = torch.repeatTensor(bw, 1, vocabsize)
 
 	--torch.setnumthreads(5)
 	for j,tree in ipairs(treebank) do
@@ -84,34 +86,25 @@ if #arg == 3 then
 		for i = 1,tree.n_nodes do
 			if tree.n_children[i] == 0 then
 				local outer = tree.outer[{{},{i}}]
+				
 				local word_id = tree.word_id[i]
 
-				local index = torch.rand(n-1):mul(vocabsize):floor():add(1):long()
-				local small_WwiL = torch.Tensor(WwiL:size(1), n)
-				small_WwiL[{{},{1,n-1}}]:copy(WwiL:index(2,index))
-				small_WwiL[{{},{n}}]:copy(WwiL[{{},{word_id}}])
-
 				local word_io = func(
-						torch.repeatTensor(Wwo*outer, 1, n)
-						:add(small_WwiL):add(big_bw))
-				local word_score = (Ws * word_io):reshape(n)
-				_,id = word_score:sort(true)
+						torch.repeatTensor(Wwo*outer, 1, vocabsize)
+						:add(WwiL):add(big_bw))
+				local word_score = (Ws * word_io):reshape(vocabsize)
 			
-				_,targ_id = id:max(1)
-				rank = rank + targ_id[1]
+				local tg_score = word_score[word_id] --print(tg_score)
+				rank = rank + torch.gt(word_score, tg_score):double():sum()
 				total = total + 1
 				print(rank / total)
 
 				print('------------')
-				--print(word_score)
-				--print(word_score:sort(true))
+				_, sortedid = word_score:sort(true)
 				print('target word :' .. dic.id2word[word_id])
+				print(outer)
 				for k = 1,10 do
-					if id[k] <= n-1 then
-						print(dic.id2word[index[id[k]]])
-					else
-						print(dic.id2word[word_id])
-					end
+					print(dic.id2word[sortedid[k]])
 				end
 			end
 		end

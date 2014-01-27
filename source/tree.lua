@@ -190,7 +190,7 @@ end
 function Tree:to_flat_form(ret)
 	local ret = ret or {}
 	local nChild = #self.children
-	ret[#ret+1] = {label = self.label, cat = self.cat, childId = {}}
+	ret[#ret+1] = {label = self.label, cat = self.cat, childId = {}, cover = self.cover}
 	local id = #ret
 
 	for i = 1,nChild do
@@ -244,9 +244,12 @@ function Tree:to_torch_matrices(dic, nCat)
 	local sister_id = torch.zeros(nnodes)
 	local category = torch.zeros(nCat, nnodes)
 	local word_id = torch.zeros(nnodes)
+	local cover = torch.zeros(2, nnodes)
 	
 	for i,node in ipairs(nodes) do
 		n_children[i] = #node.childId
+		cover[{1,i}] = node.cover[1]
+		cover[{2,i}] = node.cover[2]
 
 		for j,cid in ipairs(node.childId) do
 			children_id[{j,i}] = cid
@@ -276,7 +279,8 @@ function Tree:to_torch_matrices(dic, nCat)
 
 	return 	{	
 				n_nodes = nnodes,
-				n_children = n_children, 
+				n_children = n_children,
+				cover = cover,
 				children_id = children_id, 
 				parent_id = parent_id,
 				child_pos = child_pos,
