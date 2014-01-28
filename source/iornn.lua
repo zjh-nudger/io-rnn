@@ -226,7 +226,6 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 	-- for substitued subtrees
 	--tree.stt_id = -torch.linspace(1,tree.n_nodes,tree.n_nodes) + tree.n_nodes+1
 	tree.stt_id = torch.rand(tree.n_nodes):mul(#bag_of_subtrees):add(1):floor()
-	--tree.stt_id = torch.randperm(#bag_of_subtrees)[{{1,tree.n_nodes}}]
 	
 	if tree.outer == nil then 
 		tree.outer = torch.Tensor(self.dim, tree.n_nodes)
@@ -271,7 +270,7 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 
 		-- compute stt error / the criterion could be the sizes of subtrees (e.g. containing less than 4 words)
 		local len = tree.cover[{2,i}] - tree.cover[{1,i}] + 1
-		if len < 4  then
+		if #bag_of_subtrees > 0 and len <= bag_of_subtrees.max_phrase_len then
 			-- compute gold score
 			tree.gold_io[col_i]:copy(self.func(	(self.Wwo * tree.outer[col_i])
 											:add(self.Wwi * tree.inner[col_i]):add(self.bw)))
@@ -702,7 +701,7 @@ end
 function IORNN:parse(treebank)
 	local old_uL = self.update_L
 	self.update_L = false
-	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true})
+	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true}, {})
 	self.update_L = old_uL
 	return treebank
 end

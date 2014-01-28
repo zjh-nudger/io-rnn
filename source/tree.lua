@@ -323,3 +323,10 @@ print(tree:to_string())
 tree:binarize(true, true)
 print(tree:to_string())
 ]]
+--[[
+for line in io.lines(arg[1]) do
+	local tree = Tree:create_from_string(line)
+	tree:binarize(true, false)
+	print(tree:to_string())
+end
+]]

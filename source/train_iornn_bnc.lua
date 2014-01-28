@@ -24,14 +24,15 @@ if #arg == 4 then
 						func = tanh, funcPrime = tanhPrime }
 	local net = IORNN:new(struct)
 
-	--local net = IORNN:load('model_bnc_full_cw_50_next/model_init')
+	net.update_L = false
+
+	--local net = IORNN:load('model_bnc_shuf_2/model_32_1')
+
 	lambda = 1e-4
 	batchsize = 100
 	alpha = 0
 	beta = 1
 	maxnepoch = 100
-
-	net.update_L = false
 
 -- train
 	local filenames = get_all_filenames(treebank_dir)
@@ -42,6 +43,7 @@ if #arg == 4 then
 
 	-- create bag of subtrees
 	local bag_of_subtrees = {}
+	bag_of_subtrees.max_phrase_len = 3
 	local n_subtrees = 2*dic:size()
 
 	for i = 1,dic:size() do
@@ -53,10 +55,12 @@ if #arg == 4 then
 		elseif word == '{' then word = '-LCB-' 
 		elseif word == '}' then word = '-RCB-' end
 
-		local str = '(X ' .. word .. ')' --print(str)
+		local str = '(X ' .. word .. ')'
 		local t = Tree:create_from_string(str)
 		bag_of_subtrees[i] = t:to_torch_matrices(dic, n_categories)
 	end
+
+	net:save(model_dir .. '/model_0')
 
 	for nepoch = 1,maxnepoch do
 		for i,fn in ipairs(filenames) do
@@ -75,9 +79,10 @@ if #arg == 4 then
 						-- extract subtrees 
 						for _,subtree in ipairs(tree:all_nodes()) do
 							local len = subtree.cover[2]-subtree.cover[1]+1
-							if len>1 and len<4 and math.random()>1/6 then
+							if len > 1 and len <= net.max_phrase_len and math.random() > 0.5 then
 								bag_of_subtrees[next_id_bos] = subtree:to_torch_matrices(dic, n_categories)
 								next_id_bos = next_id_bos + 1
+								bag_of_subtrees[next_id_bos] = nil
 							end
 						end
 		
