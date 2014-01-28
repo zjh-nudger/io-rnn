@@ -41,32 +41,35 @@ end
 -- create a new recursive autor encoder with a given structure
 -- input:
 -- 		struct = { dimension, nCategories, Lookup }
-function IORNN:new(struct)
+function IORNN:new(struct, rules)
 
 	local dim = struct.Lookup:size(1)
 	local wrdDicLen = struct.Lookup:size(2)
 	local nCat = struct.nCategory
 
 	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat}
+	net.rules = {}
 	local mul = 0.1
-	
-	-- unary branch inner
-	net.Wui = uniform(dim, dim, -1, 1):mul(mul)
-	net.bui = uniform(dim, 1, -1, 1):mul(0)
 
-	-- binary branch inner
-	net.Wbil = uniform(dim, dim, -1, 1):mul(mul)	--left
-	net.Wbir = uniform(dim, dim, -1, 1):mul(mul)	--right
-	net.bbi = uniform(dim, 1, -1, 1):mul(0)
+	-- create weight matrices for rules
+	for i,rule in ipairs(rules) do
+		net.rules[i] = {}
 
-	-- binary brach outer
-	net.Wbol = uniform(dim, dim, -1, 1):mul(mul)	--left sister
-	net.Wbor = uniform(dim, dim, -1, 1):mul(mul)	--right sister
-	net.Wbop = uniform(dim, dim, -1, 1):mul(mul)	--parent
-	net.bbol = uniform(dim, 1, -1, 1):mul(0)
-	net.bbor = uniform(dim, 1, -1, 1):mul(0)
+		net.rules[i].Wi = {}
+		net.rules[i].Wo = {}
+		net.rules[i].bo = {}
 
-	-- word ranking
+		for j = 1,#rule.rhs do
+			net.rules[i].Wi[j] = uniform(dim, dim, -1, 1):mul(mul)
+			net.rules[i].Wo[j] = uniform(dim, dim, -1, 1):mul(mul)
+			net.rules[i].bo[j] = uniform(dim, 1, -1, 1):mul(0)
+		end		
+
+		net.rules[i].bi = uniform(dim, 1, -1, 1):mul(0)
+		net.rules[i].Wop = uniform(dim, dim, -1, 1):mul(mul)	-- outer.parent
+	end
+
+	-- word/phrase ranking
 	net.Wwi = uniform(2*dim, dim, -1, 1):mul(mul)	-- for combining inner, outer meanings
 	net.Wwo = uniform(2*dim, dim, -1, 1):mul(mul)
 	net.bw = uniform(2*dim, 1, -1, 1):mul(0)
@@ -74,7 +77,7 @@ function IORNN:new(struct)
 
 	-- classification
 	net.WCat = uniform(nCat, dim, -1, 1):mul(mul)
-	net.bCat = uniform(nCat, 1, -1, 1):mul(0)
+	net.bCat = uniform(nCat, 1, -1, 1):mul(0) 
 
 	-- wordembedding
 	net.L = struct.Lookup --torch.randn(struct.Lookup:size()):mul(0.0001)
@@ -111,38 +114,27 @@ end
 
 -- fold parameters to a vector
 function IORNN:fold( Model )
-	local Model = Model or {}
+	local net = Model or self
+
 	local Params = {
-		Model.Wbil or self.Wbil,	--  9
-		Model.Wbir or self.Wbir,	-- 18
-		Model.bbi or self.bbi,		-- 21
-		
-		Model.Wbol or self.Wbol,	-- 30
-		Model.Wbor or self.Wbor,	-- 39
-		Model.Wbop or self.Wbop,	-- 48
-		Model.bbol or self.bbol,	-- 51
-		Model.bbor or self.bbor,	-- 54
-
-		Model.Wui or self.Wui,		-- 63
-		Model.bui or self.bui,		-- 66
-
-		Model.WCat or self.WCat,	-- 81
-		Model.bCat or self.bCat,	-- 86
-
-		Model.Wwi or self.Wwi,
-		Model.Wwo or self.Wwo,
-		Model.bw or self.bw,
-		Model.Ws or self.Ws,
-
-		Model.root_outer or self.root_outer
+		net.WCat, net.bCat,
+		net.Wwi, net.Wwo, net.bw, net.Ws,
+		net.root_outer
 	}
-	if self.update_L == true then
-		Params[#Params+1] = Model.L or self.L
+	
+	for _,rule in ipairs(net.rules) do
+		for j = 1,#rule.Wi do
+			Params[#Params+1] = rule.Wi[j]; 
+			Params[#Params+1] = rule.Wo[j]; 
+			Params[#Params+1] = rule.bo[j]
+		end
+		Params[#Params+1] = rule.bi
+		Params[#Params+1] = rule.Wop
 	end
 
-	local dim = self.dim
-	local wrdDicLen = self.wrdDicLen
-	local nCat = self.nCat
+	if self.update_L == true then
+		Params[#Params+1] = net.L
+	end
 
 	local length = 0
 	for _,P in ipairs(Params) do
@@ -150,7 +142,6 @@ function IORNN:fold( Model )
 	end
 
 	local Theta = torch.zeros(length)
-
 	local i = 1
 	for _,P in ipairs(Params) do
 		local nElem = P:nElement()
@@ -164,13 +155,21 @@ end
 -- unfold param-vector 
 function IORNN:unfold(Theta)
 	local Params = {
-			self.Wbil, self.Wbir, self.bbi,
-			self.Wbol, self.Wbor, self.Wbop, self.bbol, self.bbor,
-			self.Wui, self.bui,
-			self.WCat, self.bCat,
-			self.Wwi, self.Wwo, self.bw, self.Ws,
-			self.root_outer
-		}
+		self.WCat, self.bCat,
+		self.Wwi, self.Wwo, self.bw, self.Ws,
+		self.root_outer
+	}
+	
+	for _,rule in ipairs(self.rules) do
+		for j = 1,#rule.Wi do
+			Params[#Params+1] = rule.Wi[j]; 
+			Params[#Params+1] = rule.Wo[j]; 
+			Params[#Params+1] = rule.bo[j];
+		end
+		Params[#Params+1] = rule.bi
+		Params[#Params+1] = rule.Wop
+	end
+
 	if self.update_L == true then
 		Params[#Params+1] = self.L
 	end
@@ -205,18 +204,16 @@ function IORNN:forward_inside(tree)
 
 		-- for internal nodes
 		else
-			local input
-			if tree.n_children[i] == 2 then
-				local c1inner = tree.inner[{{},{tree.children_id[{1,i}]}}]
-				local c2inner = tree.inner[{{},{tree.children_id[{2,i}]}}]
-				input = (self.Wbil*c1inner):add(self.Wbir*c2inner):add(self.bbi)
+			local rule = self.rules[tree.rule_id[i]]
+			if (#rule.Wi ~= tree.n_children[i]) then 
+				error("rules not match")
+			end
 
-			elseif tree.n_children[i] == 1 then
-				local cinner = tree.inner[{{},{tree.children_id[{1,i}]}}]
-				input = (self.Wui*cinner):add(self.bui)
-
-			else error('accept only binary trees') end
-		
+			local input = rule.Wi[1] * tree.inner[{{},{tree.children_id[{1,i}]}}]
+			for j = 2,tree.n_children[i] do
+				input:add(rule.Wi[j] * tree.inner[{{},{tree.children_id[{j,i}]}}])
+			end
+			input:add(rule.bi)
 			tree.inner[col_i]:copy(self.func(input))
 		end
 	end
@@ -224,8 +221,8 @@ end
 
 function IORNN:forward_outside(tree, bag_of_subtrees)
 	-- for substitued subtrees
-	--tree.stt_id = -torch.linspace(1,tree.n_nodes,tree.n_nodes) + tree.n_nodes+1
-	tree.stt_id = torch.rand(tree.n_nodes):mul(#bag_of_subtrees):add(1):floor()
+	tree.stt_id = -torch.linspace(1,tree.n_nodes,tree.n_nodes) + tree.n_nodes+1
+	--tree.stt_id = torch.rand(tree.n_nodes):mul(#bag_of_subtrees):add(1):floor()
 	
 	if tree.outer == nil then 
 		tree.outer = torch.Tensor(self.dim, tree.n_nodes)
@@ -250,22 +247,19 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 
 	for i = 2,tree.n_nodes do
 		local col_i = {{},{i}}
+		local parent_id = tree.parent_id[i]
 		local input = nil
+		local rule = self.rules[tree.rule_id[parent_id]]
 
-		if tree.sister_id[i] > 0 then
-			input = self.Wbop * tree.outer[{{},{tree.parent_id[i]}}]
-
-			if tree.child_pos[i] == 1 then
-				input:add(self.Wbol * tree.inner[{{},{tree.sister_id[i]}}]):add(self.bbol)
-			elseif tree.child_pos[i] == 2 then
-				input:add(self.Wbor * tree.inner[{{},{tree.sister_id[i]}}]):add(self.bbor)
+		local input = rule.Wop * tree.outer[{{},{parent_id}}]
+		for j = 1, tree.n_children[parent_id] do
+			local sister_id = tree.children_id[{j,parent_id}]
+			if sister_id ~= i then
+				input:add(rule.Wo[j] * tree.inner[{{},{sister_id}}])
 			else
-				error('accept only binary tree')
+				input:add(rule.bo[j])
 			end
-		else
-			error("unary branching: not implement yet")
 		end
-
 		tree.outer[col_i]:copy(self.func(input))
 
 		-- compute stt error / the criterion could be the sizes of subtrees (e.g. containing less than 4 words)
@@ -339,6 +333,7 @@ function IORNN:backpropagate_outside(tree, grad, bag_of_subtrees) --[[, alpha, b
 	for i = tree.n_nodes, 2, -1 do
 		local col_i = {{},{i}}
 		local gZo = torch.zeros(self.dim, 1)
+		local rule = self.rules[tree.rule_id[i]]
 
 		-- subtree ranking error
 		if tree.stt_error[i] > 0 then
@@ -365,61 +360,48 @@ function IORNN:backpropagate_outside(tree, grad, bag_of_subtrees) --[[, alpha, b
 
 			-- update grad_i
 			tree.grad_i[col_i]
-						:copy((self.Wwi:t() * torch.cmul(self.Ws:t(),-gold_io_prime)):mul(beta))
+						:add((self.Wwi:t() * torch.cmul(self.Ws:t(),-gold_io_prime)):mul(beta))
 			stt_subtree.grad_i[{{},{1}}]
-						:copy((self.Wwi:t() * torch.cmul(self.Ws:t(),stt_io_prime)):mul(beta))
+						:add((self.Wwi:t() * torch.cmul(self.Ws:t(),stt_io_prime)):mul(beta))
 		end
 
-		-- nonterminal node
-		if tree.n_children[i] == 0 then
-			gZo:cmul(self.funcPrime(tree.outer[col_i]))
-			tree.gradZo[col_i]:copy(gZo)
-
-		-- nonterminal node
-		elseif tree.n_children[i] > 0 then
-			if tree.n_children[i] == 1 then
-				error("unary branching: not implement yet")
-			elseif tree.n_children[i] == 2 then
-				gZo:add(self.Wbop:t() * (	tree.gradZo[{{},{tree.children_id[{1,i}]}}] 
-									+ tree.gradZo[{{},{tree.children_id[{2,i}]}}]))
+		local input = nil
+		for j = 1, tree.n_children[i] do
+			if input == nil then 
+				input = tree.gradZo[{{},{tree.children_id[{j,i}]}}]:clone()
 			else
-				error('only binary trees')
+				input:add(tree.gradZo[{{},{tree.children_id[{j,i}]}}])
 			end
-			gZo:cmul(self.funcPrime(tree.outer[col_i]))
-			tree.gradZo[col_i]:add(gZo)
 		end
+		if input ~= nil then 
+			gZo:add(rule.Wop:t() * input)
+		end
+		gZo:cmul(self.funcPrime(tree.outer[col_i]))
+		tree.gradZo[col_i]:copy(gZo)
 
-		-- Wbop, Wbol, Wbor, bbol, bbor
-		-- binary
-		if tree.sister_id[i] > 0 then
-			local gWbop = gZo * tree.outer[{{},{tree.parent_id[i]}}]:t()
-			grad.Wbop:add(gWbop)
+		-- Wop, Wo, bo
+		local parent_id = tree.parent_id[i]
+		local grad_rule = grad.rules[tree.rule_id[parent_id]]
 
-			local gWbo = gZo * tree.inner[{{},{tree.sister_id[i]}}]:t()
-			local gbbo = gZo
+		local gWop = gZo * tree.outer[{{},{parent_id}}]:t()
+		grad_rule.Wop:add(gWop)
 
-			-- if this is left child
-			if tree.child_pos[i] == 1 then
-				grad.Wbol:add(gWbo)
-				grad.bbol:add(gbbo)
-			else -- right child 
-				grad.Wbor:add(gWbo)
-				grad.bbor:add(gbbo)
+		for j = 1, tree.n_children[parent_id] do
+			local sister_id = tree.children_id[{j,parent_id}]
+			if sister_id ~= i then
+				grad_rule.Wo[j]:add(gZo * tree.inner[{{},{sister_id}}]:t())
+			else
+				grad_rule.bo[j]:add(gZo)
 			end
-		else
-			-- not root , unary
-			error("not implement yet")
 		end
 	end
 
 	-- root
-	local gZo = nil
-	if tree.n_children[1] == 2 then
-		gZo = self.Wbop:t() * (	tree.gradZo[{{},{tree.children_id[{1,1}]}}] 
-							+ tree.gradZo[{{},{tree.children_id[{2,1}]}}] )
-	else
-		error("not implement yet")
+	local input = tree.gradZo[{{},{tree.children_id[{1,1}]}}]:clone()
+	for j = 2, tree.n_children[1] do
+		input:add(tree.gradZo[{{},{tree.children_id[{j,1}]}}])
 	end
+	local gZo = self.rules[tree.rule_id[1]].Wop:t() * input
 	grad.root_outer:add(gZo)
 end
 
@@ -440,48 +422,42 @@ function IORNN:backpropagate_inside(tree, grad) --[[, alpha, beta)]]
 		--local gZCat = tree.gradZCat[col_i]
 		
 		local gZi = --[[self.WCat:t() * gZCat +]]  tree.grad_i[col_i]
+
+		-- if not the root
 		if tree.parent_id[i] > 0 then
-			if tree.child_pos[i] == 1 then
-				gZi:add(self.Wbil:t()* tree.gradZi[{{},{tree.parent_id[i]}}])
-				if tree.sister_id[i] > 0 then
-					gZi:add(self.Wbor:t() * tree.gradZo[{{},{tree.sister_id[i]}}])
+			local parent_id = tree.parent_id[i]
+			local rule = self.rules[tree.rule_id[parent_id]]
+			
+			for j = 1, tree.n_children[parent_id] do
+				local sister_id = tree.children_id[{j,parent_id}]
+				if sister_id == i then
+					gZi:add(rule.Wi[j]:t() * tree.gradZi[{{},{parent_id}}])
+				else 
+					gZi:add(rule.Wo[j]:t() * tree.gradZo[{{},{sister_id}}])
 				end
-			else
-				gZi:add(self.Wbir:t()* tree.gradZi[{{},{tree.parent_id[i]}}])
-				gZi:add(self.Wbol:t()* tree.gradZo[{{},{tree.sister_id[i]}}])
-			end	
+			end
 		end
 
 		-- for internal node
 		if tree.n_children[i] > 0 then	
 			gZi:cmul(self.funcPrime(tree.inner[col_i]))
-			tree.gradZi[col_i]:copy(gZi)
+			tree.gradZi[col_i]:add(gZi)
 
 			--[[ WCat, bCat
 			grad.WCat:add(gZCat * tree.inner[col_i]:t())
 			grad.bCat:add(gZCat)
 			]]
 
-			-- binary tree
-			-- Wbil, Wbir, bbi
-			if tree.n_children[i] == 2 then
-				local c1id = tree.children_id[{1,i}]
-				local c2id = tree.children_id[{2,i}]
-				grad.Wbil:add(gZi * tree.inner[{{},{c1id}}]:t())
-				grad.Wbir:add(gZi * tree.inner[{{},{c2id}}]:t())
-				grad.bbi:add(gZi)
-	
-			-- unary tree
-			-- Wbui, bui
-			elseif tree.n_children[i] == 1 then
-				local cid = tree.children_id[{1,i}]
-				grad.Wui:add(gZi * tree.inner[{{},{cid}}]:t())
-				grad.bui:add(gZi)
-
-			else error('accept only binary trees') end
+			-- weight matrices for inner
+			local grad_rule = grad.rules[tree.rule_id[i]]
+			for j = 1, tree.n_children[i] do
+				local child_id = tree.children_id[{j,i}]
+				grad_rule.Wi[j]:add(gZi * tree.inner[{{},{child_id}}]:t())
+			end
+			grad_rule.bi:add(gZi)
 
 		else -- leaf
-			tree.gradZi[col_i]:copy(gZi)
+			tree.gradZi[col_i]:add(gZi)
 
 			--[[ compute gradient
 			grad.WCat:add(gZCat * tree.inner[col_i]:t())
@@ -522,34 +498,39 @@ function IORNN:computeCostAndGrad(treebank, config, bag_of_subtrees)
 	
 if NPROCESS > 1 then
 else
--- for single process
-	local grad = {
-		root_outer = torch.zeros(self.root_outer:size()),
+	-- create zero grad
+	local grad = {}
+	grad.rules = {}
 
-		Wbil = torch.zeros(self.Wbil:size()),
-		Wbir = torch.zeros(self.Wbir:size()),
-		bbi = torch.zeros(self.bbi:size()),
-		
-		Wui = torch.zeros(self.Wui:size()),
-		bui = torch.zeros(self.bui:size()),
+	for i,rule in ipairs(self.rules) do
+		grad.rules[i] = {}
 
-		Wbop = torch.zeros(self.Wbop:size()),
-		Wbol = torch.zeros(self.Wbol:size()),
-		Wbor = torch.zeros(self.Wbor:size()),
-		bbol = torch.zeros(self.bbol:size()),
-		bbor = torch.zeros(self.bbor:size()),
-		
-		WCat = torch.zeros(self.WCat:size()),
-		bCat = torch.zeros(self.bCat:size()),
+		grad.rules[i].Wi = {}
+		grad.rules[i].Wo = {}
+		grad.rules[i].bo = {}
 
-		Wwo = torch.zeros(self.Wwo:size()),
-		Wwi = torch.zeros(self.Wwi:size()),
-		bw = torch.zeros(self.bw:size()),
-		Ws = torch.zeros(self.Ws:size())
-	}
+		for j = 1,#rule.Wi do
+			grad.rules[i].Wi[j] = torch.zeros(rule.Wi[j]:size())
+			grad.rules[i].Wo[j] = torch.zeros(rule.Wo[j]:size())
+			grad.rules[i].bo[j] = torch.zeros(rule.bo[j]:size())
+		end		
+
+		grad.rules[i].bi = torch.zeros(rule.bi:size())
+		grad.rules[i].Wop = torch.zeros(rule.Wop:size())
+	end
+
+	grad.Wwi = torch.zeros(self.Wwi:size())
+	grad.Wwo = torch.zeros(self.Wwo:size())
+	grad.bw = torch.zeros(self.bw:size())
+	grad.Ws = torch.zeros(self.Ws:size())
+
+	grad.WCat = torch.zeros(self.WCat:size())
+	grad.bCat = torch.zeros(self.bCat:size())
+	
 	if self.update_L then
 		grad.L = torch.zeros(self.L:size())
 	end
+	grad.root_outer = torch.zeros(self.root_outer:size())
 
 	local cost = 0
 	local nSample = #treebank
@@ -706,7 +687,7 @@ function IORNN:parse(treebank)
 	return treebank
 end
 
---[[*********************************** test ******************************--
+--*********************************** test ******************************--
 	torch.setnumthreads(1)
 	word2id = {
 		['yet'] = 1,
@@ -727,31 +708,53 @@ end
 		['memento'] = 16,
 		["''"] = 17 }
 
-	struct = {Lookup = torch.randn(3,17), nCategory = 5, func = tanh, funcPrime = tanhPrime}
-	net = IORNN:new(struct)
+	treebank = {
+		"(TOP (S (CC Yet) (NP (DT the) (NN act)) (VP (VBZ is) (ADVP (RB still)) (ADJP (JJ charming)) (ADVP (RB here))) (. .)))",
+		"(TOP (S (NP (DT A) (NN screenplay)) (VP (VBZ is) (ADJP (ADVP (RBR more) (RB ingeniously)) (VBN constructed) (PP (IN than) (NP (`` ``) (NNP Memento) ('' ''))))) (. .)))",
+		"(TOP (S (NP (DT The) (NN act) (NN screenplay)) (VP (VBZ is) (ADJP (JJR more) (PP (IN than) (ADVP (RB here))))) (. .)))"
+	}
 
-	treebank = {}
-	treebank[1] = Tree:create_from_string("(3 (2 Yet) (3 (2 (2 the) (2 act)) (3 (4 (3 (2 is) (3 (2 still) (4 charming))) (2 here)) (2 .))))")
-	treebank[2] = Tree:create_from_string("(4 (2 (2 a) (2 (2 screenplay) (2 more))) (3 (4 ingeniously) (2 (2 constructed) (2 (2 (2 (2 than) (2 ``)) (2 Memento)) (2 '')))))")
-	treebank[3] = Tree:create_from_string("(2 (4 (1 the) (2 act)) (1 screenplay))")
-	treebank[4] = Tree:create_from_string("(3 (2 (1 is) (1 more)) (3 (2 than) (3 here)))")
+	for i = 1,#treebank do
+		treebank[i] = Tree:create_from_string(treebank[i])
+	end
 
 	require "dict"
-	dic = Dict:new(huang_template)
-	dic.word2id = word2id
+	vocaDic = Dict:new(huang_template)
+	vocaDic.word2id = word2id
+
+	ruleDic = Dict:new(cfg_template)
+	ruleDic:load("grammar/grammar_rules.txt.temp")
+	
 
 	bag_of_subtrees = {}
+	bag_of_subtrees.max_phrase_len = 100
 	for _,tree in ipairs(treebank) do
 		for _,subtree in ipairs(tree:all_nodes()) do
-			bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(dic, 5)
+			bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic)
 		end
 	end
 	
 	for i = 1,#treebank do
-		treebank[i] = treebank[i]:to_torch_matrices(dic, 5)
+		treebank[i] = treebank[i]:to_torch_matrices(vocaDic, ruleDic)
+		--print(treebank[i])
+		--print(treebank[i].rule_id)
 	end
 
-	config = {lambda = 1e-3, alpha = 0, beta = 1}
+	local rules = {}
+	for _,str in ipairs(ruleDic.id2word) do
+		local comps = split_string(str, "[^ \t]+")
+		local rule = {lhs = comps[1], rhs = {}}
+		for i = 2,#comps do
+			rule.rhs[i-1] = comps[i]
+		end
+		rules[#rules+1] = rule
+	end
+
+	struct = {Lookup = torch.randn(2,17), nCategory = 5, func = tanh, funcPrime = tanhPrime}
+	net = IORNN:new(struct, rules)
+
+
+	config = {lambda = 0, alpha = 0, beta = 1}
 	net.update_L = true
 	net:checkGradient(treebank, config, bag_of_subtrees)
-]]
+

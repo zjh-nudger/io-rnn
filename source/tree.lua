@@ -210,7 +210,7 @@ function Tree:load_treebank(filename)
 	end
 	return treebank
 end
-
+--[[
 function Tree:to_stanford_sa_form()
 	if #self.children > 0 then
 		self.cat = tonumber(self.label)
@@ -227,23 +227,20 @@ function Tree:to_stanford_sa_form()
 		end
 	end
 end
+]]
 
-function Tree:to_torch_matrices(dic, nCat)
+function Tree:to_torch_matrices(vocDic, ruleDic, grammar) --, nCat)
 	require "utils"
-
-	--self:to_stanford_sa_form()
-	self:binarize(true, true)
 
 	local nodes = self:to_flat_form()
 	local nnodes = #nodes
 
 	local n_children = torch.zeros(nnodes)
-	local children_id = torch.zeros(2, nnodes)
+	local children_id = torch.zeros(10, nnodes)
 	local parent_id = torch.zeros(nnodes)
-	local child_pos = torch.zeros(nnodes) -- 1 is left, 2 is right
-	local sister_id = torch.zeros(nnodes)
-	local category = torch.zeros(nCat, nnodes)
+	--local category = torch.zeros(nCat, nnodes)
 	local word_id = torch.zeros(nnodes)
+	local rule_id = torch.zeros(nnodes)
 	local cover = torch.zeros(2, nnodes)
 	
 	for i,node in ipairs(nodes) do
@@ -254,26 +251,36 @@ function Tree:to_torch_matrices(dic, nCat)
 		for j,cid in ipairs(node.childId) do
 			children_id[{j,i}] = cid
 			parent_id[cid] = i
-			child_pos[cid] = j
-		
-			if j == 1 then 
-				sister_id[cid] = node.childId[2] or 0
-			elseif j == 2 then
-				sister_id[cid] = node.childId[1]
-			else
-				error('only binary tree')
-			end
 		end
 
-		-- uncomment these lines in the case of unsupervised learning
+		-- uncomment these lines in the case of supervised learning
 		--cat = torch.zeros(nCat)
 		--cat[tonumber(node.cat)+1] = 1
 		--category[{{},i}]:copy(cat)
 		
 		if #node.childId == 0 then
-			word_id[i] = dic:get_id(node.label)
+			word_id[i] = vocaDic:get_id(node.label)
+			rule_id[i] = 0
 		else 
-			word_id[i] = -1
+			word_id[i] = 0
+			if grammar == "CCG" then
+				local comps = split_string(nodel.label, '[^.]+')
+				rule_id[i] = ruleDic:get_id(comps[2])
+			else
+				local str = node.label
+				for j,cid in ipairs(node.childId) do
+					if #nodes[cid].childId == 0 then 
+						str = str .. '\t' .. '[word]'
+					else
+						str = str .. '\t' .. nodes[cid].label
+					end
+				end
+				rule_id[i] = ruleDic:get_id(str)
+				if rule_id[i] == ruleDic.word2id["UNKNOWN"] then
+					str,_ = string.gsub(str, "[^ \t]+", "X")
+					rule_id[i] = ruleDic:get_id(str)
+				end
+			end
 		end
 	end
 
@@ -283,10 +290,9 @@ function Tree:to_torch_matrices(dic, nCat)
 				cover = cover,
 				children_id = children_id, 
 				parent_id = parent_id,
-				child_pos = child_pos,
-				sister_id = sister_id,
-				category = category,
-				word_id = word_id 
+				--category = category,
+				word_id = word_id,
+				rule_id = rule_id
 			}
 end
 

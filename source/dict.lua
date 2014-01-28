@@ -87,4 +87,6 @@ function turian_template(word)
 	return word	
 end
 
-
+function cfg_template(rule)
+	return rule
+end
