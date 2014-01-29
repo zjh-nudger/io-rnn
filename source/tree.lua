@@ -229,19 +229,20 @@ function Tree:to_stanford_sa_form()
 end
 ]]
 
-function Tree:to_torch_matrices(vocDic, ruleDic, grammar) --, nCat)
+function Tree:to_torch_matrices(vocaDic, ruleDic, grammar) --, nCat)
 	require "utils"
 
 	local nodes = self:to_flat_form()
 	local nnodes = #nodes
 
 	local n_children = torch.zeros(nnodes)
-	local children_id = torch.zeros(10, nnodes)
+	local children_id = torch.zeros(20, nnodes)
 	local parent_id = torch.zeros(nnodes)
 	--local category = torch.zeros(nCat, nnodes)
 	local word_id = torch.zeros(nnodes)
 	local rule_id = torch.zeros(nnodes)
 	local cover = torch.zeros(2, nnodes)
+	local sibling_order = torch.zeros(nnodes)
 	
 	for i,node in ipairs(nodes) do
 		n_children[i] = #node.childId
@@ -249,8 +250,13 @@ function Tree:to_torch_matrices(vocDic, ruleDic, grammar) --, nCat)
 		cover[{2,i}] = node.cover[2]
 
 		for j,cid in ipairs(node.childId) do
+			if j > 20 then 
+				print(#node.childId)
+				print(self:to_string())
+			end
 			children_id[{j,i}] = cid
 			parent_id[cid] = i
+			sibling_order[cid] = j
 		end
 
 		-- uncomment these lines in the case of supervised learning
@@ -281,6 +287,10 @@ function Tree:to_torch_matrices(vocDic, ruleDic, grammar) --, nCat)
 					rule_id[i] = ruleDic:get_id(str)
 				end
 			end
+
+			if rule_id[i] == 1 then 
+				error('invalid rule in')
+			end
 		end
 	end
 
@@ -292,7 +302,8 @@ function Tree:to_torch_matrices(vocDic, ruleDic, grammar) --, nCat)
 				parent_id = parent_id,
 				--category = category,
 				word_id = word_id,
-				rule_id = rule_id
+				rule_id = rule_id,
+				sibling_order = sibling_order
 			}
 end
 

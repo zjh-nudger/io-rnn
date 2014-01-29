@@ -221,8 +221,8 @@ end
 
 function IORNN:forward_outside(tree, bag_of_subtrees)
 	-- for substitued subtrees
-	tree.stt_id = -torch.linspace(1,tree.n_nodes,tree.n_nodes) + tree.n_nodes+1
-	--tree.stt_id = torch.rand(tree.n_nodes):mul(#bag_of_subtrees):add(1):floor()
+	--tree.stt_id = -torch.linspace(1,tree.n_nodes,tree.n_nodes) + tree.n_nodes+1
+	tree.stt_id = torch.rand(tree.n_nodes):mul(bag_of_subtrees.size):add(1):floor()
 	
 	if tree.outer == nil then 
 		tree.outer = torch.Tensor(self.dim, tree.n_nodes)
@@ -264,7 +264,7 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 
 		-- compute stt error / the criterion could be the sizes of subtrees (e.g. containing less than 4 words)
 		local len = tree.cover[{2,i}] - tree.cover[{1,i}] + 1
-		if #bag_of_subtrees > 0 and len <= bag_of_subtrees.max_phrase_len then
+		if #bag_of_subtrees > 0 and len <= bag_of_subtrees.max_phrase_len and (bag_of_subtrees.only_lexicon == false or tree.n_children[i] == 0) then
 			-- compute gold score
 			tree.gold_io[col_i]:copy(self.func(	(self.Wwo * tree.outer[col_i])
 											:add(self.Wwi * tree.inner[col_i]):add(self.bw)))
@@ -421,7 +421,7 @@ function IORNN:backpropagate_inside(tree, grad) --[[, alpha, beta)]]
 		local col_i = {{},{i}}
 		--local gZCat = tree.gradZCat[col_i]
 		
-		local gZi = --[[self.WCat:t() * gZCat +]]  tree.grad_i[col_i]
+		local gZi = --[[self.WCat:t() * gZCat +]]  tree.grad_i[col_i]:clone()
 
 		-- if not the root
 		if tree.parent_id[i] > 0 then
@@ -433,7 +433,7 @@ function IORNN:backpropagate_inside(tree, grad) --[[, alpha, beta)]]
 				if sister_id == i then
 					gZi:add(rule.Wi[j]:t() * tree.gradZi[{{},{parent_id}}])
 				else 
-					gZi:add(rule.Wo[j]:t() * tree.gradZo[{{},{sister_id}}])
+					gZi:add(rule.Wo[tree.sibling_order[i]]:t() * tree.gradZo[{{},{sister_id}}])
 				end
 			end
 		end
@@ -687,7 +687,7 @@ function IORNN:parse(treebank)
 	return treebank
 end
 
---*********************************** test ******************************--
+--[[*********************************** test ******************************--
 	torch.setnumthreads(1)
 	word2id = {
 		['yet'] = 1,
@@ -723,14 +723,19 @@ end
 	vocaDic.word2id = word2id
 
 	ruleDic = Dict:new(cfg_template)
-	ruleDic:load("grammar/grammar_rules.txt.temp")
+	ruleDic:load("grammar/grammar_rules.txt")
 	
 
 	bag_of_subtrees = {}
 	bag_of_subtrees.max_phrase_len = 100
 	for _,tree in ipairs(treebank) do
 		for _,subtree in ipairs(tree:all_nodes()) do
-			bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic)
+			local len = subtree.cover[2] - subtree.cover[1] + 1
+			if len <= bag_of_subtrees.max_phrase_len then
+				bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic)
+				--bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic)
+				--bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic)
+			end
 		end
 	end
 	
@@ -753,8 +758,9 @@ end
 	struct = {Lookup = torch.randn(2,17), nCategory = 5, func = tanh, funcPrime = tanhPrime}
 	net = IORNN:new(struct, rules)
 
+	print(net)	
 
-	config = {lambda = 0, alpha = 0, beta = 1}
+	config = {lambda = 1e-4, alpha = 0, beta = 1}
 	net.update_L = true
 	net:checkGradient(treebank, config, bag_of_subtrees)
-
+]]

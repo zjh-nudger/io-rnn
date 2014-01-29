@@ -4,25 +4,43 @@ require 'utils'
 require 'dict'
 require 'optim'
 
-if #arg == 4 then
+if #arg == 5 then
 	torch.setnumthreads(1)
 
 	we_path = arg[1]
-	treebank_dir = arg[2]
-	learn_rate = tonumber(arg[3])
+	grrule_path = arg[2]
+	treebank_dir = arg[3]
+	learn_rate = tonumber(arg[4])
 	n_categories = 1
+	local model_dir = arg[5]
 
--- load word emb
+-- load word emb and grammar rules
 	print('load wordembeddngs...')
 	local f = torch.DiskFile(we_path, 'r')
-	local dic = f:readObject(); setmetatable(dic, Dict_mt)
+	local vocaDic = f:readObject(); setmetatable(vocaDic, Dict_mt)
 	local wembs = f:readObject()
 	f:close()
 
+	print('load grammar rules...')
+	ruleDic = Dict:new(cfg_template)
+	ruleDic:load(grrule_path)
+
+	local rules = {}
+	for _,str in ipairs(ruleDic.id2word) do
+		local comps = split_string(str, "[^ \t]+")
+		local rule = {lhs = comps[1], rhs = {}}
+		for i = 2,#comps do
+			rule.rhs[i-1] = comps[i]
+		end
+		rules[#rules+1] = rule
+	end
+	--print(rules)
+
 -- create net
+	print('create iornn...')
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
 						func = tanh, funcPrime = tanhPrime }
-	local net = IORNN:new(struct)
+	local net = IORNN:new(struct, rules)
 
 	net.update_L = false
 
@@ -39,15 +57,14 @@ if #arg == 4 then
 	local devtreebank = {}
 	local adagrad_config = {learningRate = learn_rate}
 	local adagrad_state = {}
-	local model_dir = arg[4]
 
 	-- create bag of subtrees
 	local bag_of_subtrees = {}
-	bag_of_subtrees.max_phrase_len = 3
-	local n_subtrees = 2*dic:size()
+	bag_of_subtrees.max_phrase_len = 1
+	bag_of_subtrees.only_lexicon = true
 
-	for i = 1,dic:size() do
-		local word = dic.id2word[i]
+	for i = 1,vocaDic:size() do
+		local word = vocaDic.id2word[i]
 		if word == '(' then word = '-LRB-'
 		elseif word == ')' then word = '-RRB-'
 		elseif word == '[' then word = '-LSB-'
@@ -57,7 +74,7 @@ if #arg == 4 then
 
 		local str = '(X ' .. word .. ')'
 		local t = Tree:create_from_string(str)
-		bag_of_subtrees[i] = t:to_torch_matrices(dic, n_categories)
+		bag_of_subtrees[i] = t:to_torch_matrices(vocaDic, ruleDic) --n_categories)
 	end
 
 	net:save(model_dir .. '/model_0')
@@ -69,26 +86,28 @@ if #arg == 4 then
 			print(prefix .. '_' .. i)
 				
 			-- reset bag of subtrees
-			local next_id_bos = dic:size() + 1
+			local next_id_bos = vocaDic:size() + 1
 
 			print('load trees in file ' .. fn)
 			for line in io.lines(treebank_dir .. '/' .. fn) do
 				if line ~= '(TOP())' then
 					local tree = nil
-					if pcall(function() tree = Tree:create_from_string(line) end) then
+					local tree_torch = nil
+					if pcall(function() 
+								tree = Tree:create_from_string(line)
+								tree_torch = tree:to_torch_matrices(vocaDic, ruleDic)
+							end) then
 						-- extract subtrees 
 						for _,subtree in ipairs(tree:all_nodes()) do
 							local len = subtree.cover[2]-subtree.cover[1]+1
-							if len > 1 and len <= net.max_phrase_len and math.random() > 0.5 then
-								bag_of_subtrees[next_id_bos] = subtree:to_torch_matrices(dic, n_categories)
+							if len > 1 and len <= bag_of_subtrees.max_phrase_len and math.random() > 0.5 and bag_of_subtrees.only_lexicon == false then
+								bag_of_subtrees[next_id_bos] = subtree:to_torch_matrices(vocaDic, ruleDic) --n_categories)
 								next_id_bos = next_id_bos + 1
-								bag_of_subtrees[next_id_bos] = nil
 							end
 						end
 		
-						tree = tree:to_torch_matrices(dic, n_categories)
-						if tree.n_nodes > 1 then
-							traintreebank[#traintreebank + 1] = tree
+						if tree_torch.n_nodes > 1 then
+							traintreebank[#traintreebank + 1] = tree_torch
 						end
 					else 
 						print('error: ' .. line)
@@ -96,7 +115,10 @@ if #arg == 4 then
 				end
 			end
 
-			print(#bag_of_subtrees)	
+			bag_of_subtrees.size = next_id_bos - 1
+			bag_of_subtrees[next_id_bos] = nil
+			print(bag_of_subtrees.size)
+
 			adagrad_config, adagrad_state = 
 				net:train_with_adagrad(traintreebank, devtreebank, batchsize,
 										1, lambda, alpha, beta, prefix,
@@ -105,5 +127,5 @@ if #arg == 4 then
 	end
 
 else
-	print("invalid arugments: [wordemb path] [treebank dir] [learning rate] [model dir]")
+	print("invalid arugments: [wordemb path] [rule path] [treebank dir] [learning rate] [model dir]")
 end
