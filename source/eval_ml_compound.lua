@@ -14,16 +14,22 @@ function load_gold(test_type)
 		local comps = split_string(line)
 
 		if comps[2] == test_type then
-			local str = {'(X (X '..comps[4].. ') (X '..comps[5]..'))', 
-						'(X (X '..comps[6]..') (X '..comps[7]..'))' }
-			if test_type == 'verbobjects' then 
-				str = {'(X (X '..comps[5].. ') (X '..comps[4]..'))',
-						'(X (X '..comps[7].. ') (X '..comps[6]..'))'}
+			local str = nil
+			if test_type == 'adjectivenouns' then
+				str = {'(NP (JJ '..comps[4].. ') (NN '..comps[5]..'))', 
+						'(NP (JJ '..comps[6]..') (NN '..comps[7]..'))' }
+			elseif test_type == 'verbobjects' then 
+				str = {'(VP (VBP '..comps[5].. ') (NP (NN '..comps[4]..')))',
+						'(VP (VBP '..comps[7].. ') (NP (NN '..comps[6]..')))'}
+			elseif test_type == 'compoundnouns' then
+				str = {'(NP (NN '..comps[4].. ') (NN '..comps[5]..'))', 
+						'(NP (NN '..comps[6]..') (NN '..comps[7]..'))' }
 			end
+			--print(str)
 			local parse = {Tree:create_from_string(str[1])
-								:to_torch_matrices(dic, 1),
+								:to_torch_matrices(vocaDic, ruleDic),
 							Tree:create_from_string(str[2])
-								:to_torch_matrices(dic, 1) }
+								:to_torch_matrices(vocaDic, ruleDic) }
 
 
 			local case_id = line --str[1] .. ' ; ' .. str[2]
@@ -36,8 +42,8 @@ function load_gold(test_type)
 						human_rates = {human_rate},
 						level = level,
 						compound = { 
-								{dic:get_id(comps[4]),dic:get_id(comps[5])},
-								{dic:get_id(comps[6]),dic:get_id(comps[7])}}
+								{vocaDic:get_id(comps[4]),vocaDic:get_id(comps[5])},
+								{vocaDic:get_id(comps[6]),vocaDic:get_id(comps[7])}}
 					}
 			else
 				local human_rates = cases[case_id].human_rates
@@ -104,17 +110,33 @@ function rate_iornn( case )
 	return compute_score(sem1, sem2)[1]
 end
 
-if #arg == 3 then
-	dic_emb_path = arg[1]
-	human_score_path = arg[2]
-	net_path = arg[3]
+if #arg == 4 then
+	vocaDic_emb_path = arg[1]
+	rule_path =  arg[2]
+	human_score_path = arg[3]
+	net_path = arg[4]
 
-	-- load dic & emb
-	print('load dic & emb...')
-	f = torch.DiskFile(dic_emb_path, 'r')
-	dic = f:readObject()
-	setmetatable(dic, Dict_mt)
+	-- load vocaDic & emb
+	print('load vocaDic & emb...')
+	f = torch.DiskFile(vocaDic_emb_path, 'r')
+	vocaDic = f:readObject()
+	setmetatable(vocaDic, Dict_mt)
 	f:close()
+
+	-- load grammar rules
+	print('load grammar rules...')
+	ruleDic = Dict:new(cfg_template)
+	ruleDic:load(rule_path)
+
+	local rules = {}
+	for _,str in ipairs(ruleDic.id2word) do
+		local comps = split_string(str, "[^ \t]+")
+		local rule = {lhs = comps[1], rhs = {}}
+		for i = 2,#comps do
+			rule.rhs[i-1] = comps[i]
+		end
+		rules[#rules+1] = rule
+	end
 
 	-- load net
 	print('load net...')
@@ -139,5 +161,5 @@ if #arg == 3 then
 	end
 
 else
-	print('<dic_emb_path> <data path> <net path>')
+	print('<vocaDic_emb_path> <rule path> <data path> <net path>')
 end

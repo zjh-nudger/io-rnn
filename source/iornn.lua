@@ -264,7 +264,7 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 
 		-- compute stt error / the criterion could be the sizes of subtrees (e.g. containing less than 4 words)
 		local len = tree.cover[{2,i}] - tree.cover[{1,i}] + 1
-		if #bag_of_subtrees > 0 and len <= bag_of_subtrees.max_phrase_len and (bag_of_subtrees.only_lexicon == false or tree.n_children[i] == 0) then
+		if bag_of_subtrees.size > 0 and len <= bag_of_subtrees.max_phrase_len and (bag_of_subtrees.only_lexicon == false or tree.n_children[i] == 0) then
 			-- compute gold score
 			tree.gold_io[col_i]:copy(self.func(	(self.Wwo * tree.outer[col_i])
 											:add(self.Wwi * tree.inner[col_i]):add(self.bw)))
@@ -279,6 +279,14 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 
 			-- error
 			tree.stt_error[i] = math.max(0, 1 - tree.gold_score[i] + tree.stt_score[i])
+			-- debugging
+			--print('-------')
+			--print('node id:' .. i)
+			--print('word id:' .. tree.word_id[i])
+			--print('stt id:' .. tree.stt_id[i])
+			--print(bag_of_subtrees[tree.stt_id[i]])
+			--print('stt error:' .. tree.stt_error[i])
+			
 		else
 			tree.stt_id[i] = 0
 		end
@@ -682,7 +690,7 @@ end
 function IORNN:parse(treebank)
 	local old_uL = self.update_L
 	self.update_L = false
-	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true}, {})
+	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true}, {size=0})
 	self.update_L = old_uL
 	return treebank
 end

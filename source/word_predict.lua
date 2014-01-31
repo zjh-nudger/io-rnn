@@ -4,14 +4,31 @@ require 'tree'
 
 torch.setnumthreads(1)
 
-if #arg == 3 then
+if #arg == 4 then
 	local net_path = arg[1]
 	local treebank_path = arg[2]
 	local dic_path = arg[3]
+	local rule_path = arg[4]
+
+	-- load grammar rules
+	print('load grammar rules...')
+	ruleDic = Dict:new(cfg_template)
+	ruleDic:load(rule_path)
+
+	local rules = {}
+	for _,str in ipairs(ruleDic.id2word) do
+		local comps = split_string(str, "[^ \t]+")
+		local rule = {lhs = comps[1], rhs = {}}
+		for i = 2,#comps do
+			rule.rhs[i-1] = comps[i]
+		end
+		rules[#rules+1] = rule
+	end
 
 	-- load net
 	print('loading net...')
 	local net = IORNN:load(net_path)
+	print(net)
 
 --[[
 	local dim = net.dim
@@ -42,8 +59,8 @@ if #arg == 3 then
 ]]
 	-- load dic
 	local f = torch.DiskFile(dic_path)
-	local dic = f:readObject()
-	setmetatable(dic, Dict_mt)
+	local vocaDic = f:readObject()
+	setmetatable(vocaDic, Dict_mt)
 	f:close()
 	
 	-- load treebank
@@ -51,11 +68,11 @@ if #arg == 3 then
 	local treebank = {}
 	for line in io.lines(treebank_path) do
 		tree = Tree:create_from_string(line)
-		tree:binarize(true,true)
-		print(tree:to_string())
+		--tree:binarize(true,true)
+		--print(tree:to_string())
 
 		n_words = tree.cover[2] - tree.cover[1] + 1
-		tree = tree:to_torch_matrices(dic, 1)
+		tree = tree:to_torch_matrices(vocaDic, ruleDic)
 		treebank[#treebank+1] = tree
 
 		--if #treebank > 2 then break end
@@ -101,10 +118,10 @@ if #arg == 3 then
 
 				print('------------')
 				_, sortedid = word_score:sort(true)
-				print('target word :' .. dic.id2word[word_id])
-				print(outer)
+				print('target word :' .. vocaDic.id2word[word_id])
+				--print(outer)
 				for k = 1,10 do
-					print(dic.id2word[sortedid[k]])
+					print(vocaDic.id2word[sortedid[k]] .. ' ' .. word_score[sortedid[k]])
 				end
 			end
 		end
@@ -114,5 +131,5 @@ if #arg == 3 then
 	print(rank/ total)
 	
 else 
-	print("[iornn] [treebank] [dic]")
+	print("[iornn] [treebank] [dic] [rule path]")
 end

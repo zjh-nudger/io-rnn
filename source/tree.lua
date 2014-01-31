@@ -17,8 +17,14 @@ function Tree:new(label, cover)
 end
 
 function Tree:create_from_string(input , leafId)
-	local str = input:sub(2,input:len()-1)
 	local leafId = leafId or 1
+	local input = trim_string(input)
+
+	if string.sub(input,1,1) ~= '(' then
+		return Tree:new(input, {leafId, leafId})
+	end
+
+	local str = input:sub(2,input:len()-1)
 
 	-- read label
 	local i = str:find(' ')
@@ -27,39 +33,31 @@ function Tree:create_from_string(input , leafId)
 	-- read children
 	i = i + 1
 	
-	-- check if a leaf
-	if str:sub(i,i) ~= '(' then
-		t.children[1] = Tree:new(str:sub(i))
-		t.children[1].cover = {leafId, leafId}
-		t.cover = {leafId, leafId}
-		leafId = leafId + 1
+	local countOpen = 0
+	str = str:sub(i)
+	local j = 1
+	while true do
+		local c = str:sub(j,j)
+		local next_c = str:sub(j+1,j+1)
+		if c == '' then break end
 
-	else
-		local countOpen = 1
-		str = str:sub(i)
-		local j = 2
-		while true do
-			local c = str:sub(j,j)
-			if c == '(' then 
-				countOpen = countOpen + 1
-			elseif c == ')' then
-				countOpen = countOpen - 1
-			end
-
-			if countOpen == 0 then
-				t.children[#t.children+1],leafId = 
-						Tree:create_from_string(str:sub(1,j) , leafId) 
-				if j + 1 > str:len() then break end
-				j = str:find('(',j+1,true)
-				str = str:sub(j)
-				countOpen = 1
-				j = 2
-			else 
-				j = j + 1
-			end
+		if c == '(' then 
+			countOpen = countOpen + 1
+		elseif c == ')' then
+			countOpen = countOpen - 1
 		end
-		t.cover = {t.children[1].cover[1], t.children[#t.children].cover[2]}
+
+		if countOpen == 0 and next_c == ' ' or next_c == '' then
+			t.children[#t.children+1],leafId = 
+					Tree:create_from_string(str:sub(1,j) , leafId) 
+			str = str:sub(j+1)
+			countOpen = 0
+			j = 1
+		else 
+			j = j + 1
+		end
 	end
+	t.cover = {t.children[1].cover[1], t.children[#t.children].cover[2]}
 
 	return t, leafId
 end
@@ -270,8 +268,14 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, grammar) --, nCat)
 		else 
 			word_id[i] = 0
 			if grammar == "CCG" then
-				local comps = split_string(nodel.label, '[^.]+')
-				rule_id[i] = ruleDic:get_id(comps[2])
+				local str = nil
+				if #node.childId == 1 then
+					str = 'X\tX'
+				elseif #noe.childId == 2 then
+					str = 'X\tX\tX'
+				end
+				rule_id[i] = ruleDic:get_id(str)
+				
 			else
 				local str = node.label
 				for j,cid in ipairs(node.childId) do
@@ -336,7 +340,8 @@ print(string)
 
 tree = Tree:create_from_string(string)
 print(tree:to_string())
-
+]]
+--[[
 tree:binarize(true, true)
 print(tree:to_string())
 ]]
@@ -346,4 +351,10 @@ for line in io.lines(arg[1]) do
 	tree:binarize(true, false)
 	print(tree:to_string())
 end
+]]
+--[[
+local string = "(rp (fa (fa Since (ba (ba (lex Taiwan) (conj and (lex (fa South Korea)))) (fa have (ba (fa neither (fa indigenous coal)) (conj nor (lex (fa natural gas))))))) (lp , (ba (lex (fa nuclear power)) (fa will (fa be (fa the (fa favoured (fa electricity (fa generation path))))))))) .)"
+print(string)
+tree = Tree:create_from_string(string)
+print(tree:to_string())
 ]]

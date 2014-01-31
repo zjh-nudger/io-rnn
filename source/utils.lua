@@ -1,5 +1,9 @@
 require 'cutils'
 
+function trim_string(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
 function split_string( str , pattern )
 	local pattern = pattern or "[^\t ]+"
 	local toks = {}
