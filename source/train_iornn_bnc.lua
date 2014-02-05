@@ -94,10 +94,11 @@ if #arg == 5 then
 					local tree = nil
 					local tree_torch = nil
 					if pcall(function() 
-								tree = Tree:create_from_string(line)
-								tree_torch = tree:to_torch_matrices(vocaDic, ruleDic)
-							end) then
-						-- extract subtrees 
+							tree = Tree:create_from_string(line)
+							tree_torch = tree:to_torch_matrices(vocaDic, ruleDic, grammar)
+						end) 
+					then
+				-- extract subtrees 
 						for _,subtree in ipairs(tree:all_nodes()) do
 							local len = subtree.cover[2]-subtree.cover[1]+1
 							if len > 1 and len <= bag_of_subtrees.max_phrase_len and math.random() > 0.5 and bag_of_subtrees.only_lexicon == false then

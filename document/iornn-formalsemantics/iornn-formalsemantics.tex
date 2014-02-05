@@ -1,0 +1,307 @@
+\documentclass[10pt,handout]{beamer}
+\usepackage[latin1]{inputenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{qtree}
+\usepackage[round]{natbib}
+\def\newblock{}
+
+\setbeamertemplate{footline}[page number]
+
+%\usetheme{Marburg}
+
+\title{Inner/Outer Meanings in Formal Semantics perspective}
+
+\author{Phong Le}
+
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Example: Mice love cheese}
+\Tree [.S mice [.VP love cheese ] ]
+\end{frame}
+
+\begin{frame}
+\frametitle{Formal semantics perspective}
+\Tree [.S\textsuperscript{ba}
+			$mice$\\NP\\mice
+			[.S\textbackslash NP\textsuperscript{fa}
+					$\lambda{y}\lambda{x}.love(x,y)$\\(S\textbackslash NP)/NP\\love
+					$cheese$\\NP\\cheese ] ]
+\end{frame}
+
+\begin{frame}
+\frametitle{Five CCG rules}
+\begin{itemize}
+	\item Forward Application (fa)\\
+		$X/Y:P \;\;\; Y:Q \Rightarrow X:PQ$
+	\item Backward Application (ba)\\
+		$Y:P \;\;\; X \backslash Y:Q \Rightarrow X:QP$
+	\item Composition (comp)\\
+		$X/Y: P \;\;\; Y/Z: Q \Rightarrow X/Z: \lambda x. (P (Q x))$
+	\item Coordination (conj)\\
+		$X:P \;\; conj \;\; X':P' \Rightarrow X'': \lambda x. (P x \wedge P' x)$
+	\item Type raising (tr)\\
+		$NP:a \Rightarrow T/(T \backslash NP): \lambda R. (R a)$
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Formal semantics perspective}
+
+\Tree [.S\textsuperscript{ba}
+			$mice$\\NP\\mice
+			[.$\lambda{x}.love(x,cheese)$\\S\textbackslash NP\textsuperscript{fa}
+					$\lambda{y}\lambda{x}.love(x,y)$\\(S\textbackslash NP)/NP\\love
+					$cheese$\\NP\\cheese ] ]
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Formal semantics perspective (cont.)}
+
+\Tree [.$love(mice,cheese)$\\S\textsuperscript{ba}
+			$mice$\\NP\\mice
+			[.$\lambda{x}.love(x,cheese)$\\S\textbackslash NP\textsuperscript{fa}
+					$\lambda{y}\lambda{x}.love(x,y)$\\(S\textbackslash NP)/NP\\love
+					$cheese$\\NP\\cheese ] ]
+
+\end{frame}
+
+\begin{frame}
+\frametitle{They are ``inner'' meanings}
+
+\Tree [.$\mathbf{i}_S=love(mice,cheese)$\\S\textsuperscript{ba}
+			$\mathbf{i}_m=mice$\\NP\\mice
+			[.$\mathbf{i}_{S \setminus NP}=\lambda{x}.love(x,cheese)$\\S\textbackslash NP\textsuperscript{fa}
+					$\mathbf{i}_l=\lambda{y}\lambda{x}.love(x,y)$\\(S\textbackslash NP)/NP\\love
+					$\mathbf{i}_c=cheese$\\NP\\cheese ] ]
+
+\end{frame}
+
+\begin{frame}
+\frametitle{How about ``outer'' meanings?}
+
+\Tree [.$\mathbf{o}_S=?$\\$\mathbf{i}_S=love(mice,cheese)$\\S\textsuperscript{ba}
+			$\mathbf{o}_m=?$\\$\mathbf{i}_m=mice$\\NP\\mice
+			[.$\mathbf{o}_{S \setminus NP}=?$\\$\mathbf{i}_{S \setminus NP}=\lambda{x}.love(x,cheese)$\\S\textbackslash NP\textsuperscript{fa}
+					$\mathbf{o}_l=?$\\$\mathbf{i}_l=\lambda{y}\lambda{x}.love(x,y)$\\(S\textbackslash NP)/NP\\love
+					$\mathbf{o}_c=?$\\$\mathbf{i}_c=cheese$\\NP\\cheese ] ]
+
+\end{frame}
+
+\begin{frame}
+\begin{block}{Key point}
+Outer meanings (i.e., context representations) are for word/phrase prediction.
+\end{block}
+
+\begin{block}{Example}
+\textbf{World model $M$}:
+\begin{itemize}
+	\item Mice love cheese
+	\item Tom love cheese
+	\item Mice hate cats
+\end{itemize}
+What can we predict about X given a context:
+\begin{itemize}
+	\item X love cheese $\rightarrow$ $X \in \{mice,Tom\}$
+	\item mice X cheese $\rightarrow$ $X \in \{love\}$
+\end{itemize}
+\end{block}
+
+\pause
+\begin{block}{Proposal}
+$ M \models \mathbf{o} (\mathbf{i})$
+\end{block}
+\end{frame}
+
+\begin{frame}
+\begin{itemize}
+	\item Define ``variable-swapping'' function: $\gamma(\lambda x \lambda y.Q) = \lambda y \lambda x.Q$\\
+	($\gamma = \lambda U. \lambda y \lambda x. Uxy$)
+%Proof
+%\begin{align*}
+%	\gamma(\lambda x \lambda y.Q)&= (\lambda U \lambda y \lambda x. Uxy)(\lambda x \lambda y.Q)\\
+%	&= \lambda y \lambda x. (\lambda x \lambda y.Q)xy\\
+%	&= \lambda y \lambda x. Q[x:=x,y:=y]
+%\end{align*}
+	
+	\pause
+	\item Define six ``variable-raising'' functions
+	\begin{align*}
+		\beta_1(\lambda P.P) &= \lambda x \lambda P. Px \\
+		\beta_2(\lambda P.Pv) &= \lambda y \lambda P. Pyv \\
+		\beta_3(\lambda P.P) &= \lambda Q \lambda P. (Q P) \\
+		\beta_4(\lambda P.Pv) &= \lambda Q \lambda P. (Q (Pv)) \\
+		\beta_5(\lambda P.P) &= \lambda Q \lambda P. (Q \wedge P) \\
+		\beta_6(\lambda P.Pv) &= \lambda Q \lambda P. (Qv \wedge Pv)
+	\end{align*}
+	
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Five extended CCG rules}
+\begin{itemize}
+	\item Forward Application (fa)\\
+		\Tree [.$\mathbf{o}_X$\\$\mathbf{i}_X=PQ$
+						$\mathbf{o}_{X/Y}=\beta_k(\mathbf{o}_X)\mathbf{i}_Y$\\$\mathbf{i}_{X/Y}=P$
+						$\mathbf{o}_{Y}=\gamma(\beta_k(\mathbf{o}_X))\mathbf{i}_{X/Y}$\\$\mathbf{i}_{Y}=Q$ ]\\
+		($k=2$ if $X$ is a complex type, otherwise $k=1$)
+		
+	\pause
+	\item Backward Application (ba)\\
+		\Tree [.$\mathbf{o}_X$\\$\mathbf{i}_X=QP$
+						$\mathbf{o}_{Y}=\gamma(\beta_k(\mathbf{o}_X))\mathbf{i}_{X \backslash Y}$\\$\mathbf{i}_{Y}=P$
+						$\mathbf{o}_{X \backslash Y}=\beta_k(\mathbf{o}_X)\mathbf{i}_{Y}$\\$\mathbf{i}_{X \backslash Y}=Q$ ]\\
+		($k=2$ if $X$ is a complex type, otherwise $k=1$)
+
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\begin{itemize}
+	\item Composition (comp)\\
+		\Tree [.$\mathbf{o}_{X/Z}$\\$\mathbf{i}_{X/Z}=\lambda y.(P(Qy))$
+						$\mathbf{o}_{X/Y}=\gamma(\beta_4(\mathbf{o}_{X/Z}))\mathbf{i}_{Y/Z}$\\$\mathbf{i}_{X/Y}=P$
+						$\mathbf{o}_{Y/Z}=\beta_4(\mathbf{o}_{X/Z}))\mathbf{i}_{X/Y}$\\$\mathbf{i}_{Y/Z}=Q$ ]\\
+		%($k=4$ if $X$ is a complex type, otherwise $k=3$)
+		
+	\pause
+	\item Coordination (conj)\\
+		\Tree [.$\mathbf{o}_{X''}$\\$\mathbf{i}_{X''}=\lambda x.(Qx\wedge{Px})$
+						$\mathbf{o}_{X}=\gamma(\beta_k(\mathbf{o}_{X''}))\mathbf{i}_{X'}$\\$\mathbf{i}_{X}=P$
+						$\mathbf{o}_{X'}=\beta_k(\mathbf{o}_{X''})\mathbf{i}_{X}$\\$\mathbf{i}_{X'}=P'$ 
+				]\\
+		($k=6$ if $X''$ is a complex type, otherwise $k=5$)
+
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\begin{itemize}
+	\item Type raising (tr)\\
+		\Tree [.$\mathbf{o}_{T/(T \backslash NP)}$\\$\mathbf{i}_{T/(T \backslash NP)}=\lambda R.(Ra)$
+						$\mathbf{o}_{NP}=\mathbf{o}_{T/(T \backslash NP)}(\lambda R.R)$\\$\mathbf{i}_{NP}=a$
+				]\\
+	
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Example: Mice love cheese}
+Compute $\mathbf{o}_S$
+
+\Tree [.\fbox{$\mathbf{o}_S=\lambda{P}.P$}\\$\mathbf{i}_S=love(mice,cheese)$
+			$\mathbf{o}_m=?$\\$\mathbf{i}_m=mice$\\mice
+			[.$\mathbf{o}_{S \setminus NP}=?$\\$\mathbf{i}_{S \setminus NP}=\lambda{x}.love(x,cheese)$
+					$\mathbf{o}_l=?$\\$\mathbf{i}_l=\lambda{y}\lambda{x}.love(x,y)$\\love
+					$\mathbf{o}_c=?$\\$\mathbf{i}_c=cheese$\\cheese ] ]
+
+\pause
+$\mathbf{o}_S (\mathbf{i}_S) = (\lambda P.P)(love(mice,cheese)) = love(mice,cheese)$\\
+Hence, $M \models \mathbf{o}_S (\mathbf{i}_S)$
+\end{frame}
+
+\begin{frame}{Compute $\mathbf{o}_m$}
+
+\Tree [.\fbox{$\mathbf{o}_S=\lambda{P}.P$}\\$\mathbf{i}_S=love(mice,cheese)$
+			\setlength{\fboxrule}{2pt}\fbox{$\mathbf{o}_m=?$}\\$\mathbf{i}_m=mice$\\mice
+			[.$\mathbf{o}_{S \setminus NP}=?$\\\fbox{$\mathbf{i}_{S \setminus NP}=\lambda{x}.love(x,cheese)$}
+					$\mathbf{o}_l=?$\\$\mathbf{i}_l=\lambda{y}\lambda{x}.love(x,y)$\\love
+					$\mathbf{o}_c=?$\\$\mathbf{i}_c=cheese$\\cheese ] ]
+
+\pause
+\begin{align*}
+	\mathbf{o}_m &= comp_{ba,left}(\mathbf{o}_S,\mathbf{i}_{S \setminus NP}) = \gamma(\beta_1(\mathbf{o}_S)) \mathbf{i}_{S \setminus NP}\\
+	&=(\lambda P \lambda x. Px)(\lambda{x}.love(x,cheese))=\lambda x.love(x,cheese)
+\end{align*}
+
+\pause
+$\mathbf{o}_m(\mathbf{i}_m) = \big(\lambda x.love(x,cheese)\big)(mice) = love(mice,cheese)$\\
+Hence, $M \models \mathbf{o}_m (\mathbf{i}_m)$
+\end{frame}
+
+\begin{frame}{Compute $\mathbf{o}_{S \setminus NP}$}
+
+\Tree [.\fbox{$\mathbf{o}_S=\lambda{P}.P$}\\$\mathbf{i}_S=love(mice,cheese)$
+			$\mathbf{o}_m=?$\\\fbox{$\mathbf{i}_m=mice$}\\mice
+			[.\setlength{\fboxrule}{2pt}\fbox{$\mathbf{o}_{S \setminus NP}=?$}\\$\mathbf{i}_{S \setminus NP}=\lambda{x}.love(x,cheese)$ 
+					$\mathbf{o}_l=?$\\$\mathbf{i}_l=\lambda{y}\lambda{x}.love(x,y)$\\love
+					$\mathbf{o}_c=?$\\$\mathbf{i}_c=cheese$\\cheese ] ]
+
+\pause
+\begin{align*}
+	\mathbf{o}_{S \setminus NP} &= comp_{ba,right}(\mathbf{o}_S,\mathbf{i}_m) = \beta_1(\mathbf{o}_S)(\mathbf{i}_m)\\
+	&=\big(\lambda x \lambda{P}.Px\big)\big(mice) =\lambda P.P\;mice
+\end{align*}
+
+\pause
+$\mathbf{o}_{S \setminus NP}(\mathbf{i}_{S \setminus NP}) = \big(\lambda P.P\;mice \big)(\lambda{x}.love(x,cheese)) = love(mice,cheese)$\\
+Hence, $M \models \mathbf{o}_{S \setminus NP} (\mathbf{i}_{S \setminus NP})$
+\end{frame}
+
+\begin{frame}{Compute $\mathbf{o}_{l}$}
+
+\Tree [.$\mathbf{o}_S=\lambda{P}.P$\\$\mathbf{i}_S=love(mice,cheese)$
+			$\mathbf{o}_m=?$\\$\mathbf{i}_m=mice$\\mice
+			[.\fbox{$\mathbf{o}_{S \setminus NP}=\lambda P.P\;mice$}\\$\mathbf{i}_{S \setminus NP}=\lambda{x}.love(x,cheese)$ 
+					\setlength{\fboxrule}{2pt}\fbox{$\mathbf{o}_l=?$}\\$\mathbf{i}_l=\lambda{y}\lambda{x}.love(x,y)$\\love
+					$\mathbf{o}_c=?$\\\fbox{$\mathbf{i}_c=cheese$}\\cheese ] ]
+
+\pause
+\begin{align*}
+	\mathbf{o}_{l} &= comp_{fa,left}(\mathbf{o}_{S \setminus NP},\mathbf{i}_c) = \beta_2(\mathbf{o}_{S \setminus NP})(\mathbf{i}_c) \\
+	&=\big(\lambda y \lambda{P}.P\:y\;mice\big)\big(cheese) =\lambda P.P\;cheese\;mice
+\end{align*}
+
+\pause
+$\mathbf{o}_{l}(\mathbf{i}_{l}) = \big(\lambda P.P\;cheese\;mice \big)(\lambda y \lambda x.love(x,y)) = love(mice,cheese)$\\
+Hence, $M \models \mathbf{o}_{l}(\mathbf{i}_{l})$
+\end{frame}
+
+\begin{frame}{Compute $\mathbf{o}_{c}$}
+
+\Tree [.$\mathbf{o}_S=\lambda{P}.P$\\$\mathbf{i}_S=love(mice,cheese)$
+			$\mathbf{o}_m=?$\\$\mathbf{i}_m=mice$\\mice
+			[.\fbox{$\mathbf{o}_{S \setminus NP}=\lambda P.P\;mice$}\\$\mathbf{i}_{S \setminus NP}=\lambda{x}.love(x,cheese)$ 
+					$\mathbf{o}_l=?$\\\fbox{$\mathbf{i}_l=\lambda{y}\lambda{x}.love(x,y)$}\\love
+					\setlength{\fboxrule}{2pt}\fbox{$\mathbf{o}_c=?$}\\$\mathbf{i}_c=cheese$\\cheese ] ]
+
+\pause
+\begin{align*}
+	\mathbf{o}_{c} &= comp_{fa,right}(\mathbf{o}_{S \setminus NP},\mathbf{i}_l) = \gamma(\beta_2(\mathbf{o}_{S \setminus NP}))(\mathbf{i}_l) \\
+	&=\big(\lambda{P} \lambda y.P\:y\;mice\big)\big( \lambda{y}\lambda{x}.love(x,y) \big) = \lambda y. love(mice,y)
+\end{align*}
+
+\pause
+$\mathbf{o}_{c}(\mathbf{i}_{c}) = (\lambda y. love(mice,y))(cheese) = love(mice,cheese)$\\
+Hence, $M \models \mathbf{o}_{l}(\mathbf{i}_{l})$
+\end{frame}
+
+\begin{frame}
+\frametitle{Formal semantics perspective vs IORNN}
+\begin{table}\footnotesize
+\begin{tabular}{p{2cm}|p{4cm}|p{4cm}}
+	\hline
+	 & Formal semantics & IORNN \\ \hline
+	 $\mathbf{o}_{S}$ & $=\lambda P.P$ & $=\mathbf{o}_{\emptyset}$ \\ \hline \pause
+	 Compose inner meanings & five CCG rules & $\mathbf{i}_{p_1} = f(\mathbf{W}_1^i \mathbf{i}_{x} + \mathbf{W}_2^i \mathbf{i}_{y} + \mathbf{b}^i)$ \\ \hline \pause
+	 Compose outer meanings & five extended CCG rules & $\mathbf{o}_{p_1} = g(\mathbf{W}_1^o \mathbf{o}_{p_2} + \mathbf{W}_2^o \mathbf{i}_{z} + \mathbf{b}^o)$ \\ \hline \pause
+	 Criterion & $M \models \mathbf{o}(\mathbf{i})$ (binary scores) & correct words/phrases are given higher scores than others (continuous scores) \\ \hline \pause
+	 Outer meanings' role & select words/phrases that make complete sentences correct in a given world model & select words/phrases that tend to occur in given contexts \\ \hline
+	 
+\end{tabular}
+\end{table}
+\end{frame}
+
+\end{document}

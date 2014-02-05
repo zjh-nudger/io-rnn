@@ -270,11 +270,20 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, grammar) --, nCat)
 			if grammar == "CCG" then
 				local str = nil
 				if #node.childId == 1 then
-					str = 'X\tX'
-				elseif #noe.childId == 2 then
-					str = 'X\tX\tX'
+					str = node.label..'\tX'
+				elseif #node.childId == 2 then
+					str = node.label..'\tX\tX'
 				end
 				rule_id[i] = ruleDic:get_id(str)
+
+				if rule_id[i] == ruleDic.word2id["UNKNOWN"] then
+					if #node.childId == 1 then
+						str = 'X\tX'
+					elseif #node.childId == 2 then
+						str = 'X\tX\tX'
+					end
+					rule_id[i] = ruleDic:get_id(str)
+				end
 				
 			else
 				local str = node.label
@@ -292,7 +301,8 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, grammar) --, nCat)
 				end
 			end
 
-			if rule_id[i] == 1 then 
+			if rule_id[i] == 1 then
+				print(node.label) 
 				error('invalid rule in')
 			end
 		end
@@ -357,4 +367,19 @@ local string = "(rp (fa (fa Since (ba (ba (lex Taiwan) (conj and (lex (fa South 
 print(string)
 tree = Tree:create_from_string(string)
 print(tree:to_string())
+
+-- load word emb and grammar rules
+print('load wordembeddngs...')
+local f = torch.DiskFile(arg[1], 'r')
+local vocaDic = f:readObject(); setmetatable(vocaDic, Dict_mt)
+local wembs = f:readObject()
+f:close()
+
+print('load grammar rules...')
+ruleDic = Dict:new(cfg_template)
+ruleDic:load(arg[2])
+
+tree = tree:to_torch_matrices(vocaDic, ruleDic, 'CCG')
+print(tree)
 ]]
+

@@ -9,6 +9,7 @@ torch.setnumthreads(1)
 function load_gold(test_type)
 	-- load human rates
 	local cases = {}
+	grammar = 'CCG'
 
 	for line in io.lines(human_score_path) do
 		local comps = split_string(line)
@@ -16,20 +17,20 @@ function load_gold(test_type)
 		if comps[2] == test_type then
 			local str = nil
 			if test_type == 'adjectivenouns' then
-				str = {'(NP (JJ '..comps[4].. ') (NN '..comps[5]..'))', 
-						'(NP (JJ '..comps[6]..') (NN '..comps[7]..'))' }
+				str = {'(fa '..comps[4].. ' ' ..comps[5]..')', 
+						'(fa '..comps[6]..' '..comps[7]..')' }
 			elseif test_type == 'verbobjects' then 
-				str = {'(VP (VBP '..comps[5].. ') (NP (NN '..comps[4]..')))',
-						'(VP (VBP '..comps[7].. ') (NP (NN '..comps[6]..')))'}
+				str = {'(fa '..comps[5].. ' (lex '..comps[4]..'))',
+						'(fa '..comps[7].. ' (lex '..comps[6]..'))'}
 			elseif test_type == 'compoundnouns' then
-				str = {'(NP (NN '..comps[4].. ') (NN '..comps[5]..'))', 
-						'(NP (NN '..comps[6]..') (NN '..comps[7]..'))' }
+				str = {'(fa '..comps[4].. ' '..comps[5]..')', 
+						'(fa '..comps[6]..' '..comps[7]..')' }
 			end
 			--print(str)
 			local parse = {Tree:create_from_string(str[1])
-								:to_torch_matrices(vocaDic, ruleDic),
+								:to_torch_matrices(vocaDic, ruleDic, grammar),
 							Tree:create_from_string(str[2])
-								:to_torch_matrices(vocaDic, ruleDic) }
+								:to_torch_matrices(vocaDic, ruleDic, grammar) }
 
 
 			local case_id = line --str[1] .. ' ; ' .. str[2]
