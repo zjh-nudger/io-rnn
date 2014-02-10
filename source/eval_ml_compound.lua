@@ -122,6 +122,7 @@ if #arg == 4 then
 	f = torch.DiskFile(vocaDic_emb_path, 'r')
 	vocaDic = f:readObject()
 	setmetatable(vocaDic, Dict_mt)
+	emb = f:readObject()
 	f:close()
 
 	-- load grammar rules
@@ -142,7 +143,7 @@ if #arg == 4 then
 	-- load net
 	print('load net...')
 	net = IORNN:load(net_path)
-	emb = net.L
+	--net.L = emb
 
 	-- test
 	func_list = {

@@ -7,7 +7,7 @@ if #arg == 2 then
 	output_path = arg[2]
 
 	-- load dic --
-	local dic = Dict:new(turian_template)
+	local dic = Dict:new(blacoe_template)
 	dic:load(dic_path, true)
 
 	-- load org embs --

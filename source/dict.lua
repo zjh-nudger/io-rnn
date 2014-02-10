@@ -62,11 +62,18 @@ end
 
 --***************** template function *************--
 function huang_template(word)
-	if tonumber(word) ~= nil then 
-		return string.gsub(word, '[0-9]', 'CD')
-	else 
-		return string.lower(word)
-	end
+
+		if word == 'UNKNOWN' or word == 'PADDING' then 
+			return word
+		elseif word == '-LRB-' then return '('
+		elseif word == '-RRB-' then return ')'
+		elseif word == '-LSB-' then return '['
+		elseif word == '-RSB-' then return ']'
+		elseif word == '-LCB-' then return '{'
+		elseif word == '-RCB-' then return '}'
+		else
+			return string.lower(string.gsub(word, '[0-9]', 'CD'))
+		end
 end
 
 function collobert_template(word)
@@ -83,8 +90,32 @@ function collobert_template(word)
 	end
 end
 
+function blacoe_template(word)
+	if word == 'UNKNOWN' or word == 'PADDING' then 
+		return word
+	elseif word == '-LRB-' then return '('
+	elseif word == '-RRB-' then return ')'
+	elseif word == '-LSB-' then return '['
+	elseif word == '-RSB-' then return ']'
+	elseif word == '-LCB-' then return '{'
+	elseif word == '-RCB-' then return '}'
+	else
+		return string.lower(word)
+	end
+end
+
 function turian_template(word)
-	return word	
+	if word == 'UNKNOWN' then 
+		return word
+	elseif word == '-LRB-' then return '('
+	elseif word == '-RRB-' then return ')'
+	elseif word == '-LSB-' then return '['
+	elseif word == '-RSB-' then return ']'
+	elseif word == '-LCB-' then return '{'
+	elseif word == '-RCB-' then return '}'
+	else
+		return word
+	end
 end
 
 function cfg_template(rule)

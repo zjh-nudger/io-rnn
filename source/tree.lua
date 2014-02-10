@@ -21,7 +21,7 @@ function Tree:create_from_string(input , leafId)
 	local input = trim_string(input)
 
 	if string.sub(input,1,1) ~= '(' then
-		return Tree:new(input, {leafId, leafId})
+		return Tree:new(input, {leafId, leafId}), leafId+1
 	end
 
 	local str = input:sub(2,input:len()-1)
@@ -363,7 +363,8 @@ for line in io.lines(arg[1]) do
 end
 ]]
 --[[
-local string = "(rp (fa (fa Since (ba (ba (lex Taiwan) (conj and (lex (fa South Korea)))) (fa have (ba (fa neither (fa indigenous coal)) (conj nor (lex (fa natural gas))))))) (lp , (ba (lex (fa nuclear power)) (fa will (fa be (fa the (fa favoured (fa electricity (fa generation path))))))))) .)"
+--local string = "(rp (fa (fa Since (ba (ba (lex Taiwan) (conj and (lex (fa South Korea)))) (fa have (ba (fa neither (fa indigenous coal)) (conj nor (lex (fa natural gas))))))) (lp , (ba (lex (fa nuclear power)) (fa will (fa be (fa the (fa favoured (fa electricity (fa generation path))))))))) .)"
+local string = "(rp (ba You (fa can (ba (ba (fa (fa keep it) (fa at (lex home))) (fa with (lex (fa other (fa important papers))))) (lp , (conj or (ba (fa (fa give it) (fa to (ba (fa your executor) (lp , (ba (fa your (fa professional adviser)) (lp , (conj or (fa your bank)))))))) (lex (fa to (ba look after))))))))) .)"
 print(string)
 tree = Tree:create_from_string(string)
 print(tree:to_string())
@@ -381,5 +382,5 @@ ruleDic:load(arg[2])
 
 tree = tree:to_torch_matrices(vocaDic, ruleDic, 'CCG')
 print(tree)
-]]
 
+]]

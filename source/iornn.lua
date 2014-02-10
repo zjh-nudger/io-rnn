@@ -80,12 +80,12 @@ function IORNN:new(struct, rules)
 	net.bCat = uniform(nCat, 1, -1, 1):mul(0) 
 
 	-- wordembedding
-	net.L = struct.Lookup --torch.randn(struct.Lookup:size()):mul(0.0001)
+	net.L = struct.Lookup
 	net.func = struct.func
 	net.funcPrime = struct.funcPrime
 
 	-- root outer
-	net.root_outer = uniform(dim, 1, -1, 1):mul(0.0001)
+	net.root_outer = uniform(dim, 1, -1, 1):mul(0.001)
 	
 	setmetatable(net, IORNN_mt)
 	return net
@@ -222,6 +222,8 @@ end
 function IORNN:forward_outside(tree, bag_of_subtrees)
 	-- for substitued subtrees
 	--tree.stt_id = -torch.linspace(1,tree.n_nodes,tree.n_nodes) + tree.n_nodes+1
+	--tree.stt_id:fill(2)
+	--tree.stt_id:copy(tree.word_id)
 	tree.stt_id = torch.rand(tree.n_nodes):mul(bag_of_subtrees.size):add(1):floor()
 	
 	if tree.outer == nil then 
@@ -264,7 +266,10 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 
 		-- compute stt error / the criterion could be the sizes of subtrees (e.g. containing less than 4 words)
 		local len = tree.cover[{2,i}] - tree.cover[{1,i}] + 1
-		if bag_of_subtrees.size > 0 and len <= bag_of_subtrees.max_phrase_len and (bag_of_subtrees.only_lexicon == false or tree.n_children[i] == 0) then
+
+		if bag_of_subtrees.size > 0 and len <= bag_of_subtrees.max_phrase_len and 
+				(bag_of_subtrees.only_lexicon == false or tree.n_children[i] == 0) then
+
 			-- compute gold score
 			tree.gold_io[col_i]:copy(self.func(	(self.Wwo * tree.outer[col_i])
 											:add(self.Wwi * tree.inner[col_i]):add(self.bw)))
@@ -278,15 +283,7 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 			tree.stt_score[i] = self.Ws * tree.stt_io[col_i]
 
 			-- error
-			tree.stt_error[i] = math.max(0, 1 - tree.gold_score[i] + tree.stt_score[i])
-			-- debugging
-			--print('-------')
-			--print('node id:' .. i)
-			--print('word id:' .. tree.word_id[i])
-			--print('stt id:' .. tree.stt_id[i])
-			--print(bag_of_subtrees[tree.stt_id[i]])
-			--print('stt error:' .. tree.stt_error[i])
-			
+			tree.stt_error[i] = math.max(0, 1 - tree.gold_score[i] + tree.stt_score[i])			
 		else
 			tree.stt_id[i] = 0
 		end
@@ -555,6 +552,13 @@ else
 
 		cost = cost / nSample + config.lambda/2 * torch.pow(M,2):sum()
 		grad:div(nSample):add(M * config.lambda)
+
+		p:start('lambda L')
+		if self.update_L then
+			cost = cost + (config.lambda_L - config.lambda)/2 * torch.pow(self.L,2):sum()
+			grad[{{-self.L:nElement(),-1}}]:add(self.L * (config.lambda_L-config.lambda))
+		end
+		p:lap('lambda L')
 	end
 
 	return cost, grad, treebank
@@ -663,7 +667,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			-- extract data
 			p:start("compute grad")
 			cost, Grad = self:computeCostAndGrad(subtreebank, 
-							{lambda = lambda, alpha = alpha, beta = beta}, 
+							{lambda = lambda.lambda, lambda_L=lambda.lambda_L, alpha = alpha, beta = beta}, 
 							bag_of_subtrees)
 			p:lap("compute grad")
 
@@ -731,21 +735,27 @@ end
 	vocaDic.word2id = word2id
 
 	ruleDic = Dict:new(cfg_template)
-	ruleDic:load("grammar/grammar_rules.txt")
+	ruleDic:load("grammar/cfg_simple_rule.txt")
 	
 
 	bag_of_subtrees = {}
-	bag_of_subtrees.max_phrase_len = 100
+	bag_of_subtrees.max_phrase_len = 1
+	bag_of_subtrees.only_lexicon = true
 	for _,tree in ipairs(treebank) do
 		for _,subtree in ipairs(tree:all_nodes()) do
 			local len = subtree.cover[2] - subtree.cover[1] + 1
+			--print(subtree)
+			--print(len)
 			if len <= bag_of_subtrees.max_phrase_len then
-				bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic)
+				--print(len)
+				bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic, 'CFG')
 				--bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic)
 				--bag_of_subtrees[#bag_of_subtrees+1] = subtree:to_torch_matrices(vocaDic, ruleDic)
 			end
 		end
 	end
+	bag_of_subtrees.size = #bag_of_subtrees
+	print(bag_of_subtrees[2])
 	
 	for i = 1,#treebank do
 		treebank[i] = treebank[i]:to_torch_matrices(vocaDic, ruleDic)
@@ -766,9 +776,9 @@ end
 	struct = {Lookup = torch.randn(2,17), nCategory = 5, func = tanh, funcPrime = tanhPrime}
 	net = IORNN:new(struct, rules)
 
-	print(net)	
+	--print(net)	
 
-	config = {lambda = 1e-4, alpha = 0, beta = 1}
-	net.update_L = true
+	config = {lambda = 1e-4, lambda_L = 1e-7, alpha = 0, beta = 1}
+	--net.update_L = true
 	net:checkGradient(treebank, config, bag_of_subtrees)
 ]]

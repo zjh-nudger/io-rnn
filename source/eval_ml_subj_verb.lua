@@ -6,6 +6,8 @@ require 'iornn'
 
 torch.setnumthreads(1)
 
+grammar = 'CCG'
+
 function load_gold()
 	-- load human rates
 	local cases = {}
@@ -16,12 +18,20 @@ function load_gold()
 
 		local comps = split_string(line)
 
-		local str = '(TOP (NP '..comps[3].. ') (VP '..comps[2]..'))'
-		local parse = Tree:create_from_string(str):to_torch_matrices(dic, 1)
+		local str = nil
+		local str_lm = nil
 
-		local str = '(TOP (NP '..comps[3].. ') (VP '..comps[4]..'))'
-		local parse_lm = Tree:create_from_string(str)
-							:to_torch_matrices(dic, 1)
+		if grammar == 'CCG' then 
+			str = '(ba (lex '..comps[3].. ') '..comps[2]..')'
+			str_lm = '(ba (lex '..comps[3].. ') '..comps[4]..')'
+		elseif grammar == 'CFG' then
+			str = nil
+		end
+
+		local parse = Tree:create_from_string(str)
+							:to_torch_matrices(vocaDic, ruleDic, grammar)
+		local parse_lm = Tree:create_from_string(str_lm)
+							:to_torch_matrices(vocaDic, ruleDic, grammar)
 
 		local case_id = line --str .. comps[4]
 		local human_rate = tonumber(comps[5])
@@ -31,9 +41,9 @@ function load_gold()
 			cases[case_id] = {
 						parse = parse,
 						parse_lm = parse_lm,
-						verb_id = dic:get_id(comps[2]),
-						noun_id = dic:get_id(comps[3]),
-						landmark_id = dic:get_id(comps[4]),
+						verb_id = vocaDic:get_id(comps[2]),
+						noun_id = vocaDic:get_id(comps[3]),
+						landmark_id = vocaDic:get_id(comps[4]),
 						human_rates = {human_rate},
 						is_high = is_high 
 					}
@@ -103,26 +113,43 @@ function rate_iornn( case )
 	local tree_lm = net:parse({case.parse_lm})[1]
 	local sem1 = tree.inner[{{},{1}}]
 	local sem2 = tree_lm.inner[{{},{1}}]
-	--local sem2 = tanh(net.L[{{},{case.landmark_id}}])
+	--local sem2 = net.L[{{},{case.landmark_id}}]:clone()
 	return compute_score(sem1, sem2)[1]
 end
 
-if #arg == 3 then
-	dic_emb_path = arg[1]
-	human_score_path = arg[2]
-	net_path = arg[3]
+if #arg == 4 then
+	vocaDic_emb_path = arg[1]
+	rule_path = arg[2]
+	human_score_path = arg[3]
+	net_path = arg[4]
 
-	-- load dic & emb
-	print('load dic & emb...')
-	f = torch.DiskFile(dic_emb_path, 'r')
-	dic = f:readObject()
-	setmetatable(dic, Dict_mt)
+	-- load vocaDic & emb
+	print('load vocaDic & emb...')
+	f = torch.DiskFile(vocaDic_emb_path, 'r')
+	vocaDic = f:readObject()
+	setmetatable(vocaDic, Dict_mt)
+	emb = f:readObject()
 	f:close()
+
+	-- load grammar rules
+	print('load grammar rules...')
+	ruleDic = Dict:new(cfg_template)
+	ruleDic:load(rule_path)
+
+	local rules = {}
+	for _,str in ipairs(ruleDic.id2word) do
+		local comps = split_string(str, "[^ \t]+")
+		local rule = {lhs = comps[1], rhs = {}}
+		for i = 2,#comps do
+			rule.rhs[i-1] = comps[i]
+		end
+		rules[#rules+1] = rule
+	end
 
 	-- load net
 	print('load net...')
 	net = IORNN:load(net_path)
-	emb = net.L
+	--net.L = emb
 
 	-- load gold
 	print('load gold and context...')
@@ -140,5 +167,5 @@ if #arg == 3 then
 	end
 
 else
-	print('<dic_emb_path> <corpus dir> <net path>')
+	print('<vocaDic_emb_path> <rule path> <corpus dir> <net path>')
 end

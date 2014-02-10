@@ -41,12 +41,12 @@ if #arg == 5 then
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
 						func = tanh, funcPrime = tanhPrime }
 	local net = IORNN:new(struct, rules)
+	--local net = IORNN:load('model_completeccg_bnc_shuf_1/model_6_1')
 
 	net.update_L = false
 
-	--local net = IORNN:load('model_gr_bnc_shuf_1/model_1_1')
-
 	lambda = 1e-4
+	lambda_L = 1e-8
 	batchsize = 100
 	alpha = 0
 	beta = 1
@@ -122,7 +122,8 @@ if #arg == 5 then
 
 			adagrad_config, adagrad_state = 
 				net:train_with_adagrad(traintreebank, devtreebank, batchsize,
-										1, lambda, alpha, beta, prefix,
+										1, {lambda = lambda, lambda_L = lambda_L}, 
+										alpha, beta, prefix,
 										adagrad_config, adagrad_state, bag_of_subtrees)
 		end
 	end

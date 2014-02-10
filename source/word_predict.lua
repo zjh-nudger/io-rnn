@@ -14,6 +14,7 @@ if #arg == 4 then
 	print('load grammar rules...')
 	ruleDic = Dict:new(cfg_template)
 	ruleDic:load(rule_path)
+	local grammar = 'CFG'
 
 	local rules = {}
 	for _,str in ipairs(ruleDic.id2word) do
@@ -28,7 +29,7 @@ if #arg == 4 then
 	-- load net
 	print('loading net...')
 	local net = IORNN:load(net_path)
-	print(net)
+	--print(net)
 
 --[[
 	local dim = net.dim
@@ -66,16 +67,21 @@ if #arg == 4 then
 	-- load treebank
 	print('load treebank...')
 	local treebank = {}
+	local rawtreebank = {}
 	for line in io.lines(treebank_path) do
-		tree = Tree:create_from_string(line)
-		--tree:binarize(true,true)
-		--print(tree:to_string())
+		print(line)
+		if line ~= '(())' then
+			tree = Tree:create_from_string(line)
+			--tree:binarize(true,true)
+			--print(tree:to_string())
 
-		n_words = tree.cover[2] - tree.cover[1] + 1
-		tree = tree:to_torch_matrices(vocaDic, ruleDic)
-		treebank[#treebank+1] = tree
+			n_words = tree.cover[2] - tree.cover[1] + 1
+			tree = tree:to_torch_matrices(vocaDic, ruleDic, grammar)
+			treebank[#treebank+1] = tree
+			rawtreebank[#rawtreebank+1] = line
 
-		--if #treebank > 2 then break end
+			--if #treebank > 2 then break end
+		end
 	end
 
 	-- parse treebank
@@ -101,7 +107,7 @@ if #arg == 4 then
 	for j,tree in ipairs(treebank) do
 		print(j)
 		for i = 1,tree.n_nodes do
-			if tree.n_children[i] == 0 then
+			if tree.n_children[i] == 0 then --and vocaDic.id2word[tree.word_id[i]] == 'table' then
 				local outer = tree.outer[{{},{i}}]
 				
 				local word_id = tree.word_id[i]
@@ -114,11 +120,13 @@ if #arg == 4 then
 				local tg_score = word_score[word_id] --print(tg_score)
 				rank = rank + torch.gt(word_score, tg_score):double():sum()
 				total = total + 1
-				print(rank / total)
 
 				print('------------')
+				print(rank / total)
+				print(rawtreebank[j])
 				_, sortedid = word_score:sort(true)
-				print('target word :' .. vocaDic.id2word[word_id])
+				print('target word :' .. vocaDic.id2word[word_id] .. ', ' .. tg_score)
+				--print('foe' .. word_score[vocaDic.word2id['dog']])
 				--print(outer)
 				for k = 1,10 do
 					print(vocaDic.id2word[sortedid[k]] .. ' ' .. word_score[sortedid[k]])
