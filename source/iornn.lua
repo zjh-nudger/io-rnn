@@ -37,10 +37,18 @@ function tanhPrime(tanhX)
 	return -torch.pow(tanhX,2)+1
 end
 
+
+-- identity function
+function identity(X) 
+	return X:clone()
+end
+
+function identityPrime(X)
+	return torch.ones(X:size())
+end
+
 --************************* construction ********************--
 -- create a new recursive autor encoder with a given structure
--- input:
--- 		struct = { dimension, nCategories, Lookup }
 function IORNN:new(struct, rules)
 
 	local dim = struct.Lookup:size(1)
@@ -49,7 +57,7 @@ function IORNN:new(struct, rules)
 
 	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat}
 	net.rules = {}
-	local mul = 0.1
+	local mul = 0.01
 
 	-- create weight matrices for rules
 	for i,rule in ipairs(rules) do
@@ -85,7 +93,7 @@ function IORNN:new(struct, rules)
 	net.funcPrime = struct.funcPrime
 
 	-- root outer
-	net.root_outer = uniform(dim, 1, -1, 1):mul(0.001)
+	net.root_outer = uniform(dim, 1, -1, 1):mul(0.0001)
 	
 	setmetatable(net, IORNN_mt)
 	return net
@@ -107,8 +115,11 @@ function IORNN:load( filename , binary, func, funcPrime )
 	setmetatable(net, IORNN_mt)
 	file:close()
 
-	net.func = func or tanh
-	net.funcPrime = funcPrime or tanhPrime
+	--print(net.func)
+	--print(net.funcPrime)
+
+	--net.func = func or tanh
+	--net.funcPrime = funcPrime or tanhPrime
 	return net
 end
 
@@ -271,14 +282,14 @@ function IORNN:forward_outside(tree, bag_of_subtrees)
 				(bag_of_subtrees.only_lexicon == false or tree.n_children[i] == 0) then
 
 			-- compute gold score
-			tree.gold_io[col_i]:copy(self.func(	(self.Wwo * tree.outer[col_i])
+			tree.gold_io[col_i]:copy(tanh(	(self.Wwo * tree.outer[col_i])
 											:add(self.Wwi * tree.inner[col_i]):add(self.bw)))
 			tree.gold_score[i] = self.Ws * tree.gold_io[col_i]
 
 			-- compute stt score
 			local stt_subtree = bag_of_subtrees[tree.stt_id[i]]
 			self:forward_inside(stt_subtree)
-			tree.stt_io[col_i]:copy(self.func((self.Wwo * tree.outer[col_i])
+			tree.stt_io[col_i]:copy(tanh((self.Wwo * tree.outer[col_i])
 										:add(self.Wwi * stt_subtree.inner[{{},{1}}]):add(self.bw)))
 			tree.stt_score[i] = self.Ws * tree.stt_io[col_i]
 
@@ -343,8 +354,8 @@ function IORNN:backpropagate_outside(tree, grad, bag_of_subtrees) --[[, alpha, b
 		-- subtree ranking error
 		if tree.stt_error[i] > 0 then
 			local stt_subtree = bag_of_subtrees[tree.stt_id[i]]
-			local gold_io_prime = self.funcPrime(tree.gold_io[col_i])
-			local stt_io_prime = self.funcPrime(tree.stt_io[col_i])
+			local gold_io_prime = tanhPrime(tree.gold_io[col_i])
+			local stt_io_prime = tanhPrime(tree.stt_io[col_i])
 
 			-- Ws
 			local gWs = (tree.stt_io[col_i] - tree.gold_io[col_i]):t()
@@ -672,9 +683,9 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			p:lap("compute grad")
 
 			-- for visualization
-			if math.mod(j,2) == 0 then
-				print('iter ' .. j .. ': ' .. cost) io.flush()
-			end
+			--if math.mod(j,2) == 0 then
+				print('iter ' .. j .. ': ' .. cost) --io.flush()
+			--end
 			
 			return cost, Grad
 		end
@@ -773,7 +784,7 @@ end
 		rules[#rules+1] = rule
 	end
 
-	struct = {Lookup = torch.randn(2,17), nCategory = 5, func = tanh, funcPrime = tanhPrime}
+	struct = {Lookup = torch.randn(2,17), nCategory = 5, func = identity, funcPrime = identityPrime}
 	net = IORNN:new(struct, rules)
 
 	--print(net)	

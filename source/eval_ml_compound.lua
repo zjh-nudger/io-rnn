@@ -142,7 +142,8 @@ if #arg == 4 then
 
 	-- load net
 	print('load net...')
-	net = IORNN:load(net_path)
+	net = IORNN:load(net_path) 
+	--net = IORNN:load(net_path, true, identity, identityPrime)
 	--net.L = emb
 
 	-- test

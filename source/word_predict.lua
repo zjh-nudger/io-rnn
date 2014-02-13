@@ -1,6 +1,8 @@
 require 'iornn'
 require 'dict'
 require 'tree'
+require 'xlua' 
+p = xlua.Profiler()
 
 torch.setnumthreads(1)
 
@@ -92,7 +94,6 @@ if #arg == 4 then
 	print('evaluating...')
 	local total = 0
 	local rank = 0
-	local func = net.func
 	local Wwo = net.Wwo
 	local Wwi = net.Wwi
 	local bw = net.bw
@@ -101,7 +102,7 @@ if #arg == 4 then
 	local vocabsize = L:size(2)
 
 	local WwiL = Wwi * L
-	local big_bw = torch.repeatTensor(bw, 1, vocabsize)
+	local WwiL_bw = torch.repeatTensor(bw, 1, vocabsize):add(WwiL)
 
 	--torch.setnumthreads(5)
 	for j,tree in ipairs(treebank) do
@@ -112,14 +113,21 @@ if #arg == 4 then
 				
 				local word_id = tree.word_id[i]
 
-				local word_io = func(
+				p:start('word io')				
+				local word_io = tanh(
 						torch.repeatTensor(Wwo*outer, 1, vocabsize)
-						:add(WwiL):add(big_bw))
+						:add(WwiL_bw))
+				p:lap('word io')
+				p:start('word score')
 				local word_score = (Ws * word_io):reshape(vocabsize)
+				p:lap('word score')
 			
+				p:start('rank')
 				local tg_score = word_score[word_id] --print(tg_score)
 				rank = rank + torch.gt(word_score, tg_score):double():sum()
 				total = total + 1
+				p:lap('rank')
+				p:printAll() 
 
 				print('------------')
 				print(rank / total)

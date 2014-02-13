@@ -39,7 +39,9 @@ if #arg == 5 then
 -- create net
 	print('create iornn...')
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
-						func = tanh, funcPrime = tanhPrime }
+						--func = tanh, funcPrime = tanhPrime }
+						func = identity, funcPrime = identityPrime }
+						--func = logistic, funcPrime = logisticPrime }
 	local net = IORNN:new(struct, rules)
 	--local net = IORNN:load('model_completeccg_bnc_shuf_1/model_6_1')
 

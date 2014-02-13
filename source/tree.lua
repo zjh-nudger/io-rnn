@@ -251,6 +251,7 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, grammar) --, nCat)
 			if j > 20 then 
 				print(#node.childId)
 				print(self:to_string())
+				error('invalid rule')
 			end
 			children_id[{j,i}] = cid
 			parent_id[cid] = i

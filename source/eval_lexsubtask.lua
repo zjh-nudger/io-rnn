@@ -4,6 +4,7 @@ require 'tree'
 require 'iornn'
 
 torch.setnumthreads(1)
+grammar = 'CCG'
 
 function load_gold()
 	-- load parses
@@ -14,9 +15,15 @@ function load_gold()
 		if math.mod(i, 2) == 1 then 
 			id = tonumber(split_string(line, "[0-9]+")[1])
 		else
-			if line ~= "(TOP())" then  
-				local tree = Tree:create_from_string(line)
-				parses[id] = tree:to_torch_matrices(dic, 1)
+			if pcall(function() 
+					local tree = Tree:create_from_string(line)
+					--print(tree:to_string())
+					parses[id] = tree:to_torch_matrices(vocaDic, ruleDic, grammar)
+					if rank_func_name == 'context' then 
+						parses[id] = net:parse({parses[id]})[1]
+					end
+				end) == false then 
+				parses[id] = nil
 			end
 		end
 		i = i + 1
@@ -46,7 +53,7 @@ function load_gold()
 		--if iter > 300 then break end
 
 		local comps = split_string(line)
-		local word_id = dic:get_id(comps[1])
+		local word_id = vocaDic:get_id(comps[1])
 		local case_id = tonumber(comps[2])
 
 		if word_id ~= pre_word_id then
@@ -60,7 +67,7 @@ function load_gold()
 
 		for i = 3,#comps,2 do
 			local id = (i-1) / 2
-			name[id] = dic:get_id(comps[i])
+			name[id] = vocaDic:get_id(comps[i])
 			if cand_list.name[name[id]] == nil then 
 				cand_list.name[name[id]] = 1
 				cand_list.number = cand_list.number + 1
@@ -174,7 +181,7 @@ function rank_context( case, cand_names )
 end
 
 function compute_score_iornn(case, cand_embs)
-	local tree = net:parse({case.parse})[1]
+	local tree = case.parse
 	local outer = nil
 	local inner = nil
 	local ncand = cand_embs:size(2)
@@ -206,7 +213,7 @@ function compute_score_iornn(case, cand_embs)
 
 	-- outer score
 	local small_WwiL = net.Wwi * cand_embs
-	local word_io = net.func(
+	local word_io = tanh(
 						torch.repeatTensor(net.Wwo*outer, 1, ncand)
 						:add(small_WwiL)
 						:add(torch.repeatTensor(net.bw, 1, ncand)))
@@ -221,22 +228,28 @@ function compute_score_iornn(case, cand_embs)
 ]]
 end
 
-if #arg == 4 then
+if #arg == 5 then
 
-	dic_emb_path	= arg[1]
-	gold_path 		= arg[2] .. '/gold.txt'
-	tw_position_path = arg[2] .. '/lexsub_word_pos.txt'
-	parses_path = arg[2] .. '/lexsub_parse.txt'
-	net_path = arg[3]
-	rank_func_name = arg[4]
+	vocaDic_emb_path	= arg[1]
+	rule_path = arg[2]
+	gold_path 		= arg[3] .. '/gold.txt'
+	tw_position_path = arg[3] .. '/lexsub_word_pos.txt'
+	parses_path = arg[3] .. '/lexsub_parse.ccg.penn.txt'
+	net_path = arg[4]
+	rank_func_name = arg[5]
 
-	-- load dic & emb
-	print('load dic & emb...')
-	f = torch.DiskFile(dic_emb_path, 'r')
-	dic = f:readObject()
-	setmetatable(dic, Dict_mt)
+	-- load vocaDic & emb
+	print('load vocaDic & emb...')
+	f = torch.DiskFile(vocaDic_emb_path, 'r')
+	vocaDic = f:readObject()
+	setmetatable(vocaDic, Dict_mt)
 	emb = f:readObject()
 	f:close()
+
+	-- load grammar rules
+	print('load grammar rules...')
+	ruleDic = Dict:new(cfg_template)
+	ruleDic:load(rule_path)
 
 	-- load net
 	print('load net...')
@@ -256,11 +269,11 @@ if #arg == 4 then
 	end
 
 	alpha = 0
-	for al = 0.1,0.1,0.1 do
+	for al = 0,1,0.1 do
 		alpha = al
 		print(alpha .. ' : ' .. eval(cases, rank_function))
 	end
 
 else
-	print('<dic_emb_path> <lex sub dir> <net path> <rank func name> <alpha>')
+	print('<vocaDic_emb_path> <rule path> <lex sub dir> <net path> <rank func name>')
 end

@@ -22,10 +22,11 @@ function load_gold()
 		local str_lm = nil
 
 		if grammar == 'CCG' then 
-			str = '(ba (lex '..comps[3].. ') '..comps[2]..')'
-			str_lm = '(ba (lex '..comps[3].. ') '..comps[4]..')'
+			str = '(ba (lex '..comps[3]..') '..comps[2]..')'
+			str_lm = '(ba (lex '..comps[3]..') '..comps[4]..')'
 		elseif grammar == 'CFG' then
-			str = nil
+			str = '(S (NP ' ..comps[3]..') (VP (VBZ '..comps[2]..'))))'
+			str_lm = '(S (NP ' ..comps[3]..') (VP (VBZ '..comps[4]..'))))'
 		end
 
 		local parse = Tree:create_from_string(str)
