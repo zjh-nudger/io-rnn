@@ -1,13 +1,13 @@
 require 'dict'
 require 'utils'
 
-if #arg == 3 then
+if #arg == 2 then
 	embs_path = arg[1] .. '/embeddings.txt'
 	dic_path = arg[1] .. '/words.lst'
 	output_path = arg[2]
 
 	-- load dic --
-	local dic = Dict:new(collobert_template)
+	local dic = Dict:new(turian_template)
 	dic:load(dic_path, true)
 
 	-- load org embs --
@@ -19,20 +19,18 @@ if #arg == 3 then
 					:resize(nword, embdim):t()
 	f:close()
 
-	-- normalize to [-1,1]
-	if arg[3] == 'normalize' then
-		embs:add(-embs:mean())
-		embs:div(torch.abs(embs):max())
-	end
-
 	-- output --
 	f = torch.DiskFile(output_path, 'w')
 	f:writeObject(dic)
 	f:writeObject(embs)
 	f:close()
 
+	print(dic:size())
+	print(embs:size())
+
 else
-	print("[wordembs_dir] [output_path] [normalize/org]" )
+	print(
+		"invalid arguments: [wordembs_dir] [output_path]" )
 		
 end
 

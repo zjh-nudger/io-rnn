@@ -118,6 +118,6 @@ function turian_template(word)
 	end
 end
 
-function cfg_template(rule)
+function grammar_template(rule)
 	return rule
 end

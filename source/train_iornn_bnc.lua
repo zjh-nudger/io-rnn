@@ -4,6 +4,8 @@ require 'utils'
 require 'dict'
 require 'optim'
 
+grammar = 'CCG'
+
 if #arg == 5 then
 	torch.setnumthreads(1)
 
@@ -22,7 +24,7 @@ if #arg == 5 then
 	f:close()
 
 	print('load grammar rules...')
-	ruleDic = Dict:new(cfg_template)
+	ruleDic = Dict:new(grammar_template)
 	ruleDic:load(grrule_path)
 
 	local rules = {}
@@ -39,8 +41,8 @@ if #arg == 5 then
 -- create net
 	print('create iornn...')
 	local struct = {	Lookup = wembs, nCategory = n_categories, 
-						--func = tanh, funcPrime = tanhPrime }
-						func = identity, funcPrime = identityPrime }
+						func = tanh, funcPrime = tanhPrime }
+						--func = identity, funcPrime = identityPrime }
 						--func = logistic, funcPrime = logisticPrime }
 	local net = IORNN:new(struct, rules)
 	--local net = IORNN:load('model_completeccg_bnc_shuf_1/model_6_1')
@@ -53,7 +55,6 @@ if #arg == 5 then
 	alpha = 0
 	beta = 1
 	maxnepoch = 100
-	grammar = 'CCG'
 
 -- train
 	local filenames = get_all_filenames(treebank_dir)
@@ -131,5 +132,5 @@ if #arg == 5 then
 	end
 
 else
-	print("invalid arugments: [wordemb path] [rule path] [treebank dir] [learning rate] [model dir]")
+	print("[wordemb path] [rule path] [treebank dir] [learning rate] [model dir]")
 end

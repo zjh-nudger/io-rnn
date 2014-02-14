@@ -127,18 +127,8 @@ if #arg == 4 then
 
 	-- load grammar rules
 	print('load grammar rules...')
-	ruleDic = Dict:new(cfg_template)
+	ruleDic = Dict:new(grammar_template)
 	ruleDic:load(rule_path)
-
-	local rules = {}
-	for _,str in ipairs(ruleDic.id2word) do
-		local comps = split_string(str, "[^ \t]+")
-		local rule = {lhs = comps[1], rhs = {}}
-		for i = 2,#comps do
-			rule.rhs[i-1] = comps[i]
-		end
-		rules[#rules+1] = rule
-	end
 
 	-- load net
 	print('load net...')

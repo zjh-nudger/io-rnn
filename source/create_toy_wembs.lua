@@ -1,9 +1,9 @@
 require 'dict'
 require 'utils'
 
-if #arg == 3 then
-	embs_path = arg[1] .. '/embeddings.txt'
-	dic_path = arg[1] .. '/words.lst'
+if #arg == 2 then
+	embs_path = arg[1] .. '/wordembs.txt'
+	dic_path = arg[1] .. '/words.txt'
 	output_path = arg[2]
 
 	-- load dic --
@@ -15,15 +15,14 @@ if #arg == 3 then
 	local info = f:readInt(2)
 	local nword = info[1]	
 	local embdim = info[2]	
-	local embs = torch.Tensor(f:readDouble(nword*embdim))
+	local org_embs = torch.Tensor(f:readDouble(nword*embdim))
 					:resize(nword, embdim):t()
+	org_embs = org_embs - org_embs:mean()
+	org_embs = org_embs * 1/(org_embs:std())
 	f:close()
 
-	-- normalize to [-1,1]
-	if arg[3] == 'normalize' then
-		embs:add(-embs:mean())
-		embs:div(torch.abs(embs):max())
-	end
+	local embs = torch.Tensor(embdim, nword+1)
+	embs[{{1,embdim},{2,1+nword}}]:copy(org_embs)
 
 	-- output --
 	f = torch.DiskFile(output_path, 'w')
@@ -32,7 +31,8 @@ if #arg == 3 then
 	f:close()
 
 else
-	print("[wordembs_dir] [output_path] [normalize/org]" )
+	print(
+		"invalid arguments: <wordembs_dir> <output_path>" )
 		
 end
 
