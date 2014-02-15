@@ -7,30 +7,30 @@ require 'optim'
 if #arg == 4 then
 	torch.setnumthreads(1)
 
-	we_path = arg[1]
+	word_lst_path = arg[1]
 	senbank_dir = arg[2]
 	learn_rate = tonumber(arg[3])
 	local model_dir = arg[4]
 
--- load word emb and grammar rules
-	print('load wordembeddngs...')
-	local f = torch.DiskFile(we_path, 'r')
-	local vocaDic = f:readObject(); setmetatable(vocaDic, Dict_mt)
-	local wembs = f:readObject()
-	f:close()
+-- load word list
+	print('load words...')
+	local vocaDic = Dict:new()
+	vocaDic:load(word_lst_path)	
+	vocaDic:addword('<s>')
+	vocaDic:addword('</s>')
 
 -- create net
 	print('create iornn...')
-	local struct = {Lookup = wembs, func = tanh, funcPrime = tanhPrime }
+	local struct = {Lookup = uniform(50, vocaDic:size(), -0.1, 0.1),
+					func = tanh, funcPrime = tanhPrime }
 	local net = IORNNLM:new(struct, rules)
 	--local net = IORNNLM:load('model_completeccg_bnc_shuf_1/model_6_1')
 
 	net.update_L = true
-	net.L = uniform(net.L:size(1), net.L:size(2), -1e-5, 1e-5)
 
 	lambda = 1e-4
-	lambda_L = 1e-8
-	batchsize = 100
+	lambda_L = 1e-7
+	batchsize = 10
 	maxnepoch = 100
 
 -- train
@@ -49,11 +49,11 @@ if #arg == 4 then
 			print('load sentences in file ' .. fn)
 			for line in io.lines(senbank_dir .. '/' .. fn) do
 				local words = split_string(line)
-				local sen = {vocaDic:get_id('PADDING')}
+				local sen = {vocaDic:get_id('<s>')}
 				for i,w in ipairs(words) do
 					sen[i+1] = vocaDic:get_id(w)
 				end
-				sen[#sen+1] = vocaDic:get_id('PADDING')
+				sen[#sen+1] = vocaDic:get_id('</s>')
 				senbank[#senbank+1] = sen
 			end
 
@@ -64,5 +64,5 @@ if #arg == 4 then
 	end
 
 else
-	print("[wordemb path] [senbank dir] [learning rate] [model dir]")
+	print("[words path] [senbank dir] [learning rate] [model dir]")
 end

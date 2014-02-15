@@ -379,7 +379,7 @@ else
 
 	for i, sen in ipairs(senbank) do
 		local storage, tree = self:create_storage_and_tree(#sen)
-		tree.word_id[1] = sen[1] -- should be PADDING (CW embeddings)
+		tree.word_id[1] = sen[1] -- should be <s>
 		tree.inner[{{},{1}}]:copy(self.L[{{},{tree.word_id[1]}}])
 		stt_word_id = torch.rand(#sen):mul(self.wrdDicLen):add(1)
 		--stt_word_id = -torch.linspace(1,#sen,#sen) + #sen + 1

@@ -50,7 +50,7 @@ function Dict:addword(word)
 end
 
 function Dict:get_id(word)
-	if func ~= nil then 
+	if self.func ~= nil then 
 		word = self.func(word)
 	end
 	local ret = self.word2id[word]

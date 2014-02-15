@@ -9,30 +9,32 @@ torch.setnumthreads(1)
 if #arg == 3 then
 	local net_path = arg[1]
 	local senbank_path = arg[2]
-	local dic_path = arg[3]
+	local word_lst_path = arg[3]
+
+	-- load word list
+	print('load words...')
+	local vocaDic = Dict:new()
+	vocaDic:load(word_lst_path)	
+	vocaDic:addword('<s>')
+	vocaDic:addword('</s>')
 
 	-- load net
 	print('loading net...')
 	local net = IORNNLM:load(net_path)
 	--print(net)
-
-	-- load dic
-	local f = torch.DiskFile(dic_path)
-	local vocaDic = f:readObject()
-	setmetatable(vocaDic, Dict_mt)
-	f:close()
 	
 	-- load senbank
 	print('load senbank...')
 	local senbank = {}
 	for line in io.lines(senbank_path) do
 		local words = split_string(line)
-		local sen = {vocaDic:get_id('PADDING')}
+		local sen = {vocaDic:get_id('<s>')}
 		for i,w in ipairs(words) do
 			sen[i+1] = vocaDic:get_id(w)
 		end
-		sen[#sen+1] = vocaDic:get_id('PADDING')
+		sen[#sen+1] = vocaDic:get_id('</s>')
 		senbank[#senbank+1] = sen
+		--print(sen)
 	end
 
 	-- predict words
@@ -53,7 +55,7 @@ if #arg == 3 then
 	for i,sen in ipairs(senbank) do
 		print(i)
 		local storage, tree = net:create_storage_and_tree(#sen)
-		tree.word_id[1] = sen[1] -- should be PADDNG
+		tree.word_id[1] = sen[1] -- should be <s>
 		tree.inner[{{},{1}}]:copy(net.L[{{},{tree.word_id[1]}}])
 
 		for j = 2,#sen do
@@ -87,5 +89,5 @@ if #arg == 3 then
 	print(rank/ total)
 	
 else 
-	print("[iornn] [senbank] [dic]")
+	print("[iornn] [senbank] [word list]")
 end
