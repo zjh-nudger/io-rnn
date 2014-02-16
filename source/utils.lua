@@ -1,4 +1,4 @@
-require 'cutils'
+--require 'cutils'
 
 function trim_string(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
