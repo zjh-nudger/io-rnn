@@ -1,7 +1,7 @@
 require 'dict'
 require 'utils'
 require 'tree'
-require 'iornn'
+require 'eiornn'
 require 'cutils'
 
 torch.setnumthreads(1)
@@ -132,7 +132,7 @@ if #arg == 4 then
 
 	-- load net
 	print('load net...')
-	net = IORNN:load(net_path) 
+	net = eIORNN:load(net_path) 
 	--net = IORNN:load(net_path, true, identity, identityPrime)
 	--net.L = emb
 

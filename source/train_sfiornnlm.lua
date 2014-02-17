@@ -21,7 +21,7 @@ if #arg == 4 then
 
 -- create net
 	print('create iornn...')
-	local struct = {Lookup = uniform(25, vocaDic:size(), -0.1, 0.1),
+	local struct = {Lookup = uniform(50, vocaDic:size(), -0.1, 0.1),
 					func = tanh, funcPrime = tanhPrime }
 	local net = SFIORNNLM:new(struct, rules)
 	--local net = SFIORNNLM:load('model_completeccg_bnc_shuf_1/model_6_1')

@@ -155,165 +155,195 @@ end
 
 --************************ forward **********************--
 
-function SFIORNNLM:extend_tree(storage, tree, next_word_id)
-	storage.start_pos = storage.start_pos - 1
-	storage.end_pos = storage.end_pos + 1
-
-	if storage.start_pos < 1 or storage.end_pos > storage.n_nodes then 
-		error('not enough space in storage')
-	end
-	
-	local new_range = {storage.start_pos,storage.end_pos}
-	tree.n_nodes = tree.n_nodes + 2
-
-	tree.n_children = storage.n_children[{new_range}]
-	tree.n_children[1] = 2	-- new root
-	tree.n_children[tree.n_nodes] = 0 -- new (right-most) leaf
-
-	tree.cover = storage.cover[{{},newrage}]
-	local right_most_leaf_id = tree.cover[{2,2}]+1
-	tree.cover[{1,1}] = 1
-	tree.cover[{2,1}] = right_most_leaf_id
-	tree.cover[{1,tree.n_nodes}] = right_most_leaf_id
-	tree.cover[{2,tree.n_nodes}] = right_most_leaf_id
-
-	tree.children_id = storage.children_id[{{},new_range}]
-	tree.children_id:add(1)
-	tree.children_id[{1,1}] = 2
-	tree.children_id[{2,1}] = tree.n_nodes
-	
-	tree.parent_id:add(1)
-	tree.parent_id = storage.parent_id[{new_range}]
-	tree.parent_id[tree.n_nodes] = 1
-	tree.parent_id[2] = 1
-
-	tree.sibling_order = storage.sibling_order[{new_range}]
-	tree.sibling_order[2] = 1
-	tree.sibling_order[tree.n_nodes] = 2
-
-	tree.word_id = storage.word_id[{new_range}]
-	tree.word_id[tree.n_nodes] = next_word_id
-	
-	tree.inner = storage.inner[{{},new_range}]
-	tree.gradZi = storage.gradZi[{{},new_range}]
-	tree.gradZi:fill(0)
-
-	return tree
-end
-
--- compute inner meaning at the root node
-function SFIORNNLM:forward_inside_root(tree)
-	tree.inner[{{},{tree.n_nodes}}]:copy(self.L[{{},{tree.word_id[tree.n_nodes]}}])
-	local input = self.Wi1 * tree.inner[{{},{2}}]
-	input:add(self.Wi2 * tree.inner[{{},{tree.n_nodes}}])
-	input:add(self.bi)
-	tree.inner[{{},{1}}]:copy(self.func(input))
-end
-
--- compute outer meaning at the right-most leaf
-function SFIORNNLM:forward_outside_rml(tree)
-	local input = self.Wop * self.root_outer
-	input:add(self.Wo1 * tree.inner[{{},{2}}]):add(self.bo2)
-	tree.rml_outer = self.func(input)
-end
-
-function SFIORNNLM:forward_compute_prediction_prob(tree)
-	local z = (self.Ww * tree.rml_outer):add(self.bw)
-	tree.prob = safe_compute_softmax(z)
-	tree.error = -math.log(tree.prob[{tree.word_id[tree.n_nodes],1}])
-end
-
--- backpropagation from the right-most leaf
-function SFIORNNLM:backpropagate_outside_rml(tree, grad)
-	local gZw = tree.prob:clone()
-	gZw[{tree.word_id[tree.n_nodes],{}}]:add(-1)
-
-	-- Ww, bw
-	grad.bw:add(gZw)
-	grad.Ww:add(gZw * tree.rml_outer:t())
-	
-	-- gradZo before multiplied by fprime
-	gZo = (self.Ww:t() * gZw):cmul(self.funcPrime(tree.rml_outer))
-	tree.gradZo_rml = gZo:clone()
-
-	-- Wop, Wo, bo
-	local gWop = gZo * self.root_outer:t()
-	grad.Wop:add(gWop)
-
-	grad.Wo1:add(gZo * tree.inner[{{},{2}}]:t())
-	grad.bo2:add(gZo)
-
-	-- root
-	grad.root_outer:add(self.Wop:t() * gZo)
-end
-
-function SFIORNNLM:backpropagate_inside(tree, grad)
-	for i = 2,tree.n_nodes do
-		local col_i = {{},{i}}
-		local parent_id = tree.parent_id[i]
-		local gZi = torch.zeros(self.dim, 1)
-
-		if i == 2 then
-			gZi:add(self.Wo1:t() * tree.gradZo_rml)
-		end
-	
-		if tree.sibling_order[i] == 1 then
-			gZi:add(self.Wi1:t() * tree.gradZi[{{},{parent_id}}])
-		else
-			gZi:add(self.Wi2:t() * tree.gradZi[{{},{parent_id}}])
-		end
-
-		-- for internal node
-		if tree.n_children[i] > 0 then	
-			gZi:cmul(self.funcPrime(tree.inner[col_i]))
-			tree.gradZi[col_i]:copy(gZi)
-
-			-- weight matrices for inner
-			grad.Wi1:add(gZi * tree.inner[{{},{tree.children_id[{1,i}]}}]:t())
-			grad.Wi2:add(gZi * tree.inner[{{},{tree.children_id[{2,i}]}}]:t())
-			grad.bi:add(gZi)
-
-		else -- leaf
-			tree.gradZi[col_i]:copy(gZi)
-			if self.update_L then
-				grad.L[{{},{tree.word_id[i]}}]:add(gZi)
-			end
-		end
-	end
-end
-
 -- create storage for a sentence with n_tokens words 
-function SFIORNNLM:create_storage_and_tree(n_tokens)
-	local n_tokens = n_tokens or 200
-	local n_nodes = 2*n_tokens - 1
-	local storage = {
+function SFIORNNLM:create_tree(sen)
+	local n_words = #sen
+	local n_nodes = 2*n_words - 1
+	local tree = {
 		n_children = torch.zeros(n_nodes),
-		cover = torch.zeros(2, n_nodes),
 		children_id = torch.zeros(2, n_nodes),
 		parent_id = torch.zeros(n_nodes),
 		sibling_order = torch.zeros(n_nodes),
 		word_id = torch.zeros(n_nodes),
 		inner = torch.zeros(self.dim, n_nodes),
-		gradZi = torch.zeros(self.dim, n_nodes),
-		start_pos = (n_nodes + 1)/2,
-		end_pos = (n_nodes + 1)/2,
 		n_nodes = n_nodes
 	}
 
-	local range = {storage.start_pos, storage.end_pos}
-	local tree = {
-		n_nodes = 1,
-		n_children = storage.n_children[{range}],
-		cover = storage.cover[{{},range}],
-		children_id = storage.children_id[{{},range}],
-		parent_id = storage.parent_id[{range}],
-		sibling_order = storage.sibling_order[{range}],
-		word_id = storage.word_id[{range}],
-		inner = storage.inner[{{},range}],
-		gradZi = storage.gradZi[{{},range}]
+	tree.n_children[{{1,n_words-1}}]:fill(2)
+	tree.children_id[{1,{1,n_words-1}}]:copy(torch.linspace(2,n_words,n_words-1))
+	tree.children_id[{2,{1,n_words-1}}]:copy(-torch.linspace(n_words+1,n_nodes,n_words-1)+3*n_words)
+	tree.parent_id[{{2,n_words}}]:copy(torch.linspace(1,n_words-1,n_words-1))
+	tree.parent_id[{{n_words+1,-1}}]:copy(-torch.linspace(1,n_words-1,n_words-1)+n_words)
+	tree.sibling_order[{{2,n_words}}]:fill(1)
+	tree.sibling_order[{{n_words+1,-1}}]:fill(2)
+	tree.word_id[{{n_words,-1}}]:copy(torch.Tensor(sen))
+
+--[[
+	print(sen)
+	for name,value in pairs(tree) do
+		print(name)
+		print(value)
+	end
+]]
+
+	return tree
+end
+
+function SFIORNNLM:build_treeletbank(treebank, n_leaves)
+	local n_treelets = 0
+	for i,tree in ipairs(treebank) do
+		n_treelets = n_treelets + (tree.n_nodes + 1)/2 - n_leaves + 1
+	end
+
+	local n_nodes = n_leaves * 2 - 1
+	local n_children = torch.zeros(n_nodes)
+	n_children[{{1,n_leaves-1}}]:fill(2)
+	
+	local children_id = torch.zeros(2, n_nodes)
+	children_id[{1,{1,n_leaves-1}}]:copy(torch.linspace(2,n_leaves,n_leaves-1))
+	children_id[{2,{1,n_leaves-1}}]:copy(-torch.linspace(n_leaves+1,2*n_leaves-1,n_leaves-1) + 3*n_leaves)
+	
+	local parent_id = torch.zeros(n_nodes)
+	parent_id[{{2,n_leaves}}]:copy(torch.linspace(1,n_leaves-1,n_leaves-1))
+	parent_id[{{n_leaves+1,-1}}]:copy(-torch.linspace(1,n_leaves-1,n_leaves-1)+n_leaves)
+
+	local sibling_order = torch.zeros(n_nodes)
+	sibling_order[{{2,n_leaves}}]:fill(1)
+	sibling_order[{{n_leaves+1,-1}}]:fill(2)
+
+	local word_id = torch.zeros(n_nodes, n_treelets)
+	local inner = torch.zeros(self.dim, n_nodes, n_treelets)
+	local gradZi = torch.zeros(self.dim, n_nodes, n_treelets)
+	
+	local j = 1
+	for _,tree in ipairs(treebank) do
+		for i = 1,(tree.n_nodes+1)/2-n_leaves+1 do
+			inner[{{},{1,n_leaves},j}]:copy(tree.inner[{{},{i,i+n_leaves-1}}])
+			local start = tree.n_nodes-i-n_leaves+3
+			inner[{{},{n_leaves+1,-1},j}]:copy(tree.inner[{{},{start,start+n_leaves-2}}])
+			word_id[{n_leaves,j}] = tree.word_id[i+n_leaves-1]
+			word_id[{{n_leaves+1,-1},j}]:copy(tree.word_id[{{start,start+n_leaves-2}}])
+			j = j + 1
+		end
+	end	
+
+	local treeletbank = {
+		n_treelets = n_treelets,
+		n_nodes = n_nodes,
+		n_leaves = n_leaves,
+		n_children = n_children,
+		children_id = children_id,
+		parent_id = parent_id,
+		sibling_order = sibling_order,
+		word_id = word_id,
+		inner = inner,
+		gradZi = gradZi
 	}
 
-	return storage, tree
+	return treeletbank
+end
+
+-- compute inner meaning
+function SFIORNNLM:forward_inside(tree)
+	for i = tree.n_nodes,1,-1 do
+		local col_i = {{},{i}}
+		if tree.n_children[i] == 0 then
+			--print(col_i)
+			--print(tree.word_id[i])
+			tree.inner[col_i]:copy(self.L[{{},{tree.word_id[i]}}])
+		else
+			local input = self.Wi1 * tree.inner[{{},{tree.children_id[{1,i}]}}]
+			input:add(self.Wi2 * tree.inner[{{},{tree.children_id[{2,i}]}}])
+			input:add(self.bi)
+			tree.inner[col_i]:copy(self.func(input))
+		end
+	end
+end
+
+-- compute outer meaning at the right-most leaf
+function SFIORNNLM:forward_outside_rml(treeletbank)
+	local input = (self.Wo1 * treeletbank.inner[{{},2,{}}])
+					:add(torch.repeatTensor(self.bo2 + self.Wop * self.root_outer,
+											1,treeletbank.n_treelets))				
+	treeletbank.rml_outer = self.func(input)
+end
+
+function SFIORNNLM:forward_compute_prediction_prob(treeletbank)
+	local z = (self.Ww * treeletbank.rml_outer)
+				:add(torch.repeatTensor(self.bw, 1, treeletbank.n_treelets))
+	treeletbank.prob = safe_compute_softmax(z)
+
+	treeletbank.error = torch.zeros(treeletbank.n_treelets)
+	for i = 1,treeletbank.n_treelets do
+		treeletbank.error[i] = -math.log(treeletbank.prob[{treeletbank.word_id[{treeletbank.n_nodes,i}],i}])
+	end
+end
+
+-- backpropagation from the right-most leaf
+function SFIORNNLM:backpropagate_outside_rml(treeletbank, grad)
+	local gZw = treeletbank.prob:clone()
+
+	for i = 1,treeletbank.n_treelets do
+		gZw[{treeletbank.word_id[{treeletbank.n_nodes,i}],{i}}]:add(-1)
+	end
+
+	-- Ww, bw
+	grad.bw:add(gZw:sum(2))
+	grad.Ww:add(gZw * treeletbank.rml_outer:t())
+	
+	-- gradZo before multiplied by fprime
+	gZo = (self.Ww:t() * gZw):cmul(self.funcPrime(treeletbank.rml_outer))
+	treeletbank.gradZo_rml = gZo:clone()
+
+	-- Wop, Wo, bo
+	local gWop = gZo * torch.repeatTensor(self.root_outer,1,treeletbank.n_treelets):t()
+	grad.Wop:add(gWop)
+
+	grad.Wo1:add(gZo * treeletbank.inner[{{},2,{}}]:t())
+	grad.bo2:add(gZo:sum(2))
+
+	-- root
+	grad.root_outer:add((self.Wop:t() * gZo):sum(2))
+end
+
+function SFIORNNLM:backpropagate_inside(treeletbank, grad)
+	for i = 2,treeletbank.n_nodes do
+		local col_i = {{},i,{}}
+		local parent_id = treeletbank.parent_id[i]
+		local gZi = torch.zeros(self.dim, treeletbank.n_treelets)
+
+		if i == 2 then
+			gZi:add(self.Wo1:t() * treeletbank.gradZo_rml)
+		end
+	
+		if treeletbank.sibling_order[i] == 1 then
+			gZi:add(self.Wi1:t() * treeletbank.gradZi[{{},parent_id,{}}])
+		else
+			gZi:add(self.Wi2:t() * treeletbank.gradZi[{{},parent_id,{}}])
+		end
+
+		-- for internal node
+		if treeletbank.n_children[i] > 0 then	
+			gZi:cmul(self.funcPrime(treeletbank.inner[col_i]))
+			treeletbank.gradZi[col_i]:copy(gZi)
+
+			-- weight matrices for inner
+			grad.Wi1:add(gZi * treeletbank.inner[{{},treeletbank.children_id[{1,i}],{}}]:t())
+			grad.Wi2:add(gZi * treeletbank.inner[{{},treeletbank.children_id[{2,i}],{}}]:t())
+			grad.bi:add(gZi:sum(2))
+
+		else -- leaf
+			treeletbank.gradZi[col_i]:copy(gZi)
+			if self.update_L then
+				for j = 1,treeletbank.n_treelets do
+					local word_id = treeletbank.word_id[{i,j}]
+					if word_id > 0 then 
+						grad.L[{{},{word_id}}]:add(gZi[{{},{j}}])
+					end
+				end
+			end
+		end
+	end
 end
 
 function SFIORNNLM:computeCostAndGrad(senbank, config)
@@ -339,32 +369,23 @@ else
 	grad.root_outer = torch.zeros(self.root_outer:size())
 
 	-- process the senbank
-	local cost = 0
-	local n_cases = 0
-
+	local treebank = {}
 	for i, sen in ipairs(senbank) do
-		local storage, tree = self:create_storage_and_tree(#sen)
-		tree.word_id[1] = sen[1] -- should be <s>
-		tree.inner[{{},{1}}]:copy(self.L[{{},{tree.word_id[1]}}])
-	
-		for j = 2,#sen do
-			self:extend_tree(storage, tree, sen[j])
-			self:forward_inside_root(tree)
-			self:forward_outside_rml(tree)
-			self:forward_compute_prediction_prob(tree)
-
-			cost = cost + tree.error
-			self:backpropagate_outside_rml(tree, grad)
-			self:backpropagate_inside(tree, grad)
-		end
-		n_cases = n_cases + #sen-1
+		local tree = net:create_tree(sen)
+		net:forward_inside(tree)
+		treebank[i] = tree
 	end
+	local treeletbank = net:build_treeletbank(treebank, config.n_leaves)
+	net:forward_outside_rml(treeletbank)
+	net:forward_compute_prediction_prob(treeletbank)
+	net:backpropagate_outside_rml(treeletbank, grad)
+	net:backpropagate_inside(treeletbank, grad)
 
 	local M = self:fold()
 	grad = self:fold(grad)
 
-	cost = cost / n_cases + config.lambda/2 * torch.pow(M,2):sum()
-	grad:div(n_cases):add(M * config.lambda)
+	cost = treeletbank.error:sum() / treeletbank.n_treelets + config.lambda/2 * torch.pow(M,2):sum()
+	grad:div(treeletbank.n_treelets):add(M * config.lambda)
 
 	if self.update_L then
 		cost = cost + (config.lambda_L - config.lambda)/2 * 
@@ -480,7 +501,7 @@ function SFIORNNLM:parse(senbank)
 	return senbank
 end
 
---[[*********************************** test ******************************--
+--*********************************** test ******************************--
 	torch.setnumthreads(1)
 	word2id = {
 		['yet'] = 1,
@@ -500,35 +521,38 @@ end
 		['``'] = 15,
 		['memento'] = 16,
 		["''"] = 17, 
-		['PADDING'] = 18
+		['<s>'] = 18,
+		['</s>'] = 19
 	}
 
 	require "dict"
 	vocaDic = Dict:new(collobert_template)
 	vocaDic.word2id = word2id
 
+	struct = {Lookup = torch.randn(2,19), nCategory = 5, func = tanh, funcPrime = tanhPrime}
+	net = SFIORNNLM:new(struct)
+	
+	n_leaves = 4
+
 	senbank = {
-		"PADDING Yet the act is still charming here . PADDING",
-		"PADDING A screenplay is more ingeniously constructed than `` Memento '' . PADDING",
-		"PADDING The act screenplay is more than here . PADDING"
+		"<s> <s> <s> Yet the act is still charming here . </s>",
+		--"<s> <s> <s> A screenplay is more ingeniously constructed than `` Memento '' . </s>",
+		--"<s> <s> <s> The act screenplay is more than here . </s>"
 	}
 
 	require 'utils'
 	for i = 1,#senbank do
 		senbank[i] = split_string(senbank[i])
+		local sen = {}
 		for j,tok in ipairs(senbank[i]) do
-			senbank[i][j] = vocaDic:get_id(tok)
+			sen[j] = vocaDic:get_id(tok)
 		end
+		senbank[i] = sen
 	end
-	--print(senbank)
 
-
-	struct = {Lookup = torch.randn(2,18), nCategory = 5, func = tanh, funcPrime = tanhPrime}
-	net = SFIORNNLM:new(struct)
-
-	--print(net)	
-
-	config = {lambda = 1e-4, lambda_L = 1e-7}
-	net.update_L = true
+	config = {lambda = 0*1e-4, lambda_L = 0*1e-7, n_leaves = 4}
+	net.update_L = false
 	net:checkGradient(senbank, config)
-]]
+
+
+

@@ -42,7 +42,8 @@ if #arg == 3 then
 	print('evaluating...')
 	local total = 0
 	local rank = 0
-	local total_perplexity = 0
+	local log_perplexity = 0
+	local count = 0
 
 	--torch.setnumthreads(5)
 	for i,sen in ipairs(senbank) do
@@ -50,7 +51,6 @@ if #arg == 3 then
 		local storage, tree = net:create_storage_and_tree(#sen)
 		tree.word_id[1] = sen[1] -- should be <s>
 		tree.inner[{{},{1}}]:copy(net.L[{{},{tree.word_id[1]}}])
-		local log_perplexity = 0
 
 		for j = 2,#sen do
 			word_id = sen[j]
@@ -65,7 +65,8 @@ if #arg == 3 then
 			rank = rank + tg_rank
 			total = total + 1 
 
-			log_perplexity = log_perplexity - math.log(tg_score)
+			log_perplexity = log_perplexity + math.log(tg_score)
+			count = count + 1
 
 			--print('------------')
 			--print(rank / total)
@@ -77,8 +78,7 @@ if #arg == 3 then
 			--	print(vocaDic.id2word[sortedid[k]] .. ' ' .. word_score[sortedid[k]])
 			--end
 		end
-		total_perplexity = total_perplexity + math.exp(log_perplexity/(#sen-1))
-		print(total_perplexity / i)
+		print(math.exp(-log_perplexity / count))
 		collectgarbage()
 	end
 
