@@ -28,9 +28,12 @@ if #arg == 3 then
 	local senbank = {}
 	for line in io.lines(senbank_path) do
 		local words = split_string(line)
-		local sen = {vocaDic:get_id('<s>')}
+		local sen = {}
+		for i = 1,net.n_leaves-1 do
+			sen[i] = vocaDic:get_id('<s>')
+		end
 		for i,w in ipairs(words) do
-			sen[i+1] = vocaDic:get_id(w)
+			sen[#sen+1] = vocaDic:get_id(w)
 		end
 		sen[#sen+1] = vocaDic:get_id('</s>')
 		senbank[#senbank+1] = sen
@@ -48,42 +51,17 @@ if #arg == 3 then
 	--torch.setnumthreads(5)
 	for i,sen in ipairs(senbank) do
 		print(i)
-		local storage, tree = net:create_storage_and_tree(#sen)
-		tree.word_id[1] = sen[1] -- should be <s>
-		tree.inner[{{},{1}}]:copy(net.L[{{},{tree.word_id[1]}}])
+		local tree = net:create_tree(sen)
+		net:forward_inside(tree)
+		local treeletbank = net:build_treeletbank({tree})
+		net:forward_outside_rml(treeletbank)
+		net:forward_compute_prediction_prob(treeletbank)
 
-		for j = 2,#sen do
-			word_id = sen[j]
-			net:extend_tree(storage, tree, sen[j])
-			net:forward_inside_root(tree)
-			net:forward_outside_rml(tree)
-			net:forward_compute_prediction_prob(tree)
-
-			local word_score = tree.prob[{{},1}]
-			local tg_score = word_score[word_id] --print(tg_score)
-			local tg_rank = torch.gt(word_score, tg_score):double():sum()
-			rank = rank + tg_rank
-			total = total + 1 
-
-			log_perplexity = log_perplexity + math.log(tg_score)
-			count = count + 1
-
-			--print('------------')
-			--print(rank / total)
-			--_, sortedid = word_score:sort(true)
-			--print(word_score)
-			--print('target word : ' .. vocaDic.id2word[word_id] .. ' , ' .. tg_score .. ' , ' .. tg_rank)
-
-			--for k = 1,10 do
-			--	print(vocaDic.id2word[sortedid[k]] .. ' ' .. word_score[sortedid[k]])
-			--end
-		end
+		log_perplexity = log_perplexity - treeletbank.error:sum()	
+		count = count + treeletbank.n_treelets
 		print(math.exp(-log_perplexity / count))
 		collectgarbage()
 	end
-
-	print(rank/ total)
-	
 else 
 	print("[iornn] [senbank] [word list]")
 end

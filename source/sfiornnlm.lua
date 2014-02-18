@@ -54,7 +54,7 @@ function SFIORNNLM:new(struct)
 	local wrdDicLen = struct.Lookup:size(2)
 	local nCat = struct.nCategory
 
-	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat}
+	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat, n_leaves = struct.n_leaves}
 
 	local r = math.sqrt(6 / (dim + dim))
 	local rw = 4 * math.sqrt(6 / (dim + wrdDicLen))
@@ -189,8 +189,9 @@ function SFIORNNLM:create_tree(sen)
 	return tree
 end
 
-function SFIORNNLM:build_treeletbank(treebank, n_leaves)
+function SFIORNNLM:build_treeletbank(treebank)
 	local n_treelets = 0
+	local n_leaves = self.n_leaves
 	for i,tree in ipairs(treebank) do
 		n_treelets = n_treelets + (tree.n_nodes + 1)/2 - n_leaves + 1
 	end
@@ -371,15 +372,15 @@ else
 	-- process the senbank
 	local treebank = {}
 	for i, sen in ipairs(senbank) do
-		local tree = net:create_tree(sen)
-		net:forward_inside(tree)
+		local tree = self:create_tree(sen)
+		self:forward_inside(tree)
 		treebank[i] = tree
 	end
-	local treeletbank = net:build_treeletbank(treebank, config.n_leaves)
-	net:forward_outside_rml(treeletbank)
-	net:forward_compute_prediction_prob(treeletbank)
-	net:backpropagate_outside_rml(treeletbank, grad)
-	net:backpropagate_inside(treeletbank, grad)
+	local treeletbank = self:build_treeletbank(treebank)
+	self:forward_outside_rml(treeletbank)
+	self:forward_compute_prediction_prob(treeletbank)
+	self:backpropagate_outside_rml(treeletbank, grad)
+	self:backpropagate_inside(treeletbank, grad)
 
 	local M = self:fold()
 	grad = self:fold(grad)
@@ -501,7 +502,7 @@ function SFIORNNLM:parse(senbank)
 	return senbank
 end
 
---*********************************** test ******************************--
+--[[*********************************** test ******************************--
 	torch.setnumthreads(1)
 	word2id = {
 		['yet'] = 1,
@@ -536,8 +537,8 @@ end
 
 	senbank = {
 		"<s> <s> <s> Yet the act is still charming here . </s>",
-		--"<s> <s> <s> A screenplay is more ingeniously constructed than `` Memento '' . </s>",
-		--"<s> <s> <s> The act screenplay is more than here . </s>"
+		"<s> <s> <s> A screenplay is more ingeniously constructed than `` Memento '' . </s>",
+		"<s> <s> <s> The act screenplay is more than here . </s>"
 	}
 
 	require 'utils'
@@ -550,9 +551,9 @@ end
 		senbank[i] = sen
 	end
 
-	config = {lambda = 0*1e-4, lambda_L = 0*1e-7, n_leaves = 4}
-	net.update_L = false
+	config = {lambda = 0*1e-4, lambda_L = 0*1e-7, n_leaves = 12}
+	net.update_L = true
 	net:checkGradient(senbank, config)
-
+]]
 
 

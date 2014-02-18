@@ -21,8 +21,8 @@ if #arg == 4 then
 
 -- create net
 	print('create iornn...')
-	local struct = {Lookup = uniform(50, vocaDic:size(), -0.1, 0.1),
-					func = tanh, funcPrime = tanhPrime }
+	local struct = {Lookup = uniform(200, vocaDic:size(), -0.1, 0.1),
+					func = tanh, funcPrime = tanhPrime, n_leaves = 5 }
 	local net = SFIORNNLM:new(struct, rules)
 	--local net = SFIORNNLM:load('model_completeccg_bnc_shuf_1/model_6_1')
 
@@ -49,12 +49,16 @@ if #arg == 4 then
 			print('load sentences in file ' .. fn)
 			for line in io.lines(senbank_dir .. '/' .. fn) do
 				local words = split_string(line)
-				local sen = {vocaDic:get_id('<s>')}
+				local sen = {}
+				for i = 1,net.n_leaves - 1 do
+					sen[i] = vocaDic:get_id('<s>')
+				end
 				for i,w in ipairs(words) do
-					sen[i+1] = vocaDic:get_id(w)
+					sen[#sen+1] = vocaDic:get_id(w)
 				end
 				sen[#sen+1] = vocaDic:get_id('</s>')
 				senbank[#senbank+1] = sen
+				--print(sen)
 			end
 
 			adagrad_config, adagrad_state = 
