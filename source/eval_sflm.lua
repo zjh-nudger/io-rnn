@@ -45,21 +45,26 @@ if #arg == 3 then
 	print('evaluating...')
 	local total = 0
 	local rank = 0
-	local log_perplexity = 0
+	local log_prop = 0
 	local count = 0
 
 	--torch.setnumthreads(5)
-	for i,sen in ipairs(senbank) do
+	local step = 100
+	for i = 1,#senbank,step do 
 		print(i)
-		local tree = net:create_tree(sen)
-		net:forward_inside(tree)
-		local treeletbank = net:build_treeletbank({tree})
+		local treebank = {}
+		for j = i,math.min(i+step-1,#senbank) do
+			local tree = net:create_tree(senbank[j])
+			net:forward_inside(tree)
+			treebank[#treebank+1] = tree
+		end
+		local treeletbank = net:build_treeletbank(treebank)
 		net:forward_outside_rml(treeletbank)
 		net:forward_compute_prediction_prob(treeletbank)
 
-		log_perplexity = log_perplexity - treeletbank.error:sum()	
+		log_prop = log_prop - treeletbank.error:sum()	
 		count = count + treeletbank.n_treelets
-		print(math.exp(-log_perplexity / count))
+		print(math.exp(-log_prop / count))
 		collectgarbage()
 	end
 else 

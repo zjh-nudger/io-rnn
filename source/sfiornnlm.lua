@@ -56,8 +56,8 @@ function SFIORNNLM:new(struct)
 
 	local net = {dim = dim, wrdDicLen = wrdDicLen, nCat = nCat, n_leaves = struct.n_leaves}
 
-	local r = math.sqrt(6 / (dim + dim))
-	local rw = 4 * math.sqrt(6 / (dim + wrdDicLen))
+	local r = 0.1 --math.sqrt(6 / (dim + dim))
+	local rw = 0.1 --4 * math.sqrt(6 / (dim + wrdDicLen))
 
 	net.Wi1	= uniform(dim, dim, -r, r)	-- (inner) left child to parent
 	net.Wi2	= uniform(dim, dim, -r, r)	-- (inner) right child to parent
@@ -394,7 +394,7 @@ else
 		grad[{{-self.L:nElement(),-1}}]:add(self.L * (config.lambda_L-config.lambda))
 	end
 
-	return cost, grad
+	return cost, grad, treeletbank.n_treelets
 end
 end
 
@@ -445,17 +445,21 @@ function SFIORNNLM:train_with_adagrad(senbank, batchSize, maxepoch, lambda, pref
 									adagrad_config, adagrad_state)
 	local nSample = #senbank
 	
-	local epoch = 1
-	local j = 0
-
-	print('===== epoch ' .. epoch .. '=====')
+	local epoch = 0
+	local j = 1e10
+	local log_prob = 0
+	local ncases = 0
 
 	while true do
 		j = j + 1
+
+		-- new epoch
 		if j > nSample/batchSize then 
 			self:save(prefix .. '_' .. epoch)
-			j = 1 
+			j = 1
 			epoch = epoch + 1
+			log_prob = 0
+			ncases = 0
 			if epoch > maxepoch then break end
 			print('===== epoch ' .. epoch .. '=====')
 		end
@@ -470,19 +474,31 @@ function SFIORNNLM:train_with_adagrad(senbank, batchSize, maxepoch, lambda, pref
 
 			-- extract data
 			p:start("compute grad")
-			cost, Grad = self:computeCostAndGrad(subsenbank, 
+			cost, Grad, n_treelets = self:computeCostAndGrad(subsenbank, 
 							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}
 						)
 			p:lap("compute grad")
 
 			-- for visualization
+			log_prob = log_prob - cost * n_treelets
+			ncases = ncases + n_treelets
 			print('iter ' .. j .. ': ' .. cost) io.flush()
-	
+			print('entropy ' .. math.log(math.exp(-log_prob/ncases)) / math.log(2))
+
+			-- cut-off
+			--Grad[torch.gt(Grad,0.01)] = 0.01
+			--Grad[torch.lt(Grad,-0.01)] = -0.01
+
 			return cost, Grad
 		end
 
 		p:start("optim")
 		M,_ = optim.adagrad(func, self:fold(), adagrad_config, adagrad_state)
+--[[		
+		local M = self:fold()
+		cost,Grad = func(M)
+		M:add(Grad:mul(-adagrad_config.learningRate))
+]]
 		self:unfold(M)
 		p:lap("optim")
 		p:printAll()

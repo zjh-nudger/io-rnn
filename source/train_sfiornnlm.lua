@@ -21,14 +21,14 @@ if #arg == 4 then
 
 -- create net
 	print('create iornn...')
-	local struct = {Lookup = uniform(200, vocaDic:size(), -0.1, 0.1),
-					func = tanh, funcPrime = tanhPrime, n_leaves = 5 }
+	local struct = {Lookup = uniform(200, vocaDic:size(), -1, 1),
+					func = tanh, funcPrime = tanhPrime, n_leaves = 6 }
 	local net = SFIORNNLM:new(struct, rules)
 	--local net = SFIORNNLM:load('model_completeccg_bnc_shuf_1/model_6_1')
 
 	net.update_L = true
 
-	lambda = 1e-4
+	lambda = 1e-6
 	lambda_L = 1e-6
 	batchsize = 10
 	maxnepoch = 100
