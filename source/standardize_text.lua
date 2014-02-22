@@ -9,11 +9,9 @@ if #arg == 3 then
 	local output_path = arg[3]
 
 -- load word emb and grammar rules
-	print('load (lua)dic...')
-	local f = torch.DiskFile(dic_path, 'r')
-	local vocaDic = f:readObject(); setmetatable(vocaDic, Dict_mt)
-	local wembs = f:readObject()
-	f:close()
+	print('load dic...')
+	local dic = Dict:new(collobert_template)
+	dic:load(dic_path)	
 
 -- process
 	local fout = io.open(output_path, 'w')
@@ -23,7 +21,7 @@ if #arg == 3 then
 		local toks = split_string(line)
 		local str = ''
 		for _,tok in ipairs(toks) do
-			str = str ..  vocaDic.id2word[vocaDic:get_id(tok)] .. ' '
+			str = str ..  dic.id2word[dic:get_id(tok)] .. ' '
 		end 
 		str = str .. '\n'
 		fout:write(str)
@@ -38,5 +36,5 @@ if #arg == 3 then
 	fout:close()
 
 else 
-	print('[dic-lua] [input] [output]')
+	print('[dic] [input] [output]')
 end

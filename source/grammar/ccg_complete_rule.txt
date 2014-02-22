@@ -1,0 +1,15 @@
+ba	X	X
+bc	X	X
+bx	X	X
+conj	X	X
+fa	X	X
+fc	X	X
+funny	X	X
+gbc	X	X
+gbx	X	X
+lex	X
+lp	X	X
+ltc	X	X
+rp	X	X
+rtc	X	X
+tr	X
