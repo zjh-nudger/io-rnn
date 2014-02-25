@@ -5,13 +5,18 @@ Dict_mt = {__index=Dict}
 --***************** construction **************
 function Dict:new(wfunc)
 	local d = {}
-	d.word2id = {['UNKNOWN'] = 1}
-	d.id2word = {'UNKNOWN'}
+	d.word2id = {} --['UNKNOWN'] = 1}
+	d.id2word = {} --'UNKNOWN'}
 	d.func = wfunc
 
 	setmetatable(d, Dict_mt)
 
 	return d
+end
+
+function Dict:setmetatable(dic)
+	setmetatable(dic, Dict_mt)
+	return dic
 end
 
 --**************** load from file ************
@@ -85,6 +90,14 @@ function collobert_template(word)
 	elseif word == '-RSB-' then return ']'
 	elseif word == '-LCB-' then return '{'
 	elseif word == '-RCB-' then return '}'
+	else
+		return string.lower(string.gsub(word, '[0-9]', '0'))
+	end
+end
+
+function mssc_template(word)
+	if word == 'UNKNOWN' or word == 'PADDING' then 
+		return word
 	else
 		return string.lower(string.gsub(word, '[0-9]', '0'))
 	end

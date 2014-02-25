@@ -3,7 +3,7 @@
 require 'dict'
 require 'utils'
 require 'tree'
-require 'iornn'
+require 'sfiornn'
 require 'cutils'
 
 torch.setnumthreads(1)
@@ -73,7 +73,7 @@ function eval( cases , rate_function )
 		--print('----------')
 		--print(choice)
 		--print(case.answer)
-		if choice == case.answer then 
+		if net.lex.class_of_word[choice] == net.lex.class_of_word[case.answer] then 
 			n_correct = n_correct + 1
 		end
 	end
@@ -122,12 +122,20 @@ function rate_iornn( case )
 	
 	local best_score = -1e100
 	local best_choice = 0
+
+	--print('--------------------')
+	--print(net.lex.voca.id2word[case.answer])
 	for _,c in ipairs(case.choice) do
-		local score = net.Ws * tanh(
-						(net.Wwo*outer)
-						:add(net.Wwi*net.L[{{},{c}}])
-						:add(net.bw))
-		score = score[{1,1}]
+		local word_id = c
+		local class_id = net.lex.class_of_word[word_id]
+		local word_in_class_id = net.lex.word_in_class[class_id]:get_id(word_id)
+		local wp = net.wpred[class_id]
+
+		local pred_c = safe_compute_softmax((net.Wc*outer):add(net.bc))
+		local pred_w = safe_compute_softmax((wp.Ww*outer):add(wp.bw))
+		local score = pred_c[{class_id,1}] * pred_w[{word_in_class_id,1}]
+		
+		--print(net.lex.voca.id2word[c] .. ' ' .. score)
 
 		if score > best_score then
 			best_choice = c
@@ -138,19 +146,15 @@ function rate_iornn( case )
 	return best_choice
 end
 
-if #arg == 4 then
-	vocaDic_emb_path = arg[1]
-	rule_path =  arg[2]
-	data_path = arg[3]
-	net_path = arg[4]
+if #arg == 3 then
+	rule_path =  arg[1]
+	data_path = arg[2]
+	net_path = arg[3]
 
-	-- load vocaDic & emb
-	print('load vocaDic & emb...')
-	f = torch.DiskFile(vocaDic_emb_path, 'r')
-	vocaDic = f:readObject()
-	setmetatable(vocaDic, Dict_mt)
-	emb = f:readObject()
-	f:close()
+	-- load net
+	print('load net...')
+	net = sfIORNN:load(net_path) 
+	vocaDic = net.lex.voca
 
 	-- load grammar rules
 	print('load grammar rules...')
@@ -160,11 +164,6 @@ if #arg == 4 then
 	-- load data
 	print('load data')
 	cases = load_gold(test_type)
-
-	-- load net
-	print('load net...')
-	net = IORNN:load(net_path) 
-	net.L = emb
 
 	-- test
 	func_list = {
@@ -179,5 +178,5 @@ if #arg == 4 then
 	end
 
 else
-	print('[vocaDic] [rule] [data] [net]')
+	print('[rule] [data] [net]')
 end
