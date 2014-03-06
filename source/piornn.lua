@@ -1,13 +1,12 @@
 require 'tree'
 require 'utils'
 require 'dict'
-require 'lexicon'
 
 NPROCESS = 1
 
 --**************** rerursive neural network class ******************--
-sfIORNN = {}
-sfIORNN_mt = {__index = sfIORNN}
+IORNN = {}
+IORNN_mt = {__index = IORNN}
 
 --****************** functions ******************--
 -- generate a n x m matrix by uniform distibuition within range [min,max]
@@ -48,46 +47,53 @@ end
 
 --************************* construction ********************--
 -- create a new recursive autor encoder with a given structure
-function sfIORNN:new(input)
+function IORNN:new(input)
 
 	local dim		= input.Lookup:size(1)
-	local wrdDicLen	= input.Lookup:size(2)
-	local lexicon	= input.lexicon
+	local voca		= input.voca
 	local rules		= input.rules
+	local subdim	= input.subdim
 
-	local net = {dim = dim, lex = lexicon}
+	local net = {dim = dim, subdim = subdim, voca = voca}
 	net.rules = {}
-	net.wpred = {}
 
-	local r = 0.1 --math.sqrt(6 / (dim + dim))
-	local rw = 0.1 --math.sqrt(6 / (dim + 2*dim))
-
+	local r = 0.1
 	-- create weight matrices for rules
+	-- W = U x V + diag(r)
 	for i,rule in ipairs(rules) do
 		net.rules[i] = {}
 
-		net.rules[i].Wi = {}
-		net.rules[i].Wo = {}
+		net.rules[i].Wi_U = {}
+		net.rules[i].Wi_V = {}
+		net.rules[i].Wi_r = {}
+
+		net.rules[i].Wo_U = {}
+		net.rules[i].Wo_V = {}
+		net.rules[i].Wo_r = {}
+
 		net.rules[i].bo = {}
 
 		for j = 1,#rule.rhs do
-			net.rules[i].Wi[j] = uniform(dim, dim, -r, r)
-			net.rules[i].Wo[j] = uniform(dim, dim, -r, r)
+			net.rules[i].Wi_U[j] = uniform(dim, subdim, -r, r)
+			net.rules[i].Wi_V[j] = uniform(subdim, dim, -r, r)
+			net.rules[i].Wi_r[j] = uniform(dim, 1, -r, r)
+
+			net.rules[i].Wo_U[j] = uniform(dim, subdim, -r, r)
+			net.rules[i].Wo_V[j] = uniform(subdim, dim, -r, r)
+			net.rules[i].Wo_r[j] = uniform(dim, 1, -r, r)
+
 			net.rules[i].bo[j] = torch.zeros(dim, 1)
 		end		
 
 		net.rules[i].bi = torch.zeros(dim, 1)
-		net.rules[i].Wop = uniform(dim, dim, -r, r)
+		net.rules[i].Wop_U = uniform(dim, subdim, -r, r)
+		net.rules[i].Wop_V = uniform(subdim, dim, -r, r)
+		net.rules[i].Wop_r = uniform(dim, 1, -r, r)
 	end
 
 	-- word prediction
-	net.Wc = uniform(lexicon.class:size(), dim, -r, r) -- for class
-	net.bc = torch.zeros(lexicon.class:size(), 1)
-
-	for i,wc in ipairs(lexicon.word_in_class) do -- for words in class
-		net.wpred[i] = {	Ww = uniform(wc:size(), dim, -r, r),
-							bw = torch.zeros(wc:size(), 1) }
-	end
+	net.Ww = uniform(voca:size(), dim, -r, r)
+	net.bw = torch.zeros(voca:size(), 1)
 
 	-- wordembedding
 	net.L = input.Lookup
@@ -97,12 +103,12 @@ function sfIORNN:new(input)
 	-- root outer
 	net.root_outer = uniform(dim, 1, -1e-3, 1e-3)
 	
-	setmetatable(net, sfIORNN_mt)
+	setmetatable(net, IORNN_mt)
 	return net
 end
 
 -- save net into a bin file
-function sfIORNN:save( filename , binary )
+function IORNN:save( filename , binary )
 	local file = torch.DiskFile(filename, 'w')
 	if binary == nil or binary then print(binary) file:binary() end
 	file:writeObject(self)
@@ -110,40 +116,44 @@ function sfIORNN:save( filename , binary )
 end
 
 -- create net from file
-function sfIORNN:load( filename , binary, func, funcPrime )
+function IORNN:load( filename , binary, func, funcPrime )
 	local file = torch.DiskFile(filename, 'r')
 	if binary == nil or binary then file:binary() end
 	local net = file:readObject()
 	file:close()
 
-	setmetatable(net, sfIORNN_mt)
-	net.lex = Lex:setmetatable(net.lex)
+	setmetatable(net, IORNN_mt)
+	setmetatable(net.voca, Dict_mt)
 
 	return net
 end
 
 -- fold parameters to a vector
-function sfIORNN:fold( Model )
+function IORNN:fold( Model )
 	local net = Model or self
 
 	local Params = {
 		net.root_outer,
-		net.Wc, net.bc,
+		net.Ww, net.bw
 	}
 	
 	for _,rule in ipairs(net.rules) do
-		for j = 1,#rule.Wi do
-			Params[#Params+1] = rule.Wi[j]; 
-			Params[#Params+1] = rule.Wo[j]; 
+		for j = 1,#rule.Wi_U do
+			Params[#Params+1] = rule.Wi_U[j] 
+			Params[#Params+1] = rule.Wi_V[j]
+			Params[#Params+1] = rule.Wi_r[j]
+
+			Params[#Params+1] = rule.Wo_U[j] 
+			Params[#Params+1] = rule.Wo_V[j] 
+			Params[#Params+1] = rule.Wo_r[j] 
+	
 			Params[#Params+1] = rule.bo[j]
 		end
 		Params[#Params+1] = rule.bi
-		Params[#Params+1] = rule.Wop
-	end
-
-	for _,wp in ipairs(net.wpred) do
-		Params[#Params+1] = wp.Ww
-		Params[#Params+1] = wp.bw
+	
+		Params[#Params+1] = rule.Wop_U
+		Params[#Params+1] = rule.Wop_V
+		Params[#Params+1] = rule.Wop_r
 	end
 
 	if self.update_L == true then
@@ -167,29 +177,34 @@ function sfIORNN:fold( Model )
 end
 
 -- unfold param-vector 
-function sfIORNN:unfold(Theta)
+function IORNN:unfold(Theta)
+	local net = self
 	local Params = {
-		self.root_outer,
-		self.Wc, self.bc,
+		net.root_outer,
+		net.Ww, net.bw
 	}
 	
-	for _,rule in ipairs(self.rules) do
-		for j = 1,#rule.Wi do
-			Params[#Params+1] = rule.Wi[j]; 
-			Params[#Params+1] = rule.Wo[j]; 
-			Params[#Params+1] = rule.bo[j];
+	for _,rule in ipairs(net.rules) do
+		for j = 1,#rule.Wi_U do
+			Params[#Params+1] = rule.Wi_U[j] 
+			Params[#Params+1] = rule.Wi_V[j]
+			Params[#Params+1] = rule.Wi_r[j]
+
+			Params[#Params+1] = rule.Wo_U[j] 
+			Params[#Params+1] = rule.Wo_V[j] 
+			Params[#Params+1] = rule.Wo_r[j] 
+	
+			Params[#Params+1] = rule.bo[j]
 		end
 		Params[#Params+1] = rule.bi
-		Params[#Params+1] = rule.Wop
-	end
-
-	for _,wp in ipairs(self.wpred) do
-		Params[#Params+1] = wp.Ww
-		Params[#Params+1] = wp.bw
+	
+		Params[#Params+1] = rule.Wop_U
+		Params[#Params+1] = rule.Wop_V
+		Params[#Params+1] = rule.Wop_r
 	end
 
 	if self.update_L == true then
-		Params[#Params+1] = self.L
+		Params[#Params+1] = net.L
 	end
 
 	local i = 1
@@ -201,12 +216,8 @@ function sfIORNN:unfold(Theta)
 end
 
 --************************ forward **********************--
---input:
---	tree : compact tree, a list of nodes
---output:
---	Tree
 
-function sfIORNN:forward_inside(tree)
+function IORNN:forward_inside(tree)
 	if tree.inner == nil then
 		tree.inner = torch.zeros(self.dim, tree.n_nodes)
 	else
@@ -223,13 +234,18 @@ function sfIORNN:forward_inside(tree)
 		-- for internal nodes
 		else
 			local rule = self.rules[tree.rule_id[i]]
-			if (#rule.Wi ~= tree.n_children[i]) then 
+			if (#rule.Wi_U ~= tree.n_children[i]) then 
 				error("rules not match")
 			end
 
-			local input = rule.Wi[1] * tree.inner[{{},{tree.children_id[{1,i}]}}]
+			local temp = tree.inner[{{},{tree.children_id[{1,i}]}}] 
+			local input = 	(rule.Wi_U[1] * (rule.Wi_V[1] * temp))
+							:add(torch.cmul(rule.Wi_r[1], temp))
+							
 			for j = 2,tree.n_children[i] do
-				input:add(rule.Wi[j] * tree.inner[{{},{tree.children_id[{j,i}]}}])
+				local temp = tree.inner[{{},{tree.children_id[{j,i}]}}]
+				input	:add(rule.Wi_U[j] * (rule.Wi_V[j] * temp))
+						:add(torch.cmul(rule.Wi_r[j], temp))
 			end
 			input:add(rule.bi)
 			tree.inner[col_i]:copy(self.func(input))
@@ -237,7 +253,7 @@ function sfIORNN:forward_inside(tree)
 	end
 end
 
-function sfIORNN:forward_outside(tree)	
+function IORNN:forward_outside(tree)	
 	if tree.outer == nil then 
 		tree.outer = torch.Tensor(self.dim, tree.n_nodes)
 	else
@@ -253,11 +269,15 @@ function sfIORNN:forward_outside(tree)
 		local input = nil
 		local rule = self.rules[tree.rule_id[parent_id]]
 
-		local input = rule.Wop * tree.outer[{{},{parent_id}}]
+		local temp = tree.outer[{{},{parent_id}}]
+		local input =	(rule.Wop_U * (rule.Wop_V * temp))
+						:add(torch.cmul(rule.Wop_r, temp))
 		for j = 1, tree.n_children[parent_id] do
 			local sister_id = tree.children_id[{j,parent_id}]
 			if sister_id ~= i then
-				input:add(rule.Wo[j] * tree.inner[{{},{sister_id}}])
+				local temp = tree.inner[{{},{sister_id}}]
+				input	:add(rule.Wo_U[j] * (rule.Wo_V[j] * temp))
+						:add(torch.cmul(rule.Wo_r[j], temp))
 			else
 				input:add(rule.bo[j])
 			end
@@ -266,12 +286,9 @@ function sfIORNN:forward_outside(tree)
 	end
 end
 
-function sfIORNN:forward_word_prediction(tree)
-	tree.pred_c = {}
+function IORNN:forward_word_prediction(tree)
 	tree.pred_w = {}
 	tree.cross_entropy = torch.zeros(tree.n_nodes)
-	tree.class_id = torch.zeros(tree.n_nodes)
-	tree.word_in_class_id = torch.zeros(tree.n_nodes)
 
 	local n_leaves = 0
 	for i = 2,tree.n_nodes do
@@ -280,16 +297,8 @@ function sfIORNN:forward_word_prediction(tree)
 			local col_i = {{},{i}}
 			local outer = tree.outer[col_i]
 			local word_id = tree.word_id[i]
-			local class_id = self.lex.class_of_word[word_id]
-			local word_in_class_id = self.lex.word_in_class[class_id]:get_id(word_id)
-			local wp = self.wpred[class_id]
-
-			tree.pred_c[i] = safe_compute_softmax((self.Wc*outer):add(self.bc))
-			tree.pred_w[i] = safe_compute_softmax((wp.Ww*outer):add(wp.bw))
-			tree.cross_entropy[i] = -math.log(tree.pred_c[i][{class_id,1}] * tree.pred_w[i][{word_in_class_id,1}])
-
-			tree.class_id[i] = class_id
-			tree.word_in_class_id[i] = word_in_class_id
+			tree.pred_w[i] = safe_compute_softmax((self.Ww*outer):add(self.bw))
+			tree.cross_entropy[i] = -math.log(tree.pred_w[i][{word_id,1}])
 		end
 	end
 
@@ -297,7 +306,7 @@ function sfIORNN:forward_word_prediction(tree)
 end
 
 --*********************** backpropagate *********************--
-function sfIORNN:backpropagate_outside(tree, grad)
+function IORNN:backpropagate_outside(tree, grad)
 	if tree.gradZo == nil then
 		tree.gradZo = torch.zeros(self.dim, tree.n_nodes)
 	else
@@ -312,21 +321,11 @@ function sfIORNN:backpropagate_outside(tree, grad)
 
 		-- word prediction
 		if tree.cross_entropy[i] > 0 then
-			-- for class prediction
-			local gZc = tree.pred_c[i]:clone()
-			gZc[{tree.class_id[i],{1}}]:add(-1)
-			grad.Wc:add(gZc * outer:t())
-			grad.bc:add(gZc)
-
-			-- for word prediction (given class)
 			local gZw = tree.pred_w[i]:clone()
-			gZw[{tree.word_in_class_id[i],{1}}]:add(-1)
-			local grad_wp = grad.wpred[tree.class_id[i]]
-			grad_wp.Ww:add(gZw * outer:t())
-			grad_wp.bw:add(gZw)
-
-			gZo:add(self.Wc:t()*gZc)
-			gZo:add(self.wpred[tree.class_id[i]].Ww:t()*gZw)
+			gZw[{tree.word_id[i],{1}}]:add(-1)
+			grad.Ww:add(gZw * outer:t())
+			grad.bw:add(gZw)
+			gZo:add(self.Ww:t()*gZw)
 		end
 
 		local input = nil
@@ -338,7 +337,8 @@ function sfIORNN:backpropagate_outside(tree, grad)
 			end
 		end
 		if input ~= nil then 
-			gZo:add(rule.Wop:t() * input)
+			gZo	:add(rule.Wop_V:t() * (rule.Wop_U:t() * input))
+				:add(torch.cmul(rule.Wop_r, input))
 		end
 		gZo:cmul(self.funcPrime(outer))
 		tree.gradZo[col_i]:copy(gZo)
@@ -346,14 +346,21 @@ function sfIORNN:backpropagate_outside(tree, grad)
 		-- Wop, Wo, bo
 		local parent_id = tree.parent_id[i]
 		local grad_rule = grad.rules[tree.rule_id[parent_id]]
+		local prule = self.rules[tree.rule_id[parent_id]]
 
-		local gWop = gZo * tree.outer[{{},{parent_id}}]:t()
-		grad_rule.Wop:add(gWop)
+		local temp = tree.outer[{{},{parent_id}}]
+		grad_rule.Wop_U:add(gZo * (temp:t() * prule.Wop_V:t()))
+		grad_rule.Wop_V:add(prule.Wop_U:t() * gZo * temp:t())
+		grad_rule.Wop_r:add(temp)
 
 		for j = 1, tree.n_children[parent_id] do
 			local sister_id = tree.children_id[{j,parent_id}]
+			local temp = tree.inner[{{},{sister_id}}]
+
 			if sister_id ~= i then
-				grad_rule.Wo[j]:add(gZo * tree.inner[{{},{sister_id}}]:t())
+				grad_rule.Wo_U[j]:add(gZo * (temp:t() * prule.Wo_V[j]:t()))
+				grad_rule.Wo_V[j]:add(prule.Wo_U[j]:t() * gZo * temp:t())
+				grad_rule.Wo_r[j]:add(temp:t())
 			else
 				grad_rule.bo[j]:add(gZo)
 			end
@@ -365,12 +372,13 @@ function sfIORNN:backpropagate_outside(tree, grad)
 	for j = 2, tree.n_children[1] do
 		input:add(tree.gradZo[{{},{tree.children_id[{j,1}]}}])
 	end
-	local gZo = self.rules[tree.rule_id[1]].Wop:t() * input
+	local rule = self.rules[tree.rule_id[1]]
+	local gZo = (rule.Wop_V:t() * (rule.Wop_U:t() * input))
+				:add(torch.cmul(rule.Wop_r, input))
 	grad.root_outer:add(gZo)
 end
 
-function sfIORNN:backpropagate_inside(tree, grad)
-	-- gradient over Z of softmax nodes
+function IORNN:backpropagate_inside(tree, grad)
 	if tree.gradZi == nil then
 		tree.gradZi = torch.zeros(self.dim, tree.n_nodes)
 	else
@@ -385,13 +393,18 @@ function sfIORNN:backpropagate_inside(tree, grad)
 		if tree.parent_id[i] > 0 then
 			local parent_id = tree.parent_id[i]
 			local rule = self.rules[tree.rule_id[parent_id]]
-			
+	
+			local temp = tree.gradZi[{{},{parent_id}}]	
 			for j = 1, tree.n_children[parent_id] do
 				local sister_id = tree.children_id[{j,parent_id}]
 				if sister_id == i then
-					gZi:add(rule.Wi[j]:t() * tree.gradZi[{{},{parent_id}}])
+					gZi	:add(rule.Wi_V[j]:t() * (rule.Wi_U[j]:t() * temp))
+						:add(torch.cmul(rule.Wi_r[j], temp))
 				else 
-					gZi:add(rule.Wo[tree.sibling_order[i]]:t() * tree.gradZo[{{},{sister_id}}])
+					local temp1 = tree.gradZo[{{},{sister_id}}]
+					local k = tree.sibling_order[i]
+					gZi	:add(rule.Wo_V[k]:t() * (rule.Wo_U[k]:t() * temp1))
+						:add(torch.cmul(rule.Wo_r[k], temp1))
 				end
 			end
 		end
@@ -401,11 +414,16 @@ function sfIORNN:backpropagate_inside(tree, grad)
 			gZi:cmul(self.funcPrime(tree.inner[col_i]))
 			tree.gradZi[col_i]:add(gZi)
 
-			-- weight matrices for inner
+			-- weight matrix for inner
+			local rule = self.rules[tree.rule_id[i]]
 			local grad_rule = grad.rules[tree.rule_id[i]]
 			for j = 1, tree.n_children[i] do
 				local child_id = tree.children_id[{j,i}]
-				grad_rule.Wi[j]:add(gZi * tree.inner[{{},{child_id}}]:t())
+				local temp = tree.inner[{{},{child_id}}]
+
+				grad_rule.Wi_U[j]:add(gZi * (temp:t() * rule.Wi_V[j]:t()))
+				grad_rule.Wi_V[j]:add(rule.Wi_U[j]:t() * gZi * temp:t())
+				grad_rule.Wi_r[j]:add(temp)
 			end
 			grad_rule.bi:add(gZi)
 
@@ -419,7 +437,7 @@ function sfIORNN:backpropagate_inside(tree, grad)
 	end
 end
 
-function sfIORNN:computeCostAndGrad(treebank, config)
+function IORNN:computeCostAndGrad(treebank, config)
 	local parse = config.parse or false
 	
 if NPROCESS > 1 then
@@ -431,28 +449,36 @@ else
 	for i,rule in ipairs(self.rules) do
 		grad.rules[i] = {}
 
-		grad.rules[i].Wi = {}
-		grad.rules[i].Wo = {}
+		grad.rules[i].Wi_U = {}
+		grad.rules[i].Wi_V = {}
+		grad.rules[i].Wi_r = {}
+
+		grad.rules[i].Wo_U = {}
+		grad.rules[i].Wo_V = {}
+		grad.rules[i].Wo_r = {}
+	
 		grad.rules[i].bo = {}
 
-		for j = 1,#rule.Wi do
-			grad.rules[i].Wi[j] = torch.zeros(rule.Wi[j]:size())
-			grad.rules[i].Wo[j] = torch.zeros(rule.Wo[j]:size())
+		for j = 1,#rule.Wi_U do
+			grad.rules[i].Wi_U[j] = torch.zeros(rule.Wi_U[j]:size())
+			grad.rules[i].Wi_V[j] = torch.zeros(rule.Wi_V[j]:size())
+			grad.rules[i].Wi_r[j] = torch.zeros(rule.Wi_r[j]:size())
+
+			grad.rules[i].Wo_U[j] = torch.zeros(rule.Wo_U[j]:size())
+			grad.rules[i].Wo_V[j] = torch.zeros(rule.Wo_V[j]:size())
+			grad.rules[i].Wo_r[j] = torch.zeros(rule.Wo_r[j]:size())
+			
 			grad.rules[i].bo[j] = torch.zeros(rule.bo[j]:size())
 		end		
 
 		grad.rules[i].bi = torch.zeros(rule.bi:size())
-		grad.rules[i].Wop = torch.zeros(rule.Wop:size())
+		grad.rules[i].Wop_U = torch.zeros(rule.Wop_U:size())
+		grad.rules[i].Wop_V = torch.zeros(rule.Wop_V:size())
+		grad.rules[i].Wop_r = torch.zeros(rule.Wop_r:size())
 	end
 
-	grad.Wc = torch.zeros(self.Wc:size())
-	grad.bc = torch.zeros(self.bc:size())
-
-	grad.wpred = {}
-	for i,wp in ipairs(self.wpred) do
-		grad.wpred[i] = { 	Ww = torch.zeros(wp.Ww:size()),
-							bw = torch.zeros(wp.bw:size()) }
-	end
+	grad.Ww = torch.zeros(self.Ww:size())
+	grad.bw = torch.zeros(self.bw:size())
 	
 	if self.update_L then
 		grad.L = torch.zeros(self.L:size())
@@ -492,7 +518,7 @@ end
 end
 
 -- check gradient
-function sfIORNN:checkGradient(treebank, config, bag_of_subtrees)
+function IORNN:checkGradient(treebank, config, bag_of_subtrees)
 	local epsilon = 1e-4
 
 	local dim = self.dim
@@ -531,7 +557,7 @@ end
 
 
 --[[***************************** eval **************************
-function sfIORNN:eval(treebank)
+function IORNN:eval(treebank)
 	_, _, treebank = self:computeCostAndGrad(treebank, {parse=true})
 	local total_all = 0
 	local correct_all = 0
@@ -562,7 +588,7 @@ require 'optim'
 require 'xlua'
 p = xlua.Profiler()
 
-function sfIORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
+function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
 									maxepoch, lambda, prefix,
 									adagrad_config, adagrad_state, bag_of_subtrees)
 	local nSample = #traintreebank
@@ -613,7 +639,7 @@ function sfIORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	return adagrad_config, adagrad_state
 end
 
-function sfIORNN:parse(treebank)
+function IORNN:parse(treebank)
 	for _,tree in ipairs(treebank) do 
 		self:forward_inside(tree)
 		self:forward_outside(tree)
@@ -622,12 +648,11 @@ function sfIORNN:parse(treebank)
 	return treebank
 end
 
---[[*********************************** test ******************************--
+--*********************************** test ******************************--
 	torch.setnumthreads(1)
 
-	require 'lexicon'
-	local lex = Lex:new(huang_template)
-	lex:load('../data/toy/words.lst', '../data/toy/clusters.lst', '../data/toy/wc.txt')
+	local vocaDic = Dict:new(huang_template)
+	vocaDic:load('../data/toy/words.lst')
 
 	treebank = {
 		"(TOP (S (CC Yet) (NP (DT the) (NN act)) (VP (VBZ is) (ADVP (RB still)) (ADJP (JJ charming)) (ADVP (RB here))) (. .)))",
@@ -638,9 +663,6 @@ end
 	for i = 1,#treebank do
 		treebank[i] = Tree:create_from_string(treebank[i])
 	end
-
-	require "dict"
-	vocaDic = lex.voca
 
 	ruleDic = Dict:new(cfg_template)
 	ruleDic:load("grammar/cfg_simple_rule.txt")
@@ -660,14 +682,15 @@ end
 	end
 
 	input = {	Lookup = torch.randn(2,vocaDic:size()), 
+				subdim = 1, 
 				func = identity, funcPrime = identityPrime, 
 				rules = rules,
-				lexicon = lex }
-	net = sfIORNN:new(input)
+				voca = vocaDic }
+	net = IORNN:new(input)
 
 	--print(net)	
 
-	config = {lambda = 1e-4, lambda_L = 1e-7}
-	net.update_L = true
+	config = {lambda = 0*1e-4, lambda_L = 0*1e-7}
+	net.update_L = false
 	net:checkGradient(treebank, config, bag_of_subtrees)
-]]
+

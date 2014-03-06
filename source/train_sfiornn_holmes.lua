@@ -20,7 +20,7 @@ if #arg == 6 then
 -- load lexicon
 	print('load lexicon...')
 	local lex = Lex:new(collobert_template)
-	lex:load(lex_dir_path..'/words.lst', lex_dir_path..'/clusters.lst', lex_dir_path..'/wc.txt')
+	lex:load(lex_dir_path..'/words.lst', lex_dir_path..'/clusters.fb.lst', lex_dir_path..'/wc.fb.txt')
 	local vocaDic = lex.voca
 
 	print('load grammar rules...')
@@ -94,5 +94,5 @@ if #arg == 6 then
 	end
 
 else
-	print("[lex dir path] [rule path] [treebank dir] [learning rate] [model dir]")
+	print("[lex dir path] [rule path] [treebank dir] [dim] [learning rate] [model dir]")
 end

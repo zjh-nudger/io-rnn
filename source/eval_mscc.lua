@@ -73,7 +73,8 @@ function eval( cases , rate_function )
 		--print('----------')
 		--print(choice)
 		--print(case.answer)
-		if net.lex.class_of_word[choice] == net.lex.class_of_word[case.answer] then 
+		--if net.lex.class_of_word[choice] == net.lex.class_of_word[case.answer] then 
+		if choice == case.answer then 
 			n_correct = n_correct + 1
 		end
 	end
@@ -94,7 +95,7 @@ function rate_totsim(case)
 			if n_leaves ~= case.position then
 				for j,c in ipairs(case.choice) do
 					scores[j] = scores[j] + 
-							compute_score(net.L[{{},{tree.word_id[i]}}], net.L[{{},{c}}])[1]
+							compute_score(embs[{{},{tree.word_id[i]}}], embs[{{},{c}}])[1]
 				end
 			end
 		end
@@ -125,13 +126,13 @@ function rate_iornn( case )
 
 	--print('--------------------')
 	--print(net.lex.voca.id2word[case.answer])
+	local pred_c = safe_compute_softmax((net.Wc*outer):add(net.bc))
 	for _,c in ipairs(case.choice) do
 		local word_id = c
 		local class_id = net.lex.class_of_word[word_id]
 		local word_in_class_id = net.lex.word_in_class[class_id]:get_id(word_id)
 		local wp = net.wpred[class_id]
 
-		local pred_c = safe_compute_softmax((net.Wc*outer):add(net.bc))
 		local pred_w = safe_compute_softmax((wp.Ww*outer):add(wp.bw))
 		local score = pred_c[{class_id,1}] * pred_w[{word_in_class_id,1}]
 		
@@ -146,6 +147,7 @@ function rate_iornn( case )
 	return best_choice
 end
 
+--[[
 if #arg == 3 then
 	rule_path =  arg[1]
 	data_path = arg[2]
@@ -179,4 +181,41 @@ if #arg == 3 then
 
 else
 	print('[rule] [data] [net]')
+end
+]]
+
+if #arg == 3 then
+	vocaDic_emb_path = arg[1]
+	rule_path =  arg[2]
+	data_path = arg[3]
+
+	-- load vocaDic & emb
+	print('load vocaDic & emb...')
+	f = torch.DiskFile(vocaDic_emb_path, 'r')
+	vocaDic = f:readObject()
+	setmetatable(vocaDic, Dict_mt)
+	embs = f:readObject()
+	f:close()
+
+	-- load grammar rules
+	print('load grammar rules...')
+	ruleDic = Dict:new(grammar_template)
+	ruleDic:load(rule_path)
+
+	-- load data
+	print('load data')
+	cases = load_gold(test_type)
+
+	-- test
+	func_list = {
+					['totsim'] = rate_totsim, -- total similarity
+				}
+
+
+	for f_name,rate_function in pairs(func_list) do
+		rho = eval(cases, rate_function)
+		print(f_name .. ' : ' .. rho)
+	end
+else
+	print('[embs] [rule] [data]')
 end

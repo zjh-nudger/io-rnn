@@ -10,7 +10,7 @@ if #arg == 3 then
 
 -- load word emb and grammar rules
 	print('load dic...')
-	local dic = Dict:new(mssc_template)
+	local dic = Dict:new() --mssc_template)
 	dic:load(dic_path)	
 
 -- process

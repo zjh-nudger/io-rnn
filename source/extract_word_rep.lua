@@ -1,4 +1,4 @@
-require 'iornn'
+require 'sfiornn'
 require 'dict'
 require 'knn'
 
