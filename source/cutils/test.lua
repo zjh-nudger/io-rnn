@@ -1,7 +1,19 @@
 require('cutils')
 require('xlua')
 p = xlua.Profiler()
+torch.setnumthreads(1)
+a = torch.rand(300,25)
+b = torch.rand(300,25);
+sum = torch.Tensor(300,25);
+p:start('x')
+multi(sum,a,b)
+p:lap('x')
 
-a = torch.Tensor({3,2,1,5,3,3})
-b = torch.Tensor({1,2,3,1,5,4})
-print(spearman_rho(a,b))
+p:start('y')
+for i = 1,3000 do
+	for j = 1,1 do
+		sum = a + b
+	end
+end
+p:lap('y')
+p:printAll()

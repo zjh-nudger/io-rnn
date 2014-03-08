@@ -52,12 +52,12 @@ end
 -- create a new recursive autor encoder with a given structure
 function IORNN:new(input)
 
-	local dim		= input.t_lookup:size(1)
+	local dim		= input.lookup:size(1)
 	local voca		= input.voca
+	local class		= input.class
 	local rules		= input.rules
-	local subdim	= input.subdim
 
-	local net = {dim = dim, subdim = subdim, voca = voca}
+	local net = {dim = dim, voca = voca, class = class}
 	net.func = input.func
 	net.funcPrime = input.funcPrime
 	setmetatable(net, IORNN_mt)
@@ -67,10 +67,10 @@ function IORNN:new(input)
 end
 
 function IORNN:init_params(input)
-	local net = self
-	local dim = net.dim
-	local subdim = net.subdim
-	local voca = net.voca
+	local net	= self
+	local dim	= net.dim
+	local voca	= net.voca
+	local class	= net.class
 
 	net.rules = {}
 
@@ -79,11 +79,12 @@ function IORNN:init_params(input)
 	n_params = n_params + dim	-- outer at root
 	for i,rule in ipairs(input.rules) do
 		for j = 1,#rule.rhs do
-			n_params = n_params + 4*(dim * subdim) + 3*dim
+			n_params = n_params + 2*(dim * dim) + dim
 		end		
-		n_params = n_params + 2*(dim*subdim) + 2*dim
+		n_params = n_params + dim*dim + dim
 	end
-	n_params = n_params + 2*(dim * voca:size())	-- target & conditional embeddings
+	n_params = n_params + dim * voca:size()	-- target & conditional embeddings
+	n_params = n_params + 2*class:size()*dim + class:size() + dim	-- for classification
 	net.params = torch.zeros(n_params)
 
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
@@ -97,57 +98,48 @@ function IORNN:init_params(input)
 	for i,rule in ipairs(input.rules) do
 		net.rules[i] = {}
 
-		net.rules[i].Wi_U = {}
-		net.rules[i].Wi_V = {}
-		net.rules[i].Wi_r = {}
-
-		net.rules[i].Wo_U = {}
-		net.rules[i].Wo_V = {}
-		net.rules[i].Wo_r = {}
-
+		net.rules[i].Wi = {}
+		net.rules[i].Wo = {}
 		net.rules[i].bo = {}
 
 		for j = 1,#rule.rhs do
-			net.rules[i].Wi_U[j] = net.params[{{index,index+dim*subdim-1}}]:resize(dim,subdim):copy(uniform(dim, subdim, -r, r))
-			index = index + dim*subdim
-			net.rules[i].Wi_V[j] = net.params[{{index,index+dim*subdim-1}}]:resize(subdim,dim):copy(uniform(subdim, dim, -r, r))
-			index = index + dim*subdim
-			net.rules[i].Wi_r[j] = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -r, r))
-			index = index + dim
-
-			net.rules[i].Wo_U[j] = net.params[{{index,index+dim*subdim-1}}]:resize(dim,subdim):copy(uniform(dim, subdim, -r, r))
-			index = index + dim*subdim
-			net.rules[i].Wo_V[j] = net.params[{{index,index+subdim*dim-1}}]:resize(subdim,dim):copy(uniform(subdim, dim, -r, r))
-			index = index + subdim*dim
-			net.rules[i].Wo_r[j] = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -r, r))
-			index = index + dim
-
+			net.rules[i].Wi[j] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
+			index = index + dim*dim
+			net.rules[i].Wo[j] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
+			index = index + dim*dim
 			net.rules[i].bo[j] = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(torch.zeros(dim, 1))
 			index = index + dim
 		end		
 
 		net.rules[i].bi = net.params[{{index,index+dim-1}}]:resize(dim,1)
 		index = index + dim
-		net.rules[i].Wop_U = net.params[{{index,index+dim*subdim-1}}]:resize(dim,subdim):copy(uniform(dim, subdim, -r, r))
-		index = index + dim*subdim
-		net.rules[i].Wop_V = net.params[{{index,index+subdim*dim-1}}]:resize(subdim,dim):copy(uniform(subdim, dim, -r, r))
-		index = index + subdim*dim
-		net.rules[i].Wop_r = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -r, r))
-		index = index + dim
+		net.rules[i].Wop = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
+		index = index + dim*dim
 	end
 
-	-- target/conditional embeddings
-	net.Lt = net.params[{{index,index+voca:size()*dim-1}}]:resize(dim,voca:size()):copy(input.t_lookup)		-- target lookup
+	-- for classification
+	net.Wco = net.params[{{index,index+class:size()*dim-1}}]:resize(class:size(),dim):copy(uniform(class:size(),dim, -r, r))
+	index = index + class:size()*dim
+	net.Wci = net.params[{{index,index+class:size()*dim-1}}]:resize(class:size(),dim):copy(uniform(class:size(),dim, -r, r))
+	index = index + class:size()*dim
+	net.bc = net.params[{{index,index+class:size()-1}}]:resize(class:size(),1)
+	index = index + class:size()
+
+	-- for marking target verb
+	net.bv = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim,1,-r,r))
+	index = index + dim
+
+	-- target/conditional embeddings (always always always at the end of params)
+	net.L = net.params[{{index,index+voca:size()*dim-1}}]:resize(dim,voca:size()):copy(input.lookup)		-- word embeddings 
 	index = index + voca:size()*dim
-	net.Lc = net.params[{{index,index+voca:size()*dim-1}}]:resize(dim,voca:size()):copy(input.c_lookup)		-- conditional lookup
-	index = index + voca:size()*dim
+
 end
 
 function IORNN:create_grad()
 	local grad = {}
 	local dim = self.dim
-	local subdim = self.subdim
 	local voca = self.voca
+	local class = self.class
 
 	grad.rules = {}
 	grad.params = torch.zeros(self.params:nElement())
@@ -161,50 +153,39 @@ function IORNN:create_grad()
 	-- weights
 	for i,rule in ipairs(self.rules) do
 		grad.rules[i] = {}
-
-		grad.rules[i].Wi_U = {}
-		grad.rules[i].Wi_V = {}
-		grad.rules[i].Wi_r = {}
-
-		grad.rules[i].Wo_U = {}
-		grad.rules[i].Wo_V = {}
-		grad.rules[i].Wo_r = {}
-
+		grad.rules[i].Wi = {}
+		grad.rules[i].Wo = {}
 		grad.rules[i].bo = {}
 
-		for j = 1,#rule.Wi_U do
-			grad.rules[i].Wi_U[j] = grad.params[{{index,index+dim*subdim-1}}]:resize(dim,subdim)
-			index = index + dim*subdim
-			grad.rules[i].Wi_V[j] = grad.params[{{index,index+dim*subdim-1}}]:resize(subdim,dim)
-			index = index + dim*subdim
-			grad.rules[i].Wi_r[j] = grad.params[{{index,index+dim-1}}]:resize(dim,1)
-			index = index + dim
-
-			grad.rules[i].Wo_U[j] = grad.params[{{index,index+dim*subdim-1}}]:resize(dim,subdim)
-			index = index + dim*subdim
-			grad.rules[i].Wo_V[j] = grad.params[{{index,index+subdim*dim-1}}]:resize(subdim,dim)
-			index = index + subdim*dim
-			grad.rules[i].Wo_r[j] = grad.params[{{index,index+dim-1}}]:resize(dim,1)
-			index = index + dim
-
+		for j = 1,#rule.Wi do
+			grad.rules[i].Wi[j] = grad.params[{{index,index+dim*dim-1}}]:resize(dim,dim)
+			index = index + dim*dim
+			grad.rules[i].Wo[j] = grad.params[{{index,index+dim*dim-1}}]:resize(dim,dim)
+			index = index + dim*dim
 			grad.rules[i].bo[j] = grad.params[{{index,index+dim-1}}]:resize(dim,1)
 			index = index + dim
 		end		
 
 		grad.rules[i].bi = grad.params[{{index,index+dim-1}}]:resize(dim,1)
 		index = index + dim
-		grad.rules[i].Wop_U = grad.params[{{index,index+dim*subdim-1}}]:resize(dim,subdim)
-		index = index + dim*subdim
-		grad.rules[i].Wop_V = grad.params[{{index,index+subdim*dim-1}}]:resize(subdim,dim)
-		index = index + subdim*dim
-		grad.rules[i].Wop_r = grad.params[{{index,index+dim-1}}]:resize(dim,1)
-		index = index + dim
+		grad.rules[i].Wop = grad.params[{{index,index+dim*dim-1}}]:resize(dim,dim)
+		index = index + dim*dim
 	end
 
+	-- for classification
+	grad.Wco = grad.params[{{index,index+class:size()*dim-1}}]:resize(class:size(),dim)
+	index = index + class:size()*dim
+	grad.Wci = grad.params[{{index,index+class:size()*dim-1}}]:resize(class:size(),dim)
+	index = index + class:size()*dim
+	grad.bc = grad.params[{{index,index+class:size()-1}}]:resize(class:size(),1)
+	index = index + class:size()
+
+	-- for marking target verb
+	grad.bv = grad.params[{{index,index+dim-1}}]:resize(dim,1)
+	index = index + dim
+
 	-- target/conditional embeddings
-	grad.Lt = grad.params[{{index,index+voca:size()*dim-1}}]:resize(dim,voca:size())		-- target lookup
-	index = index + voca:size()*dim
-	grad.Lc = grad.params[{{index,index+voca:size()*dim-1}}]:resize(dim,voca:size())		-- conditional lookup
+	grad.L = grad.params[{{index,index+voca:size()*dim-1}}]:resize(dim,voca:size())		-- word embeddings
 	index = index + voca:size()*dim
 
 	return grad
@@ -227,6 +208,7 @@ function IORNN:load( filename , binary, func, funcPrime )
 
 	setmetatable(net, IORNN_mt)
 	setmetatable(net.voca, Dict_mt)
+	setmetatable(net.class, Dict_mt)
 
 	return net
 end
@@ -246,23 +228,24 @@ function IORNN:forward_inside(tree)
 
 		-- for leaves
 		if tree.n_children[i] == 0 then
-			tree.inner[col_i]:copy(self.Lc[{{},{tree.word_id[i]}}])
+			tree.inner[col_i]:copy(self.L[{{},{tree.word_id[i]}}])
 
 		-- for internal nodes
 		else
 			local rule = self.rules[tree.rule_id[i]]
-			if (#rule.Wi_U ~= tree.n_children[i]) then 
+			if (#rule.Wi ~= tree.n_children[i]) then 
 				error("rules not match")
 			end
 
-			local temp = tree.inner[{{},{tree.children_id[{1,i}]}}] 
-			local input = 	(rule.Wi_U[1] * (rule.Wi_V[1] * temp))
-							:add(torch.cmul(rule.Wi_r[1], temp))
+			local input = rule.Wi[1] * tree.inner[{{},{tree.children_id[{1,i}]}}]
+			-- marking target verb
+			if tree.target_verb[i] == 1 then
+				input:add(self.bv)
+			end
 							
 			for j = 2,tree.n_children[i] do
 				local temp = tree.inner[{{},{tree.children_id[{j,i}]}}]
-				input	:add(rule.Wi_U[j] * (rule.Wi_V[j] * temp))
-						:add(torch.cmul(rule.Wi_r[j], temp))
+				input:add(rule.Wi[j] * tree.inner[{{},{tree.children_id[{j,i}]}}])
 			end
 			input:add(rule.bi)
 			tree.inner[col_i]:copy(self.func(input))
@@ -286,51 +269,33 @@ function IORNN:forward_outside(tree)
 		local input = nil
 		local rule = self.rules[tree.rule_id[parent_id]]
 
-		local temp = tree.outer[{{},{parent_id}}]
-		local input =	(rule.Wop_U * (rule.Wop_V * temp))
-						:add(torch.cmul(rule.Wop_r, temp))
+		local input = rule.Wop * tree.outer[{{},{parent_id}}]
+
 		for j = 1, tree.n_children[parent_id] do
 			local sister_id = tree.children_id[{j,parent_id}]
 			if sister_id ~= i then
 				local temp = tree.inner[{{},{sister_id}}]
-				input	:add(rule.Wo_U[j] * (rule.Wo_V[j] * temp))
-						:add(torch.cmul(rule.Wo_r[j], temp))
+				input:add(rule.Wo[j] * tree.inner[{{},{sister_id}}])
 			else
 				input:add(rule.bo[j])
 			end
 		end
 		tree.outer[col_i]:copy(self.func(input))
+
 	end
 end
 
-function IORNN:forward_word_prediction(tree, n_noise_cases)
-	tree.pred_w = {}
-	tree.cross_entropy = torch.zeros(tree.n_nodes)
+function IORNN:forward_predict_class(tree)
+	tree.class_score = (self.Wco * tree.outer):add(self.Wci * tree.inner)
+					:add(torch.repeatTensor(self.bc, 1, tree.n_nodes))
+	tree.class_predict = safe_compute_softmax(tree.class_score)
 	
-	tree.noise_word_id = torch.LongTensor(n_noise_cases, tree.n_nodes)
-	tree.word_score = torch.zeros(1, tree.n_nodes)
-	tree.noise_word_score = torch.zeros(n_noise_cases, tree.n_nodes)
-	tree.score = torch.zeros(n_noise_cases, tree.n_nodes)
-	tree.rank_error = torch.zeros(n_noise_cases, tree.n_nodes)
-
-	local n_leaves = 0
-	for i = 2,tree.n_nodes do
-		if tree.n_children[i] == 0 then
-			n_leaves = n_leaves + 1
-			local col_i = {{},{i}}
-			local outer = tree.outer[col_i]
-			local word_id = tree.word_id[i]
-			tree.noise_word_id[{{},i}] = 6 -- torch.rand(n_noise_cases):mul(self.voca:size()):floor():add(1):long()
-
-			-- compute score
-			tree.word_score[{1,i}] = torch.cmul(self.Lt[{{},{word_id}}],outer):sum()
-			tree.noise_word_score[col_i] = self.Lt:index(2,tree.noise_word_id[{{},i}]):t() * outer
-			tree.rank_error[col_i] = tree.noise_word_score[col_i] - tree.word_score[{1,i}] + 1
-			tree.rank_error[col_i][tree.rank_error[col_i]:lt(0)] = 0
-		end
-	end
-
-	return tree.rank_error:sum(), n_leaves
+	print(tree.class_gold:size())
+	print(tree.class_predict:size())
+	tree.class_error = -tree.class_predict[tree.class_gold]
+						:log()
+						:sum()
+	return tree.class_error
 end
 
 --*********************** backpropagate *********************--
@@ -341,31 +306,20 @@ function IORNN:backpropagate_outside(tree, grad)
 		tree.gradZo:fill(0)
 	end
 
+	-- for classification
+	local gZc = tree.class_predict - tree.class_gold:double()
+	tree.grado = self.Wco:t() * gZc
+	tree.gradi = self.Wci:t() * gZc
+	grad.Wco:add(gZc * tree.outer:t())
+	grad.Wci:add(gZc * tree.inner:t())
+	grad.bc:add(gZc:sum(2))
+
+	-- iterate over all nodes
 	for i = tree.n_nodes, 2, -1 do
 		local col_i = {{},{i}}
 		local outer = tree.outer[col_i]
-		local gZo = torch.zeros(self.dim, 1)
+		local gZo = tree.grado[col_i]
 		local rule = self.rules[tree.rule_id[i]]
-
-		--[[ word prediction
-		for j = 1,tree.rank_error:size(1) do
-			local word_id = tree.word_id[i]
-			if tree.rank_error[{j,i}] > 0 then
-				local noise_word_id = tree.noise_word_id[{j,i}]
-				grad.Lt[{{},{word_id}}]:add(-outer)
-				grad.Lt[{{},{noise_word_id}}]:add(outer)
-				gZo:add(self.Lt[{{},{noise_word_id}}] - self.Lt[{{},{word_id}}])
-			end
-		end]]
-
-		if tree.n_children[i] == 0 then
-			local word_id = tree.word_id[i]
-			local n_positive = tree.rank_error[col_i]:gt(0):sum()
-			grad.Lt[{{},{word_id}}]:add(-outer * n_positive)
-			grad.Lt[{{},{noise_word_id}}]:add(outer * n_positive)
-			local temp = torch.cmul(self.Lt:index(2,tree.noise_word_id[{{},i}]), torch.repeatTensor(
-			torch.repeatTensor(self.Lt[{{},{word_id}}],tree.noise_word_id:size(1))
-		end
 
 		local input = nil
 		for j = 1, tree.n_children[i] do
@@ -376,8 +330,7 @@ function IORNN:backpropagate_outside(tree, grad)
 			end
 		end
 		if input ~= nil then 
-			gZo	:add(rule.Wop_V:t() * (rule.Wop_U:t() * input))
-				:add(torch.cmul(rule.Wop_r, input))
+			gZo:add(rule.Wop:t() * input)
 		end
 		gZo:cmul(self.funcPrime(outer))
 		tree.gradZo[col_i]:copy(gZo)
@@ -388,18 +341,13 @@ function IORNN:backpropagate_outside(tree, grad)
 		local prule = self.rules[tree.rule_id[parent_id]]
 
 		local temp = tree.outer[{{},{parent_id}}]
-		grad_rule.Wop_U:add(gZo * (temp:t() * prule.Wop_V:t()))
-		grad_rule.Wop_V:add(prule.Wop_U:t() * gZo * temp:t())
-		grad_rule.Wop_r:add(torch.cmul(gZo,temp))
+		grad_rule.Wop:add(gZo * tree.outer[{{},{parent_id}}])
 
 		for j = 1, tree.n_children[parent_id] do
 			local sister_id = tree.children_id[{j,parent_id}]
-			local temp = tree.inner[{{},{sister_id}}]
 
 			if sister_id ~= i then
-				grad_rule.Wo_U[j]:add(gZo * (temp:t() * prule.Wo_V[j]:t()))
-				grad_rule.Wo_V[j]:add(prule.Wo_U[j]:t() * gZo * temp:t())
-				grad_rule.Wo_r[j]:add(torch.cmul(gZo,temp))
+				grad_rule.Wo[j]:add(gZo * tree.inner[{{},{sister_id}}])
 			else
 				grad_rule.bo[j]:add(gZo)
 			end
@@ -412,9 +360,7 @@ function IORNN:backpropagate_outside(tree, grad)
 		input:add(tree.gradZo[{{},{tree.children_id[{j,1}]}}])
 	end
 	local rule = self.rules[tree.rule_id[1]]
-	local gZo = (rule.Wop_V:t() * (rule.Wop_U:t() * input))
-				:add(torch.cmul(rule.Wop_r, input))
-	grad.root_outer:add(gZo)
+	grad.root_outer:add(rule.Wop:t() * input)
 end
 
 function IORNN:backpropagate_inside(tree, grad)
@@ -426,7 +372,7 @@ function IORNN:backpropagate_inside(tree, grad)
 
 	for i = 1,tree.n_nodes do
 		local col_i = {{},{i}}
-		local gZi = torch.zeros(self.dim, 1)
+		local gZi = tree.gradi[col_i]:copy()
 
 		-- if not the root
 		if tree.parent_id[i] > 0 then
@@ -437,13 +383,11 @@ function IORNN:backpropagate_inside(tree, grad)
 			for j = 1, tree.n_children[parent_id] do
 				local sister_id = tree.children_id[{j,parent_id}]
 				if sister_id == i then
-					gZi	:add(rule.Wi_V[j]:t() * (rule.Wi_U[j]:t() * temp))
-						:add(torch.cmul(rule.Wi_r[j], temp))
+					gZi	:add(rule.Wi[j]:t() * tree.gradZi[{{},{parent_id}}])
 				else 
 					local temp1 = tree.gradZo[{{},{sister_id}}]
 					local k = tree.sibling_order[i]
-					gZi	:add(rule.Wo_V[k]:t() * (rule.Wo_U[k]:t() * temp1))
-						:add(torch.cmul(rule.Wo_r[k], temp1))
+					gZi	:add(rule.Wo[k]:t() * tree.gradZo[{{},{sister_id}}])
 				end
 			end
 		end
@@ -460,11 +404,14 @@ function IORNN:backpropagate_inside(tree, grad)
 				local child_id = tree.children_id[{j,i}]
 				local temp = tree.inner[{{},{child_id}}]
 
-				grad_rule.Wi_U[j]:add(gZi * (temp:t() * rule.Wi_V[j]:t()))
-				grad_rule.Wi_V[j]:add(rule.Wi_U[j]:t() * gZi * temp:t())
-				grad_rule.Wi_r[j]:add(torch.cmul(gZi,temp))
+				grad_rule.Wi[j]:add(gZi * tree.inner[{{},{child_id}}])
 			end
 			grad_rule.bi:add(gZi)
+
+			-- for target verb
+			if tree.target_verb[i] == 1 then
+				grad.bv:add(gZi)
+			end
 
 		else -- leaf
 			tree.gradZi[col_i]:add(gZi)
@@ -493,9 +440,9 @@ else
 		-- forward
 		self:forward_inside(tree)
 		self:forward_outside(tree)
-		local lcost,lnleaves = self:forward_word_prediction(tree, config.n_noise_words)
+		local lcost = self:forward_predict_class(tree)
 		cost = cost + lcost
-		nSample = nSample + lnleaves
+		nSample = nSample + tree.n_nodes
 
 		-- backward
 		self:backpropagate_outside(tree, grad)
@@ -504,20 +451,20 @@ else
 	p:lap('process treebank') 
 
 	p:start('compute grad')
-	local wparams = self.params[{{1,-1-2*self.dim*self.voca:size()}}]
-	local lparams = self.params[{{-2*self.dim*self.voca:size(),-1}}]
+	local wparams = self.params[{{1,-1-self.dim*self.voca:size()}}]
+	local lparams = self.params[{{-self.dim*self.voca:size(),-1}}]
 	cost = cost / nSample 	+ config.lambda/2 * torch.pow(wparams,2):sum() 
 							+ config.lambda_L/2 * torch.pow(lparams,2):sum()
 
-	local grad_wparams = grad.params[{{1,-1-2*self.dim*self.voca:size()}}]
-	local grad_lparams = grad.params[{{-2*self.dim*self.voca:size(),-1}}]
+	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca:size()}}]
+	local grad_lparams = grad.params[{{-self.dim*self.voca:size(),-1}}]
 	grad.params:div(nSample)
 	grad_wparams:add(wparams * config.lambda)
 	grad_lparams:add(lparams * config.lambda_L)
 	p:lap('compute grad')
 
 	p:lap('compute cost and grad') 
-	p:printAll()
+	--p:printAll()
 
 	return cost, grad, treebank
 end
@@ -652,31 +599,32 @@ end
 --********************************** test ******************************--
 	torch.setnumthreads(1)
 
-	local vocaDic = Dict:new(huang_template)
-	vocaDic:load('../data/toy/words.lst')
+	local vocaDic = Dict:new()
+	vocaDic:load('../data/SRL/toy/words.lst')
+ 
+	local ruleDic = Dict:new(cfg_template)
+	ruleDic:load("../data/toy/cfg_simple_rule.txt")
+	ruleDic.grammar = 'CFG'
 
-	raw = {
-		"(TOP (S (CC Yet) (NP (DT the) (NN act)) (VP (VBZ is) (ADVP (RB still)) (ADJP (JJ charming)) (ADVP (RB here))) (. .)))",
-		"(TOP (S (NP (DT A) (NN screenplay)) (VP (VBZ is) (ADJP (ADVP (RBR more) (RB ingeniously)) (VBN constructed) (PP (IN than) (NP (`` ``) (NNP Memento) ('' ''))))) (. .)))",
-		"(TOP (S (NP (DT The) (NN act) (NN screenplay)) (VP (VBZ is) (ADJP (JJR more) (PP (IN than) (ADVP (RB here))))) (. .)))"
-	}
+	local classDic = Dict:new()
+	classDic:load('../data/SRL/toy/class.lst')
 
-	treebank = {}
-	for i = 1,#raw do
-		local tree = Tree:create_from_string(raw[i])
-		for j = 1,100 do
-			treebank[#treebank+1] = tree
+	local treebank = {}
+	local tokens = {}
+	for line in io.lines('../data/SRL/toy/train.txt') do
+		if line ~= '' then
+			tokens[#tokens+1] = split_string(line, '[^ ]+')
+		else 
+			local tree,srls = Tree:create_CoNLL2005_SRL(tokens)
+			tree = tree:to_torch_matrices(vocaDic, ruleDic)
+			for _,srl in ipairs(srls) do
+				local t = Tree:copy_torch_matrix_tree(tree)
+				t = Tree:add_srl_torch_matrix_tree(t, srl, classDic)
+				treebank[#treebank+1] = t
+			end
 		end
 	end
-
-	ruleDic = Dict:new(cfg_template)
-	ruleDic:load("../data/toy/cfg_simple_rule.txt")
---	ruleDic:load("grammar/cfg_simple_rule.txt")
 		
-	for i = 1,#treebank do
-		treebank[i] = treebank[i]:to_torch_matrices(vocaDic, ruleDic)
-	end
-
 	local rules = {}
 	for _,str in ipairs(ruleDic.id2word) do
 		local comps = split_string(str, "[^ \t]+")
@@ -687,14 +635,12 @@ end
 		rules[#rules+1] = rule
 	end
 
-	local dim = 100
-	local subdim = 5
-	input = {	t_lookup = torch.randn(dim,vocaDic:size()), 
-				c_lookup = torch.randn(dim,vocaDic:size()),
-				subdim = subdim, 
+	local dim = 2
+	input = {	lookup = torch.randn(dim,vocaDic:size()), 
 				func = identity, funcPrime = identityPrime, 
 				rules = rules,
-				voca = vocaDic }
+				voca = vocaDic,
+				class = classDic }
 	net = IORNN:new(input)
 
 	--print(net)	

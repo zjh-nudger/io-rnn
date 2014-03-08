@@ -25,7 +25,24 @@ static int spearman_rho(lua_State* L) {
 	return 1;
 }
 
+static int multi(lua_State* L) {
+	THDoubleTensor* a = luaT_toudata(L, -2, "torch.DoubleTensor");
+	THDoubleTensor* b = luaT_toudata(L, -1, "torch.DoubleTensor");
+	THDoubleTensor* sum = luaT_toudata(L, -3, "torch.DoubleTensor");
+	int i,j;
+	int k,x;
+	for (i=0;i<3000;i++) {
+		for (j=0;j<1;j++) {
+			THDoubleTensor_cadd(sum, a, 1, b);
+			//for (k=0;k<2500;k++) x = 1 + 3;
+		}
+	}
+	lua_pushnumber(L, 0);
+	return 1;
+}
+
 int luaopen_cutils(lua_State *L) {
 	lua_register(L, "spearman_rho", spearman_rho);
+	lua_register(L, "multi", multi);
 	return 0;
 }

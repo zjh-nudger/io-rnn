@@ -227,16 +227,52 @@ function Tree:to_stanford_sa_form()
 end
 ]]
 
-function Tree:to_torch_matrices(vocaDic, ruleDic, grammar) --, nCat)
+function Tree:create_CoNLL2005_SRL(tokens)
+	require 'utils'
+
+	-- read tree & srls
+	local str = ''
+	local srl = {}
+	for i = 7,#tokens[1] do
+		srl[i-6] = {}
+	end
+
+	for i,tok in ipairs(tokens) do
+		str = str .. string.gsub(tok[3], '[*]', '('..tok[2]..' '..tok[1]..')')
+
+		for j = 7,#tok do
+			if tok[j]:sub(1,1) == '(' then
+				role = {label = split_string(tok[j], '[^()*]+')[1], cover = {i,i}}
+				srl[j-6][#srl[j-6]+1] = role
+			end
+			if tok[j]:sub(tok[j]:len()) == ')' then 
+				local role = srl[j-6][#srl[j-6]]
+				if role.label ~= 'V' then
+					role.cover[2] = i
+				end
+			end
+		end
+	end
+	str = string.gsub(str, '[(]', ' ('):sub(2)
+
+	-- turn to torch_matrix
+	local tree = Tree:create_from_string(str)
+	return tree, srl
+end
+
+--------------------------------------------------------------------------------
+
+function Tree:to_torch_matrices(vocaDic, ruleDic)
 	require "utils"
 
 	local nodes = self:to_flat_form()
 	local nnodes = #nodes
+	local grammar = ruleDic.gramamr
 
 	local n_children = torch.zeros(nnodes)
 	local children_id = torch.zeros(20, nnodes)
 	local parent_id = torch.zeros(nnodes)
-	--local category = torch.zeros(nCat, nnodes)
+	
 	local word_id = torch.zeros(nnodes)
 	local rule_id = torch.zeros(nnodes)
 	local cover = torch.zeros(2, nnodes)
@@ -257,11 +293,6 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, grammar) --, nCat)
 			parent_id[cid] = i
 			sibling_order[cid] = j
 		end
-
-		-- uncomment these lines in the case of supervised learning
-		--cat = torch.zeros(nCat)
-		--cat[tonumber(node.cat)+1] = 1
-		--category[{{},i}]:copy(cat)
 		
 		if #node.childId == 0 then
 			word_id[i] = vocaDic:get_id(node.label)
@@ -309,18 +340,73 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, grammar) --, nCat)
 		end
 	end
 
-	return 	{	
-				n_nodes = nnodes,
-				n_children = n_children,
-				cover = cover,
-				children_id = children_id, 
-				parent_id = parent_id,
-				--category = category,
-				word_id = word_id,
-				rule_id = rule_id,
-				sibling_order = sibling_order
-			}
+	return {	
+				n_nodes			= nnodes,
+				n_children		= n_children,
+				cover			= cover,
+				children_id		= children_id, 
+				parent_id		= parent_id,
+				word_id			= word_id,
+				rule_id			= rule_id,
+				sibling_order	= sibling_order
+		}
 end
+
+function Tree:copy_torch_matrix_tree(tree)
+ 	return {	
+				n_nodes			= tree.n_nodes,
+				n_children		= tree.n_children:clone(),
+				cover			= tree.cover:clone(),
+				children_id		= tree.children_id:clone(), 
+				parent_id		= tree.parent_id:clone(),
+				word_id			= tree.word_id:clone(),
+				rule_id			= tree.rule_id:clone(),
+				sibling_order	= tree.sibling_order:clone()
+		}
+end
+
+function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
+	tree.target_verb = torch.zeros(tree.n_nodes)
+	tree.class_gold = torch.zeros(classDic:size(), tree.n_nodes):long()
+	tree.class_gold[{{classDic:get_id('NULL')},{}}] = 1
+	for _,role in ipairs(srl) do
+
+		-- if this is the target verb
+		if role.label == 'V' then
+			for i = 1,tree.n_nodes do
+				if tree.cover[{1,i}] == role.cover[1] and tree.cover[{2,i}] == role.cover[2] 
+				and tree.n_children[i] == 1 and tree.n_children[tree.children_id[{1,i}]] == 0 then
+					tree.target_verb[i] = 1
+					break
+				end
+			end
+
+		-- other roles
+		else
+			for i = 1,tree.n_nodes do
+				if tree.cover[{1,i}] == role.cover[1] and tree.cover[{2,i}] == role.cover[2] then
+					tree.class_gold[{classDic:get_id(role.label),i}] = 1
+					tree.class_gold[{classDic:get_id('NULL'),i}] = 0
+					break
+				end
+			end
+		end
+	end
+
+	return tree
+end
+
+--[[ test 
+tokens = {}
+for line in io.lines('../data/SRL/toy/train.txt') do
+	tokens[#tokens+1] = split_string(line, '[^ ]+')
+end
+
+local tree, srl = Tree:create_CoNLL2005_SRL(tokens)
+print(tree:to_string())
+print(srl)
+]]
+
 
 function extract_all_phrases(tree, dic, phrases, node_id)
 	local phrases = phrases or {}
