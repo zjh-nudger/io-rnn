@@ -522,6 +522,10 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			self:save(prefix .. '_' .. epoch)
 			j = 1 
 			epoch = epoch + 1
+
+			self:eval(devtreebank,   '../data/SRL/conll05st-release/devel/props/devel.24.props',
+									'../data/SRL/conll05st-release/srlconll-1.1/bin/srl-eval.pl')
+
 			if epoch > maxepoch then break end
 			print('===== epoch ' .. epoch .. '=====')
 		end
@@ -553,17 +557,33 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	return adagrad_config, adagrad_state
 end
 
-function IORNN:parse(treebank)
-	for _,tree in ipairs(treebank) do 
-		self:forward_inside(tree)
-		self:forward_outside(tree)
-		self:forward_predict_class(tree)
+function IORNN:label(tree, node_id, label)
+	local _,cid = tree.class_score[{{},node_id}]:max(1)
+	cid = cid[1]
+	if cid == self.class:get_id('NULL') then
+		for j = 1,tree.n_children[node_id] do
+			self:label(tree, tree.children_id[{j,node_id}], label)
+		end
+	else
+		local cover = tree.cover[{{},node_id}]
+		if cover[1] == cover[2] then
+			label[cover[1]] = '('..self.class.id2word[cid]..'*)'
+		else
+			label[cover[1]] = '('..self.class.id2word[cid]..'*'
+			label[cover[2]] = '*)'
+		end
 	end
-	return treebank
+	return label
 end
 
-function IORNN:eval(treebank, gold_path, eval_prog_path)
-	treebank = self:parse(treebank)
+function IORNN:predict_srl(treebank, filename)
+	for _,tree in ipairs(treebank) do 
+		if tree.target_verb:max() > 0 then
+			self:forward_inside(tree)
+			self:forward_outside(tree)
+			self:forward_predict_class(tree)
+		end
+	end
 
 	local ret = {}
 	local srls = nil
@@ -579,16 +599,50 @@ function IORNN:eval(treebank, gold_path, eval_prog_path)
 				srls.verb[i] = '-'
 			end
 		end
+		prev_tree = tree
+		
+		-- marking target verb
+		local m,vid = tree.target_verb:max(1)
+		if m[1] > 0 then
+			vid = vid[1]
+			srls.verb[tree.cover[{1,vid}]] = self.voca.id2word[tree.word_id[tree.children_id[{1,vid}]]]
 
-		-- read role
-		local srl = {}
-		for i = 1,tree.n_nodes do
-			if tree.target_verb[i] == 1 then
-				--local word = self.voca.id2word[tree.n
-				srls.verb[tree.cover[{1,i}]] = self.voca.id2word[tree
+			-- read role
+			local label = {}
+			for i = 1,tree.cover[{2,1}] do
+				label[i] = '*'
 			end
+			self:label(tree, 1, label)
+			srls.role[#srls.role+1] = label
 		end
 	end
+	ret[#ret+1] = srls
+
+	-- print to file
+	if filename ~= nil then
+		local f = io.open(filename, 'w')
+		for _,srls in ipairs(ret) do
+			for i = 1, #srls.verb do
+				local str = '' --srls.verb[i]
+				for _,r in ipairs(srls.role) do
+					str = str .. '\t' .. r[i]
+				end
+				f:write(str .. '\n')
+			end
+			f:write('\n')
+		end
+		f:close()
+	end
+
+	return ret
+end
+
+function IORNN:eval(treebank, gold_path, eval_prog_path)
+	local predicts = self:predict_srl(treebank, '/tmp/predicts.txt')
+	--print(predicts)
+	os.execute('cat ' .. gold_path .. " | awk '{print $1}' > /tmp/verbs.txt")
+	os.execute('paste /tmp/verbs.txt /tmp/predicts.txt > predicts.txt')
+	os.execute(eval_prog_path .. ' ' .. gold_path .. ' ' .. 'predicts.txt')
 end
 
 --[[********************************** test ******************************--
