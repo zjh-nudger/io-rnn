@@ -504,36 +504,7 @@ function IORNN:checkGradient(treebank, config)
 end
 
 --**************************** training ************************--
--- adagrad, adapt from optim.adagrad
-function IORNN:adagrad(config, state)
-	local config = config or {}
-	local state = state or config
-	local lr = config.learningRate or 1e-3
-	local lrd = config.learningRateDecay or 0
-	state.evalCounter = state.evalCounter or 0
-	local nevals = state.evalCounter
-
-	-- (1) evaluate f(x) and df/dx
-	local cost,grad = opfunc(x)
-
-	-- (3) learning rate decay (annealing)
-	local clr = lr / (1 + nevals*lrd)
-      
-	-- (4) parameter update with single or individual learning rates
-	if not state.paramVariance then
-		state.paramVariance = torch.Tensor():typeAs(x):resizeAs(dfdx):zero()
-		state.paramStd = torch.Tensor():typeAs(x):resizeAs(dfdx)
-	end
-	state.paramVariance:addcmul(1,dfdx,dfdx)
-	torch.sqrt(state.paramStd,state.paramVariance)
-	x:addcdiv(-clr, dfdx,state.paramStd:add(1e-10))
-
-	-- (5) update evaluation counter
-	state.evalCounter = state.evalCounter + 1
-
-	-- return x*, f(x) before optimization
-	return x,{fx}
-end
+require 'optim'
 
 function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
 									maxepoch, lambda, prefix,
@@ -561,14 +532,13 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 		end
 	
 		local function func(M)
-			-- extract data
 			p:start("compute grad")
 			cost, Grad = self:computeCostAndGrad(subtreebank, 
 							{lambda = lambda.lambda, lambda_L=lambda.lambda_L, alpha = alpha, beta = beta})
 			p:lap("compute grad")
 
-			print('iter ' .. j .. ': ' .. cost) --io.flush()		
-			return cost, Grad
+			print('iter ' .. j .. ': ' .. cost) io.flush()		
+			return cost, Grad.params
 		end
 
 		p:start("optim")
@@ -587,9 +557,38 @@ function IORNN:parse(treebank)
 	for _,tree in ipairs(treebank) do 
 		self:forward_inside(tree)
 		self:forward_outside(tree)
-		self:forward_word_prediction(tree)
+		self:forward_predict_class(tree)
 	end
 	return treebank
+end
+
+function IORNN:eval(treebank, gold_path, eval_prog_path)
+	treebank = self:parse(treebank)
+
+	local ret = {}
+	local srls = nil
+	local prev_tree = nil
+	for _,tree in ipairs(treebank) do
+		-- check if this is a new sentence
+		if prev_tree == nil or prev_tree.n_nodes ~= tree.n_nodes or torch.ne(prev_tree.word_id,tree.word_id):double():sum() > 0 then
+			if srls ~= nil then
+				ret[#ret+1] = srls
+			end
+			srls = {verb = {}, role = {}}
+			for i = 1, tree.cover[{2,1}] do
+				srls.verb[i] = '-'
+			end
+		end
+
+		-- read role
+		local srl = {}
+		for i = 1,tree.n_nodes do
+			if tree.target_verb[i] == 1 then
+				--local word = self.voca.id2word[tree.n
+				srls.verb[tree.cover[{1,i}]] = self.voca.id2word[tree
+			end
+		end
+	end
 end
 
 --[[********************************** test ******************************--

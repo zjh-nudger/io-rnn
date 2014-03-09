@@ -238,6 +238,16 @@ function Tree:create_CoNLL2005_SRL(tokens)
 	end
 
 	for i,tok in ipairs(tokens) do
+		if 		tok[2] == '(' then tok[2] = '-LRB-'
+		elseif 	tok[2] == ')' then tok[2] = '-RRB-'
+		elseif 	tok[2] == '[' then tok[2] = '-LSB-'
+		elseif 	tok[2] == ']' then tok[2] = '-RSB-'
+		elseif 	tok[2] == '{' then tok[2] = '-LCB-'
+		elseif 	tok[2] == '}' then tok[2] = '-RCB-'
+		end
+
+		if tok[1] == '%' then tok[1] = '%%' end
+
 		str = str .. string.gsub(tok[3], '[*]', '('..tok[2]..' '..tok[1]..')')
 
 		for j = 7,#tok do
@@ -254,6 +264,7 @@ function Tree:create_CoNLL2005_SRL(tokens)
 		end
 	end
 	str = string.gsub(str, '[(]', ' ('):sub(2)
+	--print(str)
 
 	-- turn to torch_matrix
 	local tree = Tree:create_from_string(str)
@@ -383,12 +394,16 @@ function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
 
 		-- other roles
 		else
+			local found = false
 			for i = 1,tree.n_nodes do
-				if tree.cover[{1,i}] == role.cover[1] and tree.cover[{2,i}] == role.cover[2] then
+				if role.cover[1] <= tree.cover[{1,i}] and role.cover[2] >= tree.cover[{2,i}] then
 					tree.class_gold[{classDic:get_id(role.label),i}] = 1
 					tree.class_gold[{classDic:get_id('NULL'),i}] = 0
-					break
+					found = true
 				end
+			end
+			if not found then 
+				error('not found')
 			end
 		end
 	end

@@ -131,6 +131,3 @@ function turian_template(word)
 	end
 end
 
-function grammar_template(rule)
-	return rule
-end
