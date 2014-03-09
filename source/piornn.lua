@@ -92,6 +92,7 @@ function IORNN:init_params(input)
 	
 	-- root outer
 	net.root_outer = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -1e-3, 1e-3))
+	index = index + dim
 
 	-- weights
 	for i,rule in ipairs(input.rules) do
@@ -157,6 +158,7 @@ function IORNN:create_grad()
 	
 	-- root outer
 	grad.root_outer = grad.params[{{index,index+dim-1}}]:resize(dim,1)
+	index = index + dim
 
 	-- weights
 	for i,rule in ipairs(self.rules) do
@@ -347,7 +349,7 @@ function IORNN:backpropagate_outside(tree, grad)
 		local gZo = torch.zeros(self.dim, 1)
 		local rule = self.rules[tree.rule_id[i]]
 
-		--[[ word prediction
+		-- word prediction
 		for j = 1,tree.rank_error:size(1) do
 			local word_id = tree.word_id[i]
 			if tree.rank_error[{j,i}] > 0 then
@@ -356,15 +358,6 @@ function IORNN:backpropagate_outside(tree, grad)
 				grad.Lt[{{},{noise_word_id}}]:add(outer)
 				gZo:add(self.Lt[{{},{noise_word_id}}] - self.Lt[{{},{word_id}}])
 			end
-		end]]
-
-		if tree.n_children[i] == 0 then
-			local word_id = tree.word_id[i]
-			local n_positive = tree.rank_error[col_i]:gt(0):sum()
-			grad.Lt[{{},{word_id}}]:add(-outer * n_positive)
-			grad.Lt[{{},{noise_word_id}}]:add(outer * n_positive)
-			local temp = torch.cmul(self.Lt:index(2,tree.noise_word_id[{{},i}]), torch.repeatTensor(
-			torch.repeatTensor(self.Lt[{{},{word_id}}],tree.noise_word_id:size(1))
 		end
 
 		local input = nil

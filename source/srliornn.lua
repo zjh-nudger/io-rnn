@@ -93,6 +93,7 @@ function IORNN:init_params(input)
 	
 	-- root outer
 	net.root_outer = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -1e-3, 1e-3))
+	index = index + dim
 
 	-- weights
 	for i,rule in ipairs(input.rules) do
@@ -149,6 +150,7 @@ function IORNN:create_grad()
 	
 	-- root outer
 	grad.root_outer = grad.params[{{index,index+dim-1}}]:resize(dim,1)
+	index = index + dim
 
 	-- weights
 	for i,rule in ipairs(self.rules) do
@@ -289,12 +291,7 @@ function IORNN:forward_predict_class(tree)
 	tree.class_score = (self.Wco * tree.outer):add(self.Wci * tree.inner)
 					:add(torch.repeatTensor(self.bc, 1, tree.n_nodes))
 	tree.class_predict = safe_compute_softmax(tree.class_score)
-	
-	print(tree.class_gold:size())
-	print(tree.class_predict:size())
-	tree.class_error = -tree.class_predict[tree.class_gold]
-						:log()
-						:sum()
+	tree.class_error = -tree.class_predict[tree.class_gold]:log():sum()
 	return tree.class_error
 end
 
@@ -338,16 +335,15 @@ function IORNN:backpropagate_outside(tree, grad)
 		-- Wop, Wo, bo
 		local parent_id = tree.parent_id[i]
 		local grad_rule = grad.rules[tree.rule_id[parent_id]]
-		local prule = self.rules[tree.rule_id[parent_id]]
 
 		local temp = tree.outer[{{},{parent_id}}]
-		grad_rule.Wop:add(gZo * tree.outer[{{},{parent_id}}])
+		grad_rule.Wop:add(gZo * tree.outer[{{},{parent_id}}]:t())
 
 		for j = 1, tree.n_children[parent_id] do
 			local sister_id = tree.children_id[{j,parent_id}]
 
 			if sister_id ~= i then
-				grad_rule.Wo[j]:add(gZo * tree.inner[{{},{sister_id}}])
+				grad_rule.Wo[j]:add(gZo * tree.inner[{{},{sister_id}}]:t())
 			else
 				grad_rule.bo[j]:add(gZo)
 			end
@@ -360,7 +356,7 @@ function IORNN:backpropagate_outside(tree, grad)
 		input:add(tree.gradZo[{{},{tree.children_id[{j,1}]}}])
 	end
 	local rule = self.rules[tree.rule_id[1]]
-	grad.root_outer:add(rule.Wop:t() * input)
+	grad.root_outer:add(rule.Wop:t() * input):add(tree.grado[{{},{1}}])
 end
 
 function IORNN:backpropagate_inside(tree, grad)
@@ -372,7 +368,7 @@ function IORNN:backpropagate_inside(tree, grad)
 
 	for i = 1,tree.n_nodes do
 		local col_i = {{},{i}}
-		local gZi = tree.gradi[col_i]:copy()
+		local gZi = tree.gradi[col_i]
 
 		-- if not the root
 		if tree.parent_id[i] > 0 then
@@ -404,7 +400,7 @@ function IORNN:backpropagate_inside(tree, grad)
 				local child_id = tree.children_id[{j,i}]
 				local temp = tree.inner[{{},{child_id}}]
 
-				grad_rule.Wi[j]:add(gZi * tree.inner[{{},{child_id}}])
+				grad_rule.Wi[j]:add(gZi * tree.inner[{{},{child_id}}]:t())
 			end
 			grad_rule.bi:add(gZi)
 
@@ -417,7 +413,7 @@ function IORNN:backpropagate_inside(tree, grad)
 			tree.gradZi[col_i]:add(gZi)
 
 			if self.update_L then
-				grad.Lc[{{},{tree.word_id[i]}}]:add(gZi)
+				grad.L[{{},{tree.word_id[i]}}]:add(gZi)
 			end
 		end
 	end
@@ -596,7 +592,7 @@ function IORNN:parse(treebank)
 	return treebank
 end
 
---********************************** test ******************************--
+--[[********************************** test ******************************--
 	torch.setnumthreads(1)
 
 	local vocaDic = Dict:new()
@@ -648,4 +644,4 @@ end
 	config = {lambda = 1e-4, lambda_L = 1e-7, n_noise_words = 1}
 	net.update_L = true
 	net:checkGradient(treebank, config)
-
+]]

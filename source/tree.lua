@@ -367,7 +367,7 @@ end
 
 function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
 	tree.target_verb = torch.zeros(tree.n_nodes)
-	tree.class_gold = torch.zeros(classDic:size(), tree.n_nodes):long()
+	tree.class_gold = torch.zeros(classDic:size(), tree.n_nodes):byte()
 	tree.class_gold[{{classDic:get_id('NULL')},{}}] = 1
 	for _,role in ipairs(srl) do
 
