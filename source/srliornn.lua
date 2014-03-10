@@ -196,7 +196,7 @@ end
 -- save net into a bin file
 function IORNN:save( filename , binary )
 	local file = torch.DiskFile(filename, 'w')
-	if binary == nil or binary then print(binary) file:binary() end
+	if binary == nil or binary then file:binary() end
 	file:writeObject(self)
 	file:close()
 end
@@ -299,14 +299,16 @@ end
 function IORNN:backpropagate_outside(tree, grad)
 	if tree.gradZo == nil then
 		tree.gradZo = torch.zeros(self.dim, tree.n_nodes)
+		tree.grado = torch.zeros(self.dim, tree.n_nodes)
+		tree.gradi = torch.zeros(self.dim, tree.n_nodes)
 	else
 		tree.gradZo:fill(0)
 	end
 
 	-- for classification
 	local gZc = tree.class_predict - tree.class_gold:double()
-	tree.grado = self.Wco:t() * gZc
-	tree.gradi = self.Wci:t() * gZc
+	torch.mm(tree.grado, self.Wco:t(), gZc)
+	torch.mm(tree.gradi, self.Wci:t(), gZc)
 	grad.Wco:add(gZc * tree.outer:t())
 	grad.Wci:add(gZc * tree.inner:t())
 	grad.bc:add(gZc:sum(2))
@@ -419,19 +421,21 @@ function IORNN:backpropagate_inside(tree, grad)
 	end
 end
 
-function IORNN:computeCostAndGrad(treebank, config)
+function IORNN:computeCostAndGrad(treebank, config, grad)
 	local parse = config.parse or false
 
 	p:start('compute cost and grad')	
 
 if NPROCESS > 1 then
 else
-	local grad = self:create_grad()
+	local grad = grad or self:create_grad()
+	grad.params:fill(0)  -- always make sure that this grad is intialized with 0
 
 	local cost = 0
 	local nSample = 0
+	local tword_id = {}
 
-	p:start('process treebank') 
+	p:start('process treebank')
 	for i, tree in ipairs(treebank) do
 		-- forward
 		self:forward_inside(tree)
@@ -443,26 +447,32 @@ else
 		-- backward
 		self:backpropagate_outside(tree, grad)
 		self:backpropagate_inside(tree, grad)
+
+		-- extract target word id for updating
+		for i = 1,tree.n_nodes do
+			if tree.word_id[i] > 0 then
+				tword_id[tree.word_id[i]] = 1
+			end
+		end
 	end
 	p:lap('process treebank') 
 
 	p:start('compute grad')
 	local wparams = self.params[{{1,-1-self.dim*self.voca:size()}}]
-	local lparams = self.params[{{-self.dim*self.voca:size(),-1}}]
-	cost = cost / nSample 	+ config.lambda/2 * torch.pow(wparams,2):sum() 
-							+ config.lambda_L/2 * torch.pow(lparams,2):sum()
-
 	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca:size()}}]
-	local grad_lparams = grad.params[{{-self.dim*self.voca:size(),-1}}]
-	grad.params:div(nSample)
-	grad_wparams:add(wparams * config.lambda)
-	grad_lparams:add(lparams * config.lambda_L)
+	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
+	grad_wparams:div(nSample):add(wparams * config.lambda)
+	
+	for wid,_ in pairs(tword_id) do
+		cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
+		grad.L[{{},{wid}}]:div(nSample):add(self.L[{{},{wid}}] * config.lambda_L)
+	end
 	p:lap('compute grad')
 
 	p:lap('compute cost and grad') 
 	--p:printAll()
 
-	return cost, grad, treebank
+	return cost, grad, treebank, tword_id
 end
 
 end
@@ -504,12 +514,55 @@ function IORNN:checkGradient(treebank, config)
 end
 
 --**************************** training ************************--
-require 'optim'
+--
+-- adapted from optim.adagrad
+function IORNN:adagrad(func, config, state)
+	-- (0) get/update state
+	if config == nil and state == nil then
+		print('no state table, ADAGRAD initializing')
+	end
+	local config = config or {}
+	local state = state or config
+	local lr = config.learningRate or 1e-3
+	local lrd = config.learningRateDecay or 0
+	state.evalCounter = state.evalCounter or 0
+	local nevals = state.evalCounter
+
+	-- (1) evaluate f(x) and df/dx
+	local cost, grad, _, tword_id = func()
+
+	-- (3) learning rate decay (annealing)
+	local clr = lr / (1 + nevals*lrd)
+      
+	-- (4) parameter update with single or individual learning rates
+	if not state.paramVariance then
+		state.paramVariance = self:create_grad()
+		state.paramStd = self:create_grad()
+	end
+
+	-- for weights
+	local wparamindex = {{1,-1-self.dim*self.voca:size()}}
+	state.paramVariance.params[wparamindex]:addcmul(1,grad.params[wparamindex],grad.params[wparamindex])
+	torch.sqrt(state.paramStd.params[wparamindex],state.paramVariance.params[wparamindex])
+	self.params[wparamindex]:addcdiv(-clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
+
+	-- for word embeddings
+	for wid,_ in pairs(tword_id) do
+		local col_i = {{},{wid}}
+		state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
+		torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
+		self.L[col_i]:addcdiv(-clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
+	end
+
+	-- (5) update evaluation counter
+	state.evalCounter = state.evalCounter + 1
+end
 
 function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
 									maxepoch, lambda, prefix,
 									adagrad_config, adagrad_state, bag_of_subtrees)
 	local nSample = #traintreebank
+	local grad = self:create_grad()
 	
 	local epoch = 1
 	local j = 0
@@ -523,7 +576,8 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			j = 1 
 			epoch = epoch + 1
 
-			self:eval(devtreebank,   '../data/SRL/conll05st-release/devel/props/devel.24.props',
+			self:eval(devtreebank,  '../data/SRL/conll05st-release/devel/props/devel.24.props',
+									--'../data/SRL/toy/dev-props',
 									'../data/SRL/conll05st-release/srlconll-1.1/bin/srl-eval.pl')
 
 			if epoch > maxepoch then break end
@@ -535,18 +589,16 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			subtreebank[k] = traintreebank[k+(j-1)*batchSize]
 		end
 	
-		local function func(M)
-			p:start("compute grad")
-			cost, Grad = self:computeCostAndGrad(subtreebank, 
-							{lambda = lambda.lambda, lambda_L=lambda.lambda_L, alpha = alpha, beta = beta})
-			p:lap("compute grad")
+		local function func()
+			cost, grad, subtreebank, tword_id  = self:computeCostAndGrad(subtreebank, 
+							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad)
 
 			print('iter ' .. j .. ': ' .. cost) io.flush()		
-			return cost, Grad.params
+			return cost, grad, subtreebank, tword_id
 		end
 
 		p:start("optim")
-		M,_ = optim.adagrad(func, self.params, adagrad_config, adagrad_state)
+		self:adagrad(func, adagrad_config, adagrad_state)
 		
 		p:lap("optim")
 		p:printAll()
@@ -613,6 +665,46 @@ function IORNN:predict_srl(treebank, filename)
 				label[i] = '*'
 			end
 			self:label(tree, 1, label)
+			
+			-- merge label 
+			local cur_l = '*'
+			for i,l in ipairs(label) do
+				local h = l:sub(1,1)
+				local e = l:sub(l:len())
+				if h == '(' then
+					cur_l = split_string(l, '[^(*)]+')[1]
+					label[i] = cur_l			
+				elseif h == '*' then
+					label[i] = cur_l
+				end
+				if e == ')' then 
+					cur_l = '*'
+				end
+			end
+
+			cur_l = '*'
+			for i,l in ipairs(label) do
+				if l == cur_l then
+					label[i] = '*'
+				else
+					if l ~= '*' then
+						if cur_l ~= '*' then
+							label[i-1] = label[i-1] .. ')'
+						end
+						cur_l = l
+						label[i] = '('..label[i]..'*'
+					else
+						if cur_l ~= '*' then
+							label[i-1] = label[i-1] .. ')'
+						end
+						cur_l = l
+					end
+				end
+				if i == #label and cur_l ~= '*' then
+					label[i] = label[i] .. ')'
+				end
+			end
+			
 			srls.role[#srls.role+1] = label
 		end
 	end
@@ -660,7 +752,7 @@ end
 
 	local treebank = {}
 	local tokens = {}
-	for line in io.lines('../data/SRL/toy/train.txt') do
+	for line in io.lines('../data/SRL/toy/train-set') do
 		if line ~= '' then
 			tokens[#tokens+1] = split_string(line, '[^ ]+')
 		else 

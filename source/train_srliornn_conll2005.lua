@@ -91,6 +91,7 @@ if #arg == 5 then
 	print('load treebanks')
 	local devtreebank	= load_treebank(data_path .. '/dev-set', vocaDic, ruleDic, classDic)
 	local traintreebank	= load_treebank(data_path .. '/train-set', vocaDic, ruleDic, classDic)
+	print(#traintreebank .. ' training trees')
 
 	-- shuf the traintreebank
 	new_i = torch.randperm(#traintreebank)
@@ -106,11 +107,6 @@ if #arg == 5 then
 
 	net:save(model_dir .. '/model_0')
 	local prefix = model_dir..'/model_'
---[[
-	net:eval(devtreebank, 	'../data/SRL/conll05st-release/devel/props/devel.24.props', 
-							--'../data/SRL/toy/dev-props',
-							'../data/SRL/conll05st-release/srlconll-1.1/bin/srl-eval.pl')
-]]
 	adagrad_config, adagrad_state = net:train_with_adagrad(traintreebank, devtreebank, batchsize,
 															maxnepoch, {lambda = lambda, lambda_L = lambda_L}, 
 															prefix, adagrad_config, adagrad_state)
