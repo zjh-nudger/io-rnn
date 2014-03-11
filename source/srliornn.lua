@@ -558,10 +558,14 @@ function IORNN:adagrad(func, config, state)
 	-- for word embeddings
 	for wid,_ in pairs(tword_id) do
 		local col_i = {{},{wid}}
-		state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
-		torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
-		self.L[col_i]:addcdiv(-voca_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
+		--state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
+		--torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
+		--self.L[col_i]:addcdiv(-voca_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
+		self.L[col_i]:add(-voca_clr, grad.L[col_i])  -- don't use adagrad for word embeddings
 	end
+
+	--print(state.paramStd.params:max())
+	--print(state.paramStd.params[state.paramStd.params:gt(1e-8)]:min())
 
 	-- (5) update evaluation counter
 	state.evalCounter = state.evalCounter + 1
@@ -618,16 +622,33 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	return adagrad_config, adagrad_state
 end
 
+function IORNN:recompute_class_predict(tree, alpha)
+	local alpha = alpha or 0.5
+	tree.class_predict:log()
+
+	for i = 1, tree.n_nodes do
+		local temp = torch.zeros(self.class:size(),1)
+		for j = 1,tree.n_children[i] do
+			temp:add(tree.class_predict[{{},{tree.children_id[{j,i}]}}])
+		end
+		tree.class_predict[{{},{i}}]:mul(alpha):add(temp:mul(1-alpha))
+	end
+end
+
 function IORNN:label(tree, node_id, label)
 	--local _,cid = tree.class_predict[{{},node_id}]:max(1)
 	--cid = cid[1]
-	
+	--[[	
 	local scores = torch.log(tree.class_predict[{{},node_id}])
 	for j = 1,tree.n_children[node_id] do
 		local child_id = tree.children_id[{j,node_id}]
 		scores:add(torch.log(tree.class_predict[{{},child_id}]))
 	end
 	local _,cid = scores:max(1)
+	cid = cid[1]
+	]]
+
+	local _,cid = tree.class_predict[{{},node_id}]:max(1)
 	cid = cid[1]
 	
 	if cid == self.class:get_id('NULL') then
@@ -653,6 +674,7 @@ function IORNN:predict_srl(treebank, filename)
 			self:forward_inside(tree)
 			self:forward_outside(tree)
 			self:forward_predict_class(tree)
+			self:recompute_class_predict(tree)
 		end
 	end
 

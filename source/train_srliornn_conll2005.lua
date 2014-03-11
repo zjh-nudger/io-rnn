@@ -126,7 +126,7 @@ if #arg == 6 then
 	local adagrad_state = {}
 
 	net:save(model_dir .. '/model_0')
-	local prefix = model_dir..'/model_'
+	local prefix = model_dir..'/model'
 	adagrad_config, adagrad_state = net:train_with_adagrad(traintreebank, devtreebank, batchsize,
 															maxnepoch, {lambda = lambda, lambda_L = lambda_L}, 
 															prefix, adagrad_config, adagrad_state)
