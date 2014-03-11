@@ -3,9 +3,6 @@ require 'tree'
 require 'utils'
 require 'dict'
 
-cw_emb = true
-embs_path = 'wordembeddings/collobert/embeddings.txt'
-
 function load_treebank(path, vocaDic, ruleDic, classDic)
 	local treebank = {}
 
@@ -45,15 +42,12 @@ function load_treebank(path, vocaDic, ruleDic, classDic)
 	return treebank
 end
 
-if #arg == 6 then
+if #arg == 3 then
 	torch.setnumthreads(1)
 
 	dic_dir_path = arg[1]
 	data_path = arg[2]
-	dim = tonumber(arg[3])
-	weight_learn_rate = tonumber(arg[4])
-	voca_learn_rate = tonumber(arg[5])
-	local model_dir = arg[6]
+	model_path = arg[3]
 
 	-- load dics
 	local vocaDic = Dict:new(collobert_template)
@@ -76,61 +70,17 @@ if #arg == 6 then
 		rules[#rules+1] = rule
 	end
 
--- create net
-	print('create iornn...')
-	local L = nil
-	if cw_emb == false then
-		L = uniform(dim, vocaDic:size(), -0.1, 0.1)
-	else
-		f = torch.DiskFile(embs_path, 'r')
-		local info = f:readInt(2)
-		local nword = info[1]	
-		local embdim = info[2]	
-		L = torch.Tensor(f:readDouble(nword*embdim))
-					:resize(nword, embdim):t()
-		dim = embdim
-		f:close()
-		if nword ~= vocaDic:size() then
-			error("not match embs")
-		end
-	end
-	local input = {	lookup = L, voca = vocaDic, class = classDic, 
-					func = tanh, funcPrime = tanhPrime,
-					rules = rules }
-	local net = IORNN:new(input)
-
-	net.update_L = true
-	lambda = 1e-4
-	lambda_L = 1e-10
-	batchsize = 100
-
-	maxnepoch = 100
+	local net = IORNN:load(model_path)
 
 -- load data	
 	print('load treebanks')
 	local devtreebank	= load_treebank(data_path .. '/dev-set', vocaDic, ruleDic, classDic)
-	local traintreebank	= load_treebank(data_path .. '/train-set', vocaDic, ruleDic, classDic)
-	print(#traintreebank .. ' training trees')
+--	local devtreebank	= load_treebank('../data/SRL/toy/toy_test/test-set', vocaDic, ruleDic, classDic)
 
-	-- shuf the traintreebank
-	new_i = torch.randperm(#traintreebank)
-	temp = {}
-	for i = 1,#traintreebank do
-		temp[i] = traintreebank[new_i[i]]
-	end
-	traintreebank = temp
-
--- train
-	local adagrad_config = {weight_learningRate = weight_learn_rate,
-							voca_learningRate = voca_learn_rate}
-	local adagrad_state = {}
-
-	net:save(model_dir .. '/model_0')
-	local prefix = model_dir..'/model_'
-	adagrad_config, adagrad_state = net:train_with_adagrad(traintreebank, devtreebank, batchsize,
-															maxnepoch, {lambda = lambda, lambda_L = lambda_L}, 
-															prefix, adagrad_config, adagrad_state)
+	net:eval(devtreebank, 	'../data/SRL/conll05st-release/devel/props/devel.24.props', 
+							--'../data/SRL/toy/toy_test/gold',
+							'../data/SRL/conll05st-release/srlconll-1.1/bin/srl-eval.pl')
 
 else
-	print("[dic dir path] [treebank] [dim] [weight & voca learning rate] [model dir]")
+	print("[dic dir path] [treebank] [model path]")
 end

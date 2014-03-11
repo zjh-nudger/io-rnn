@@ -291,8 +291,12 @@ function IORNN:forward_predict_class(tree)
 	tree.class_score = (self.Wco * tree.outer):add(self.Wci * tree.inner)
 					:add(torch.repeatTensor(self.bc, 1, tree.n_nodes))
 	tree.class_predict = safe_compute_softmax(tree.class_score)
-	tree.class_error = -tree.class_predict[tree.class_gold]:log():sum()
-	return tree.class_error
+	local temp = -tree.class_predict[tree.class_gold]:log()
+
+	--local wid = tree.word_id:gt(0)
+	--temp[wid] = 0
+	tree.class_error = temp:sum()
+	return tree.class_error, tree.n_nodes-- -wid:double():sum()
 end
 
 --*********************** backpropagate *********************--
@@ -307,6 +311,7 @@ function IORNN:backpropagate_outside(tree, grad)
 
 	-- for classification
 	local gZc = tree.class_predict - tree.class_gold:double()
+	--gZc[torch.repeatTensor(tree.word_id:gt(0):resize(1,gZc:size(2)),gZc:size(1),1)] = 0
 	torch.mm(tree.grado, self.Wco:t(), gZc)
 	torch.mm(tree.gradi, self.Wci:t(), gZc)
 	grad.Wco:add(gZc * tree.outer:t())
@@ -317,8 +322,8 @@ function IORNN:backpropagate_outside(tree, grad)
 	for i = tree.n_nodes, 2, -1 do
 		local col_i = {{},{i}}
 		local outer = tree.outer[col_i]
-		local gZo = tree.grado[col_i]
 		local rule = self.rules[tree.rule_id[i]]
+		local gZo = tree.grado[col_i]
 
 		local input = nil
 		for j = 1, tree.n_children[i] do
@@ -440,9 +445,9 @@ else
 		-- forward
 		self:forward_inside(tree)
 		self:forward_outside(tree)
-		local lcost = self:forward_predict_class(tree)
+		local lcost,ncases = self:forward_predict_class(tree)
 		cost = cost + lcost
-		nSample = nSample + tree.n_nodes
+		nSample = nSample + ncases
 
 		-- backward
 		self:backpropagate_outside(tree, grad)
@@ -523,7 +528,10 @@ function IORNN:adagrad(func, config, state)
 	end
 	local config = config or {}
 	local state = state or config
-	local lr = config.learningRate or 1e-3
+
+	local weight_lr = config.weight_learningRate or 1e-1
+	local voca_lr = config.voca_learningRate or 1e-3
+
 	local lrd = config.learningRateDecay or 0
 	state.evalCounter = state.evalCounter or 0
 	local nevals = state.evalCounter
@@ -532,8 +540,9 @@ function IORNN:adagrad(func, config, state)
 	local cost, grad, _, tword_id = func()
 
 	-- (3) learning rate decay (annealing)
-	local clr = lr / (1 + nevals*lrd)
-      
+	local weight_clr	= weight_lr / (1 + nevals*lrd)
+    local voca_clr		= voca_lr / (1 + nevals*lrd)
+  
 	-- (4) parameter update with single or individual learning rates
 	if not state.paramVariance then
 		state.paramVariance = self:create_grad()
@@ -544,14 +553,14 @@ function IORNN:adagrad(func, config, state)
 	local wparamindex = {{1,-1-self.dim*self.voca:size()}}
 	state.paramVariance.params[wparamindex]:addcmul(1,grad.params[wparamindex],grad.params[wparamindex])
 	torch.sqrt(state.paramStd.params[wparamindex],state.paramVariance.params[wparamindex])
-	self.params[wparamindex]:addcdiv(-clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
+	self.params[wparamindex]:addcdiv(-weight_clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
 
 	-- for word embeddings
 	for wid,_ in pairs(tword_id) do
 		local col_i = {{},{wid}}
 		state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
 		torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
-		self.L[col_i]:addcdiv(-clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
+		self.L[col_i]:addcdiv(-voca_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
 	end
 
 	-- (5) update evaluation counter
@@ -610,13 +619,23 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 end
 
 function IORNN:label(tree, node_id, label)
-	local _,cid = tree.class_score[{{},node_id}]:max(1)
+	--local _,cid = tree.class_predict[{{},node_id}]:max(1)
+	--cid = cid[1]
+	
+	local scores = torch.log(tree.class_predict[{{},node_id}])
+	for j = 1,tree.n_children[node_id] do
+		local child_id = tree.children_id[{j,node_id}]
+		scores:add(torch.log(tree.class_predict[{{},child_id}]))
+	end
+	local _,cid = scores:max(1)
 	cid = cid[1]
+	
 	if cid == self.class:get_id('NULL') then
 		for j = 1,tree.n_children[node_id] do
 			self:label(tree, tree.children_id[{j,node_id}], label)
 		end
 	else
+
 		local cover = tree.cover[{{},node_id}]
 		if cover[1] == cover[2] then
 			label[cover[1]] = '('..self.class.id2word[cid]..'*)'
@@ -786,7 +805,7 @@ end
 
 	--print(net)	
 
-	config = {lambda = 1e-4, lambda_L = 1e-7, n_noise_words = 1}
+	config = {lambda = 1e-4, lambda_L = 1e-7}
 	net.update_L = true
 	net:checkGradient(treebank, config)
 ]]
