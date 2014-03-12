@@ -246,6 +246,14 @@ function Tree:create_CoNLL2005_SRL(tokens)
 		elseif 	tok[2] == '}' then tok[2] = '-RCB-'
 		end
 
+		if      tok[1] == '(' then tok[1] = '-LRB-'
+		elseif  tok[1] == ')' then tok[1] = '-RRB-'
+		elseif  tok[1] == '[' then tok[1] = '-LSB-'
+		elseif  tok[1] == ']' then tok[1] = '-RSB-'
+		elseif  tok[1] == '{' then tok[1] = '-LCB-'
+		elseif  tok[1] == '}' then tok[1] = '-RCB-'
+		end
+
 		if tok[1] == '%' then tok[1] = '%%' end
 
 		str = str .. string.gsub(tok[3], '[*]', '('..tok[2]..' '..tok[1]..')')
@@ -265,6 +273,7 @@ function Tree:create_CoNLL2005_SRL(tokens)
 	end
 	str = string.gsub(str, '[(]', ' ('):sub(2)
 	--print(str)
+	--print(srl)
 
 	-- turn to torch_matrix
 	local tree = Tree:create_from_string(str)
@@ -376,6 +385,20 @@ function Tree:copy_torch_matrix_tree(tree)
 		}
 end
 
+function assign_srl_role(tree, role, classDic, node_id)
+	local node_id = node_id or 1
+	if tree.cover[{2,node_id}] >= role.cover[1] and tree.cover[{1,node_id}] <= role.cover[2] then
+		if role.cover[1] <= tree.cover[{1,node_id}] and role.cover[2] >= tree.cover[{2,node_id}] then
+			tree.class_gold[{classDic:get_id(role.label),node_id}] = 1
+			tree.class_gold[{classDic:get_id('NULL'),node_id}] = 0
+		else
+			for i = 1,tree.n_children[node_id] do
+				assign_srl_role(tree, role, classDic, tree.children_id[{i,node_id}])
+			end
+		end
+	end
+end
+
 function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
 	tree.target_verb = torch.zeros(tree.n_nodes)
 	tree.class_gold = torch.zeros(classDic:size(), tree.n_nodes):byte()
@@ -394,17 +417,7 @@ function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
 
 		-- other roles
 		else
-			local found = false
-			for i = 1,tree.n_nodes do
-				if role.cover[1] <= tree.cover[{1,i}] and role.cover[2] >= tree.cover[{2,i}] then
-					tree.class_gold[{classDic:get_id(role.label),i}] = 1
-					tree.class_gold[{classDic:get_id('NULL'),i}] = 0
-					found = true
-				end
-			end
-			if not found then 
-				error('not found')
-			end
+			assign_srl_role(tree, role, classDic)
 		end
 	end
 

@@ -74,12 +74,9 @@ if #arg == 3 then
 
 -- load data	
 	print('load treebanks')
-	local devtreebank	= load_treebank(data_path .. '/dev-set', vocaDic, ruleDic, classDic)
---	local devtreebank	= load_treebank('../data/SRL/toy/toy_test/test-set', vocaDic, ruleDic, classDic)
-
-	net:eval(devtreebank, 	'../data/SRL/conll05st-release/devel/props/devel.24.props', 
-							--'../data/SRL/toy/toy_test/gold',
-							'../data/SRL/conll05st-release/srlconll-1.1/bin/srl-eval.pl')
+	local devtreebank	= load_treebank(data_path, vocaDic, ruleDic, classDic)
+	net:eval(devtreebank, 	data_path .. '.props', 
+							'../data/SRL/conll05st-release/srlconll-1.1/bin/srl-eval.pl -C')
 
 else
 	print("[dic dir path] [treebank] [model path]")

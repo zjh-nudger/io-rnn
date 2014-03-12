@@ -541,8 +541,8 @@ function IORNN:adagrad(func, config, state)
 
 	-- (3) learning rate decay (annealing)
 	local weight_clr	= weight_lr / (1 + nevals*lrd)
-    local voca_clr		= voca_lr / (1 + nevals*lrd)
-  
+	local voca_clr		= voca_lr / (1 + nevals*lrd)
+
 	-- (4) parameter update with single or individual learning rates
 	if not state.paramVariance then
 		state.paramVariance = self:create_grad()
@@ -558,14 +558,11 @@ function IORNN:adagrad(func, config, state)
 	-- for word embeddings
 	for wid,_ in pairs(tword_id) do
 		local col_i = {{},{wid}}
-		--state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
-		--torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
-		--self.L[col_i]:addcdiv(-voca_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
-		self.L[col_i]:add(-voca_clr, grad.L[col_i])  -- don't use adagrad for word embeddings
+		state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
+		torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
+		self.L[col_i]:addcdiv(-voca_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
+		--self.L[col_i]:add(-voca_clr, grad.L[col_i])  -- don't use adagrad for word embeddings
 	end
-
-	--print(state.paramStd.params:max())
-	--print(state.paramStd.params[state.paramStd.params:gt(1e-8)]:min())
 
 	-- (5) update evaluation counter
 	state.evalCounter = state.evalCounter + 1
@@ -623,31 +620,20 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 end
 
 function IORNN:recompute_class_predict(tree, alpha)
-	local alpha = alpha or 0.5
 	tree.class_predict:log()
+	tree.org_class_predict = tree.class_predict:clone()
+	local null_class = self.class:get_id('NULL')
 
-	for i = 1, tree.n_nodes do
-		local temp = torch.zeros(self.class:size(),1)
+	for i = 2, tree.n_nodes do
+		local temp = 0 --tree.org_class_predict[{null_class, tree.parent_id[i]}]
 		for j = 1,tree.n_children[i] do
-			temp:add(tree.class_predict[{{},{tree.children_id[{j,i}]}}])
+			temp = temp + tree.org_class_predict[{null_class, tree.children_id[{j,i}]}]
 		end
-		tree.class_predict[{{},{i}}]:mul(alpha):add(temp:mul(1-alpha))
+		tree.class_predict[{{2,-1},i}]:add(temp)
 	end
 end
 
 function IORNN:label(tree, node_id, label)
-	--local _,cid = tree.class_predict[{{},node_id}]:max(1)
-	--cid = cid[1]
-	--[[	
-	local scores = torch.log(tree.class_predict[{{},node_id}])
-	for j = 1,tree.n_children[node_id] do
-		local child_id = tree.children_id[{j,node_id}]
-		scores:add(torch.log(tree.class_predict[{{},child_id}]))
-	end
-	local _,cid = scores:max(1)
-	cid = cid[1]
-	]]
-
 	local _,cid = tree.class_predict[{{},node_id}]:max(1)
 	cid = cid[1]
 	
@@ -656,7 +642,6 @@ function IORNN:label(tree, node_id, label)
 			self:label(tree, tree.children_id[{j,node_id}], label)
 		end
 	else
-
 		local cover = tree.cover[{{},node_id}]
 		if cover[1] == cover[2] then
 			label[cover[1]] = '('..self.class.id2word[cid]..'*)'
@@ -745,7 +730,7 @@ function IORNN:predict_srl(treebank, filename)
 					label[i] = label[i] .. ')'
 				end
 			end
-			
+				
 			srls.role[#srls.role+1] = label
 		end
 	end
