@@ -42,35 +42,23 @@ function load_treebank(path, vocaDic, ruleDic, classDic)
 	return treebank
 end
 
-if #arg == 3 then
+if #arg == 4 then
 	torch.setnumthreads(1)
 
 	dic_dir_path = arg[1]
 	data_path = arg[2]
-	model_path = arg[3]
+	rule_type = arg[3]
+	model_path = arg[4]
 
 	-- load dics
-	local vocaDic = Dict:new(collobert_template)
-	vocaDic:load(dic_dir_path .. '/words.lst')
  
 	local ruleDic = Dict:new()
-	ruleDic:load(dic_dir_path .. "/rules.lst")
+	ruleDic:load(dic_dir_path .. '/rules_'..rule_type..'.lst')
 	ruleDic.grammar = 'CFG'
 
-	local classDic = Dict:new()
-	classDic:load(dic_dir_path .. '/classes.lst')
-
-	local rules = {}
-	for _,str in ipairs(ruleDic.id2word) do
-		local comps = split_string(str, "[^ \t]+")
-		local rule = {lhs = comps[1], rhs = {}}
-		for i = 2,#comps do
-			rule.rhs[i-1] = comps[i]
-		end
-		rules[#rules+1] = rule
-	end
-
 	local net = IORNN:load(model_path)
+	local vocaDic = net.voca
+	local classDic = net.class
 
 -- load data	
 	print('load treebanks')
@@ -79,5 +67,5 @@ if #arg == 3 then
 							'../data/SRL/conll05st-release/srlconll-1.1/bin/srl-eval.pl -C')
 
 else
-	print("[dic dir path] [treebank] [model path]")
+	print("[dic dir path] [treebank] [rule type (min,200,800)][model path]")
 end

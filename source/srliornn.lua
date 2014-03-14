@@ -621,16 +621,18 @@ end
 
 function IORNN:recompute_class_predict(tree, alpha)
 	tree.class_predict:log()
+
 	tree.org_class_predict = tree.class_predict:clone()
 	local null_class = self.class:get_id('NULL')
 
 	for i = 2, tree.n_nodes do
-		local temp = 0 --tree.org_class_predict[{null_class, tree.parent_id[i]}]
+		local temp = tree.org_class_predict[{null_class, tree.parent_id[i]}]
 		for j = 1,tree.n_children[i] do
 			temp = temp + tree.org_class_predict[{null_class, tree.children_id[{j,i}]}]
 		end
 		tree.class_predict[{{2,-1},i}]:add(temp)
 	end
+
 end
 
 function IORNN:label(tree, node_id, label)

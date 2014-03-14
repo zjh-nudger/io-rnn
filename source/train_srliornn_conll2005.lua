@@ -50,17 +50,59 @@ if #arg == 6 then
 
 	dic_dir_path = arg[1]
 	data_path = arg[2]
+
+	-- check if randomly initial word embeddings
+	init_wemb_type = nil
 	dim = tonumber(arg[3])
+	if dim == nil then
+		init_wemb_type = arg[3]
+	end
+
 	weight_learn_rate = tonumber(arg[4])
 	voca_learn_rate = tonumber(arg[5])
 	local model_dir = arg[6]
-
-	-- load dics
-	local vocaDic = Dict:new(collobert_template)
-	vocaDic:load(dic_dir_path .. '/words.lst')
  
+	-- load voca and embeddings
+	print('load vocabulary and word embeddings')
+	local L = nil
+	local vocaDic = nil
+
+	if init_wemb_type == nil then
+		vocaDic = Dict:new(collobert_template)
+		vocaDic:load(dic_dir_path .. '/words.lst')
+		L = uniform(dim, vocaDic:size(), -0.1, 0.1)
+
+	else
+		local dic_func = nil
+		local subdir = nil
+		if init_wemb_type == 'collobert' then
+			dic_func = collobert_template
+			subdir = '/collobert/' 
+		elseif init_wemb_type == 'turian_25' then 
+			dic_func = turian_template
+			subdir = '/turian_25/'
+		end
+			
+		-- load dics
+		vocaDic = Dict:new(dic_func)
+		vocaDic:load(dic_dir_path..subdir..'/words.lst')
+		f = torch.DiskFile(dic_dir_path..subdir..'/embeddings.txt', 'r')
+
+		local info = f:readInt(2)
+		local nword = info[1]	
+		local embdim = info[2]	
+		L = torch.Tensor(f:readDouble(nword*embdim))
+					:resize(nword, embdim):t()
+		dim = embdim
+		f:close()
+		if nword ~= vocaDic:size() then
+			error("not match embs")
+		end
+	end
+
+	print('load rule and class lists')
 	local ruleDic = Dict:new()
-	ruleDic:load(dic_dir_path .. "/rules.lst")
+	ruleDic:load(dic_dir_path .. "/rules_min.lst")
 	ruleDic.grammar = 'CFG'
 
 	local classDic = Dict:new()
@@ -78,22 +120,7 @@ if #arg == 6 then
 
 -- create net
 	print('create iornn...')
-	local L = nil
-	if cw_emb == false then
-		L = uniform(dim, vocaDic:size(), -0.1, 0.1)
-	else
-		f = torch.DiskFile(embs_path, 'r')
-		local info = f:readInt(2)
-		local nword = info[1]	
-		local embdim = info[2]	
-		L = torch.Tensor(f:readDouble(nword*embdim))
-					:resize(nword, embdim):t()
-		dim = embdim
-		f:close()
-		if nword ~= vocaDic:size() then
-			error("not match embs")
-		end
-	end
+
 	local input = {	lookup = L, voca = vocaDic, class = classDic, 
 					func = tanh, funcPrime = tanhPrime,
 					rules = rules }
@@ -132,5 +159,5 @@ if #arg == 6 then
 															prefix, adagrad_config, adagrad_state)
 
 else
-	print("[dic dir path] [treebank] [dim] [weight & voca learning rate] [model dir]")
+	print("[dic dir path] [treebank] [dim/emb_model] [weight & voca learning rate] [model dir]")
 end
