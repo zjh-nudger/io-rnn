@@ -45,7 +45,7 @@ function load_treebank(path, vocaDic, ruleDic, classDic)
 	return treebank
 end
 
-if #arg == 6 then
+if #arg == 7 then
 	torch.setnumthreads(1)
 
 	dic_dir_path = arg[1]
@@ -58,9 +58,10 @@ if #arg == 6 then
 		init_wemb_type = arg[3]
 	end
 
-	weight_learn_rate = tonumber(arg[4])
-	voca_learn_rate = tonumber(arg[5])
-	local model_dir = arg[6]
+	rule_type = arg[4]
+	weight_learn_rate = tonumber(arg[5])
+	voca_learn_rate = tonumber(arg[6])
+	local model_dir = arg[7]
  
 	-- load voca and embeddings
 	print('load vocabulary and word embeddings')
@@ -102,7 +103,7 @@ if #arg == 6 then
 
 	print('load rule and class lists')
 	local ruleDic = Dict:new()
-	ruleDic:load(dic_dir_path .. "/rules_min.lst")
+	ruleDic:load(dic_dir_path .. "/rules_"..rule_type..".lst")
 	ruleDic.grammar = 'CFG'
 
 	local classDic = Dict:new()

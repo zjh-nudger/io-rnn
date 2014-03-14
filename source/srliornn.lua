@@ -619,8 +619,8 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	return adagrad_config, adagrad_state
 end
 
-function IORNN:recompute_class_predict(tree, alpha)
-	tree.class_predict:log()
+function IORNN:recompute_class_predict(tree)
+	--tree.class_predict:log()
 
 	tree.org_class_predict = tree.class_predict:clone()
 	local null_class = self.class:get_id('NULL')
@@ -628,11 +628,25 @@ function IORNN:recompute_class_predict(tree, alpha)
 	for i = 2, tree.n_nodes do
 		local temp = tree.org_class_predict[{null_class, tree.parent_id[i]}]
 		for j = 1,tree.n_children[i] do
-			temp = temp + tree.org_class_predict[{null_class, tree.children_id[{j,i}]}]
+			temp = temp * tree.org_class_predict[{null_class, tree.children_id[{j,i}]}]
 		end
-		tree.class_predict[{{2,-1},i}]:add(temp)
+		tree.class_predict[{{2,-1},i}]:mul(temp)
+		--tree.class_predict[{1,i}] = 1 - tree.class_predict[{{2,-1},i}]:sum()
 	end
 
+end
+
+function IORNN:recompute_class_predict_for_words(tree)
+	tree.word_class_predict = torch.zeros(tree.class_predict:size())
+	tree.word_class_predict[{{},1}]:copy(tree.class_predict[{{},1}])
+
+	for i = 2,tree.n_nodes do
+		for j = 1,self.class:size() do
+			tree.word_class_predict[{j,i}] = math.max(tree.word_class_predict[{j,tree.parent_id[i]}], tree.class_predict[{j,i}])
+		end
+		-- for null_class
+		tree.word_class_predict[{1,i}] = 1 - tree.word_class_predict[{{2,-1},i}]:sum()
+	end
 end
 
 function IORNN:label(tree, node_id, label)
@@ -662,8 +676,12 @@ function IORNN:predict_srl(treebank, filename)
 			self:forward_outside(tree)
 			self:forward_predict_class(tree)
 			self:recompute_class_predict(tree)
+			self:recompute_class_predict_for_words(tree)
+			--self:recompute_class_predict_for_words(tree)
 		end
 	end
+
+	--local ftemp = io.open('/tmp/probs', 'w')
 
 	local ret = {}
 	local srls = nil
@@ -678,6 +696,22 @@ function IORNN:predict_srl(treebank, filename)
 			for i = 1, tree.cover[{2,1}] do
 				srls.verb[i] = '-'
 			end
+ 
+			--[[
+			for i = 1,tree.n_nodes do
+				if tree.n_children[i] == 0 then
+					for j = 1,self.class:size() do
+						if tree.word_class_predict ~= nil then
+							ftemp:write(tree.word_class_predict[{j,i}]..' ')
+						else
+							ftemp:write('NaN ')
+						end
+					end
+					ftemp:write('\n')
+				end
+			end
+			ftemp:write('\n')
+			]]
 		end
 		prev_tree = tree
 		
@@ -753,7 +787,7 @@ function IORNN:predict_srl(treebank, filename)
 		end
 		f:close()
 	end
-
+	--ftemp:close()
 	return ret
 end
 

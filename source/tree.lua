@@ -227,6 +227,21 @@ function Tree:to_stanford_sa_form()
 end
 ]]
 
+function Tree:collapse_unarybranch_not_POS()
+    for _,child in ipairs(self.children) do
+        child:collapse_unarybranch_not_POS()
+    end
+
+    if #self.children == 1 then
+        local child = self.children[1]
+        if #child.children > 0 then
+            self.children = child.children
+            self.label = child.label
+        end
+    end
+end
+
+
 function Tree:create_CoNLL2005_SRL(tokens)
 	require 'utils'
 
@@ -282,8 +297,10 @@ end
 
 --------------------------------------------------------------------------------
 
-function Tree:to_torch_matrices(vocaDic, ruleDic)
+function Tree:to_torch_matrices(vocaDic, ruleDic, has_head)
 	require "utils"
+
+	local has_head = has_head or false
 
 	local nodes = self:to_flat_form()
 	local nnodes = #nodes
@@ -297,11 +314,36 @@ function Tree:to_torch_matrices(vocaDic, ruleDic)
 	local rule_id = torch.zeros(nnodes)
 	local cover = torch.zeros(2, nnodes)
 	local sibling_order = torch.zeros(nnodes)
-	
+	local head_word_id = torch.zeros(nnodes)
+
+	if has_head then
+		print('head')
+		for _,node in ipairs(nodes) do
+			local comp = split_string(node.label, '[^-]+')
+			local pos = tonumber(comp[#comp])
+			if pos == nil then error('has head???') end
+
+			node.label = comp[1]
+			for i = 2,#comp-1 do node.label = node.label .. '-' .. comp[i] end
+			node.head_word_pos = pos
+		end
+	end
+
+	local words = {}
+	for _,node in ipairs(nodes) do
+		if #node.childId == 0 then
+			words[#words+1] = node.label
+		end
+	end
+
+	print(words)
+	print(nodes)
+
 	for i,node in ipairs(nodes) do
 		n_children[i] = #node.childId
 		cover[{1,i}] = node.cover[1]
 		cover[{2,i}] = node.cover[2]
+		head_word_id[i] = vocaDic:get_id(words[node.head_word_pos])
 
 		for j,cid in ipairs(node.childId) do
 			if j > 20 then 
@@ -367,6 +409,7 @@ function Tree:to_torch_matrices(vocaDic, ruleDic)
 				children_id		= children_id, 
 				parent_id		= parent_id,
 				word_id			= word_id,
+				head_word_id	= head_word_id,
 				rule_id			= rule_id,
 				sibling_order	= sibling_order
 		}
@@ -380,6 +423,7 @@ function Tree:copy_torch_matrix_tree(tree)
 				children_id		= tree.children_id:clone(), 
 				parent_id		= tree.parent_id:clone(),
 				word_id			= tree.word_id:clone(),
+				head_word_id	= tree.head_word_id:clone(),
 				rule_id			= tree.rule_id:clone(),
 				sibling_order	= tree.sibling_order:clone()
 		}
@@ -434,7 +478,36 @@ local tree, srl = Tree:create_CoNLL2005_SRL(tokens)
 print(tree:to_string())
 print(srl)
 ]]
+--[[
+	local f = io.open(arg[2], 'w')
+	local treebank = {}
 
+	-- load trees
+	local tokens = {}
+	for line in io.lines(arg[1]) do
+		line = trim_string(line)
+		if line ~= '' then  -- continue read tokens
+			tokens[#tokens+1] = split_string(line, '[^ ]+')
+
+		-- line == '' means end of sentence
+		else -- process the whole sentence
+			local tree = nil
+			local tree_torch = nil
+			local srls = nil
+			if pcall(function() 
+					tree, srls = Tree:create_CoNLL2005_SRL(tokens)
+					f:write(tree:to_string() .. '\n')
+				end) 
+			then
+			else 
+				print('error: ')
+				print(tokens)
+			end
+			tokens = {}
+		end
+	end
+	f:close()
+]]
 
 function extract_all_phrases(tree, dic, phrases, node_id)
 	local phrases = phrases or {}
@@ -459,13 +532,15 @@ end
 
 --*********** test **************
 --[[
-local string = "(TOP (S (NP (NP (JJ Influential) (NNS members)) (PP (IN of) (NP (DT the) (NNP House) (NNP Ways) (CC and) (NNP Means) (NNP Committee)))) (VP (VBD introduced) (NP (NP (NN legislation)) (SBAR (WHNP (WDT that)) (S (VP (MD would) (VP (VB restrict) (SBAR (WHADVP (WRB how)) (S (NP (DT the) (JJ new) (NN savings-and-loan) (NN bailout) (NN agency)) (VP (MD can) (VP (VB raise) (NP (NN capital)))))) (, ,) (S (VP (VBG creating) (NP (NP (DT another) (JJ potential) (NN obstacle)) (PP (TO to) (NP (NP (NP (DT the) (NN government) (POS 's)) (NN sale)) (PP (IN of) (NP (JJ sick) (NNS thrifts)))))))))))))) (. .)))"
-
+--local string = "(TOP (S (NP (NP (JJ Influential) (NNS members)) (PP (IN of) (NP (DT the) (NNP House) (NNP Ways) (CC and) (NNP Means) (NNP Committee)))) (VP (VBD introduced) (NP (NP (NN legislation)) (SBAR (WHNP (WDT that)) (S (VP (MD would) (VP (VB restrict) (SBAR (WHADVP (WRB how)) (S (NP (DT the) (JJ new) (NN savings-and-loan) (NN bailout) (NN agency)) (VP (MD can) (VP (VB raise) (NP (NN capital)))))) (, ,) (S (VP (VBG creating) (NP (NP (DT another) (JJ potential) (NN obstacle)) (PP (TO to) (NP (NP (NP (DT the) (NN government) (POS 's)) (NN sale)) (PP (IN of) (NP (JJ sick) (NNS thrifts)))))))))))))) (. .)))"
+string = '(S1-2 (NP-2 (NNP-1 Two-Way-1) (NNP-2 Street-2)))'
 print(string)
 
 tree = Tree:create_from_string(string)
 print(tree:to_string())
+tree = tree:to_torch_matrices('x', 'y', true)
 ]]
+
 --[[
 tree:binarize(true, true)
 print(tree:to_string())
