@@ -6,15 +6,28 @@ require 'dict'
 function load_treebank(path, vocaDic, ruleDic, classDic)
 	local treebank = {}
 
-	local gold_treebank = Tree:load_treebank(path .. '.charniak')
+	print('load ' .. path..'.parse.head')
+	local head_treebank = {}
+	for line in io.lines(path .. '.parse.head') do
+		local tree = Tree:create_from_string(line)
+		if pcall(function()
+					tree = tree:to_torch_matrices(vocaDic, ruleDic, true)
+				end)
+		then
+			head_treebank[#head_treebank+1] = tree
+		else
+			head_treebank[#head_treebank+1] = {n_nodes = 0}
+		end
+	end
 
+	print('load ' .. path)
 	-- load trees
 	local tokens = {}
 	local i = 0
 	for line in io.lines(path) do
 		line = trim_string(line)
 		if line ~= '' then  -- continue read tokens
-			tokens[#tokens+1] = split_string(line, '[^ \t]+')
+			tokens[#tokens+1] = split_string(line, '[^ ]+')
 
 		-- line == '' means end of sentence
 		else -- process the whole sentence
@@ -24,9 +37,12 @@ function load_treebank(path, vocaDic, ruleDic, classDic)
 			local srls = nil
 			if pcall(function() 
 					tree, srls = Tree:create_CoNLL2005_SRL(tokens)
-					tree = gold_treebank[i]
+					tree_torch = head_treebank[i]
+					if tree_torch.n_nodes == 0 then
+						error('empty tree')
+					end
 					--print(tree:to_string())
-					tree_torch = tree:to_torch_matrices(vocaDic, ruleDic)
+					--tree_torch = tree:to_torch_matrices(vocaDic, ruleDic, true)
 				end) 
 			then
 				if #srls == 0 then

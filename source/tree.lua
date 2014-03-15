@@ -317,7 +317,7 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, has_head)
 	local head_word_id = torch.zeros(nnodes)
 
 	if has_head then
-		print('head')
+		--print('head')
 		for _,node in ipairs(nodes) do
 			local comp = split_string(node.label, '[^-]+')
 			local pos = tonumber(comp[#comp])
@@ -336,8 +336,8 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, has_head)
 		end
 	end
 
-	print(words)
-	print(nodes)
+	--print(words)
+	--print(nodes)
 
 	for i,node in ipairs(nodes) do
 		n_children[i] = #node.childId
