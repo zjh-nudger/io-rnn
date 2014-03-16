@@ -35,25 +35,23 @@ function load_treebank(path, vocaDic, ruleDic, classDic)
 			local tree = nil
 			local tree_torch = nil
 			local srls = nil
-			if pcall(function() 
+			if not pcall(function() 
 					tree, srls = Tree:create_CoNLL2005_SRL(tokens)
 					tree_torch = head_treebank[i]
 					if tree_torch.n_nodes == 0 then
 						error('empty tree')
 					end
-					--print(tree:to_string())
-					--tree_torch = tree:to_torch_matrices(vocaDic, ruleDic, true)
+
+					if #srls == 0 then
+						srls = {{}}
+					end
+					for _,srl in ipairs(srls) do
+						local t = Tree:copy_torch_matrix_tree(tree_torch)
+						t = Tree:add_srl_torch_matrix_tree(t, srl, classDic)
+						treebank[#treebank+1] = t
+					end
 				end) 
 			then
-				if #srls == 0 then
-					srls = {{}}
-				end
-				for _,srl in ipairs(srls) do
-					local t = Tree:copy_torch_matrix_tree(tree_torch)
-					t = Tree:add_srl_torch_matrix_tree(t, srl, classDic)
-					treebank[#treebank+1] = t
-				end
-			else 
 				print('error: ')
 				print(tokens)
 			end

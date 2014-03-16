@@ -241,7 +241,6 @@ function Tree:collapse_unarybranch_not_POS()
     end
 end
 
-
 function Tree:create_CoNLL2005_SRL(tokens)
 	require 'utils'
 
@@ -444,7 +443,8 @@ function assign_srl_role(tree, role, classDic, node_id)
 end
 
 function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
-	tree.target_verb = torch.zeros(tree.n_nodes)
+	tree.target_verb = torch.zeros(tree.n_nodes) -- note: this is POS-tag node
+	tree.target_verb_id = 0 -- this true target verb 
 	tree.class_gold = torch.zeros(classDic:size(), tree.n_nodes):byte()
 	tree.class_gold[{{classDic:get_id('NULL')},{}}] = 1
 	for _,role in ipairs(srl) do
@@ -455,14 +455,19 @@ function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
 				if tree.cover[{1,i}] == role.cover[1] and tree.cover[{2,i}] == role.cover[2] 
 				and tree.n_children[i] == 1 and tree.n_children[tree.children_id[{1,i}]] == 0 then
 					tree.target_verb[i] = 1
+					tree.target_verb_id = tree.word_id[tree.children_id[{1,i}]]
 					break
 				end
-			end
+			end	
 
 		-- other roles
 		else
 			assign_srl_role(tree, role, classDic)
 		end
+	end
+
+	if tree.target_verb_id == 0 then
+		print('no target verb found')
 	end
 
 	return tree
