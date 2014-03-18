@@ -300,39 +300,53 @@ function IORNN:forward_outside(tree)
 end
 
 function IORNN:forward_predict_class(tree)
-	tree.class_score = (self.Wco * tree.outer):add(self.Wci * tree.inner)
-					:add(torch.repeatTensor(self.bc, 1, tree.n_nodes))
-	tree.class_predict = safe_compute_softmax(tree.class_score)
-	local temp = -tree.class_predict[tree.class_gold]:log()
+	if tree.class_score == nil then
+		tree.class_score = torch.zeros(self.class:size(), tree.n_nodes)
+		tree.class_predict = torch.zeros(self.class:size(), tree.n_nodes)
+	else
+		tree.class_score:fill(0)
+		tree.class_predict:fill(0)
+	end
 
-	tree.class_error = temp:sum()
-	return tree.class_error, tree.n_nodes
+	tree.class_error = 0
+	for i = 2,tree.n_nodes do
+		if tree.is_candidate[i] == 1 then
+			local col_i = {{},{i}}
+			tree.class_score[col_i] = (self.Wco * tree.outer[col_i]):add(self.Wci * tree.inner[col_i])
+										:add(self.bc)
+			tree.class_predict[col_i] = safe_compute_softmax(tree.class_score[col_i])
+			tree.class_error = tree.class_error - torch.log(tree.class_predict[col_i][tree.class_gold[col_i]]):sum()
+		end
+	end
+
+	return tree.class_error, tree.is_candidate:sum()
 end
 
 --*********************** backpropagate *********************--
 function IORNN:backpropagate_outside(tree, grad)
 	if tree.gradZo == nil then
 		tree.gradZo = torch.zeros(self.dim, tree.n_nodes)
-		tree.grado = torch.zeros(self.dim, tree.n_nodes)
 		tree.gradi = torch.zeros(self.dim, tree.n_nodes)
 	else
 		tree.gradZo:fill(0)
+		tree.gradi:fill(0)
 	end
-
-	-- for classification
-	local gZc = tree.class_predict - tree.class_gold:double()
-	torch.mm(tree.grado, self.Wco:t(), gZc)
-	torch.mm(tree.gradi, self.Wci:t(), gZc)
-	grad.Wco:add(gZc * tree.outer:t())
-	grad.Wci:add(gZc * tree.inner:t())
-	grad.bc:add(gZc:sum(2))
 
 	-- iterate over all nodes
 	for i = tree.n_nodes, 2, -1 do
 		local col_i = {{},{i}}
 		local outer = tree.outer[col_i]
 		local rule = self.rules[tree.rule_id[i]]
-		local gZo = tree.grado[col_i]
+		local gZo = torch.zeros(self.dim, 1)
+
+		if tree.is_candidate[i] == 1 then
+			local gZc = tree.class_predict[col_i] - tree.class_gold[col_i]:double()
+			torch.mm(gZo, self.Wco:t(), gZc)
+			torch.mm(tree.gradi[col_i], self.Wci:t(), gZc)
+			grad.Wco:add(gZc * tree.outer[col_i]:t())
+			grad.Wci:add(gZc * tree.inner[col_i]:t())
+			grad.bc:add(gZc)
+		end
 
 		local input = nil
 		for j = 1, tree.n_children[i] do
@@ -374,7 +388,7 @@ function IORNN:backpropagate_outside(tree, grad)
 		input:add(tree.gradZo[{{},{tree.children_id[{j,1}]}}])
 	end
 	local rule = self.rules[tree.rule_id[1]]
-	grad.root_outer:add(rule.Wop:t() * input):add(tree.grado[{{},{1}}])
+	grad.root_outer:add(rule.Wop:t() * input)
 end
 
 function IORNN:backpropagate_inside(tree, grad)
@@ -634,55 +648,52 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	return adagrad_config, adagrad_state
 end
 
-function IORNN:recompute_class_predict(tree)
-	--tree.class_predict:log()
-
-	tree.org_class_predict = tree.class_predict:clone()
-	local null_class = self.class:get_id('NULL')
-
-	for i = 2, tree.n_nodes do
-		local temp = tree.org_class_predict[{null_class, tree.parent_id[i]}]
-		for j = 1,tree.n_children[i] do
-			temp = temp * tree.org_class_predict[{null_class, tree.children_id[{j,i}]}]
-		end
-		tree.class_predict[{{2,-1},i}]:mul(temp)
-		--tree.class_predict[{1,i}] = 1 - tree.class_predict[{{2,-1},i}]:sum()
-	end
-
-end
-
-function IORNN:recompute_class_predict_for_words(tree)
-	tree.word_class_predict = torch.zeros(tree.class_predict:size())
-	tree.word_class_predict[{{},1}]:copy(tree.class_predict[{{},1}])
-
-	for i = 2,tree.n_nodes do
-		for j = 1,self.class:size() do
-			tree.word_class_predict[{j,i}] = math.max(tree.word_class_predict[{j,tree.parent_id[i]}], tree.class_predict[{j,i}])
-		end
-		-- for null_class
-		tree.word_class_predict[{1,i}] = 1 - tree.word_class_predict[{{2,-1},i}]:sum()
-	end
-end
-
 function IORNN:label(tree, node_id, label)
-	local _,cid = tree.class_predict[{{},node_id}]:max(1)
+	_,cid = tree.class_predict[{{},node_id}]:max(1)
 	cid = cid[1]
 	
-	if cid == self.class:get_id('NULL') then
+	if tree.is_candidate[node_id] == 0 or cid == self.class:get_id('NULL') then
 		for j = 1,tree.n_children[node_id] do
 			self:label(tree, tree.children_id[{j,node_id}], label)
 		end
 	else
 		local cover = tree.cover[{{},node_id}]
 		if cover[1] == cover[2] then
-			label[cover[1]] = '('..self.class.id2word[cid]..'*)'
+			label[cover[1] ] = '('..self.class.id2word[cid]..'*)'
 		else
-			label[cover[1]] = '('..self.class.id2word[cid]..'*'
-			label[cover[2]] = '*)'
+			label[cover[1] ] = '('..self.class.id2word[cid]..'*'
+			label[cover[2] ] = '*)'
 		end
 	end
 	return label
 end
+
+--[[
+function IORNN:label(tree, node_id, label)
+	local marked = false
+	for j = 1,tree.n_children[node_id] do
+		label, cmarked = self:label(tree, tree.children_id[{j,node_id}], label)
+		if cmarked == true then marked = true end
+	end
+
+	if marked == false then
+		_,cid = tree.class_predict[{{},node_id}]:max(1)
+		cid = cid[1]
+	
+		if tree.is_candidate[node_id] == 1 and cid ~= self.class:get_id('NULL') then
+			local cover = tree.cover[{{},node_id}]
+			if cover[1] == cover[2] then
+				label[cover[1] ] = '('..self.class.id2word[cid]..'*)'
+			else
+				label[cover[1] ] = '('..self.class.id2word[cid]..'*'
+				label[cover[2] ] = '*)'
+			end
+			marked = true
+		end
+	end
+	return label, marked
+end
+]]
 
 function IORNN:predict_srl(treebank, filename)
 	for _,tree in ipairs(treebank) do 
@@ -690,9 +701,6 @@ function IORNN:predict_srl(treebank, filename)
 			self:forward_inside(tree)
 			self:forward_outside(tree)
 			self:forward_predict_class(tree)
-			self:recompute_class_predict(tree)
-			self:recompute_class_predict_for_words(tree)
-			--self:recompute_class_predict_for_words(tree)
 		end
 	end
 
@@ -781,7 +789,7 @@ function IORNN:predict_srl(treebank, filename)
 					label[i] = label[i] .. ')'
 				end
 			end
-				
+
 			srls.role[#srls.role+1] = label
 		end
 	end

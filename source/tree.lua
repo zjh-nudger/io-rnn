@@ -314,6 +314,7 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, has_head)
 	local cover = torch.zeros(2, nnodes)
 	local sibling_order = torch.zeros(nnodes)
 	local head_word_id = torch.zeros(nnodes)
+	local is_PP = torch.zeros(nnodes)
 
 	if has_head then
 		--print('head')
@@ -342,7 +343,9 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, has_head)
 		n_children[i] = #node.childId
 		cover[{1,i}] = node.cover[1]
 		cover[{2,i}] = node.cover[2]
-		head_word_id[i] = vocaDic:get_id(words[node.head_word_pos])
+		if has_head then
+			head_word_id[i] = vocaDic:get_id(words[node.head_word_pos])
+		end
 
 		for j,cid in ipairs(node.childId) do
 			if j > 20 then 
@@ -380,6 +383,9 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, has_head)
 				
 			else
 				local str = node.label
+				if str == 'PP' then 
+					is_PP[i] = 1
+				end
 				for j,cid in ipairs(node.childId) do
 					if #nodes[cid].childId == 0 then 
 						str = str .. '\t' .. '[word]'
@@ -410,7 +416,8 @@ function Tree:to_torch_matrices(vocaDic, ruleDic, has_head)
 				word_id			= word_id,
 				head_word_id	= head_word_id,
 				rule_id			= rule_id,
-				sibling_order	= sibling_order
+				sibling_order	= sibling_order,
+				is_PP			= is_PP
 		}
 end
 
@@ -424,7 +431,8 @@ function Tree:copy_torch_matrix_tree(tree)
 				word_id			= tree.word_id:clone(),
 				head_word_id	= tree.head_word_id:clone(),
 				rule_id			= tree.rule_id:clone(),
-				sibling_order	= tree.sibling_order:clone()
+				sibling_order	= tree.sibling_order:clone(),
+				is_PP			= tree.is_PP:clone()
 		}
 end
 
@@ -444,6 +452,7 @@ end
 
 function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
 	tree.target_verb = torch.zeros(tree.n_nodes) -- note: this is POS-tag node
+	tree.target_verb_POS_pos = 0
 	tree.target_verb_id = 0 -- this true target verb 
 	tree.class_gold = torch.zeros(classDic:size(), tree.n_nodes):byte()
 	tree.class_gold[{{classDic:get_id('NULL')},{}}] = 1
@@ -455,6 +464,7 @@ function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
 				if tree.cover[{1,i}] == role.cover[1] and tree.cover[{2,i}] == role.cover[2] 
 				and tree.n_children[i] == 1 and tree.n_children[tree.children_id[{1,i}]] == 0 then
 					tree.target_verb[i] = 1
+					tree.target_verb_POS_pos = i
 					tree.target_verb_id = tree.word_id[tree.children_id[{1,i}]]
 					break
 				end
@@ -466,22 +476,61 @@ function Tree:add_srl_torch_matrix_tree(tree, srl, classDic)
 		end
 	end
 
+	-- mark candidates
+	tree.is_candidate = torch.zeros(tree.n_nodes)
+	local i = tree.target_verb_POS_pos
+	while i > 1 do
+		local parent_id = tree.parent_id[i]
+		for j = 1,tree.n_children[parent_id] do
+			local sister_id = tree.children_id[{j,parent_id}]
+			if sister_id ~= i then
+				tree.is_candidate[sister_id] = 1
+				if tree.is_PP[sister_id] == 1   then
+					for k = 1,tree.n_children[sister_id] do
+						tree.is_candidate[tree.children_id[{k,sister_id}]] = 1
+					end
+				end
+			end
+		end
+		i = parent_id
+	end 
+
 	if tree.target_verb_id == 0 then
-		print('no target verb found')
+		--print('no target verb found')
 	end
 
 	return tree
 end
 
---[[ test 
+--[[ test
+ 	torch.setnumthreads(1)
+
+	local vocaDic = Dict:new()
+	vocaDic:load('../data/SRL/toy/words.lst')
+ 
+	local ruleDic = Dict:new(cfg_template)
+	ruleDic:load("../data/toy/cfg_simple_rule.txt")
+	ruleDic.grammar = 'CFG'
+
+	local classDic = Dict:new()
+	classDic:load('../data/SRL/toy/class.lst')
+
 tokens = {}
-for line in io.lines('../data/SRL/toy/train.txt') do
+for line in io.lines('../data/SRL/toy/train-set') do
+	line = trim_string(line)
+	if line == '' then break end
 	tokens[#tokens+1] = split_string(line, '[^ ]+')
 end
 
-local tree, srl = Tree:create_CoNLL2005_SRL(tokens)
+local tree, srls = Tree:create_CoNLL2005_SRL(tokens)
 print(tree:to_string())
-print(srl)
+
+for _,srl in ipairs(srls) do
+	local tree_torch = tree:to_torch_matrices(vocaDic, ruleDic, false)
+	Tree:add_srl_torch_matrix_tree(tree_torch, srl, classDic)
+	print(srl)
+	print(tree_torch.is_candidate)
+end
 ]]
 --[[
 	local f = io.open(arg[2], 'w')

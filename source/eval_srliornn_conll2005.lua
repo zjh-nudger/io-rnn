@@ -6,9 +6,10 @@ require 'dict'
 function load_treebank(path, vocaDic, ruleDic, classDic)
 	local treebank = {}
 
-	print('load ' .. path..'.parse.head')
+	local parse = 'parse'
+	print('load ' .. path..'.'..parse..'.head')
 	local head_treebank = {}
-	for line in io.lines(path .. '.parse.head') do
+	for line in io.lines(path .. '.'..parse..'.head') do
 		local tree = Tree:create_from_string(line)
 		if pcall(function()
 					tree = tree:to_torch_matrices(vocaDic, ruleDic, true)
