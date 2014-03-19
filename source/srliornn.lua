@@ -590,7 +590,9 @@ function IORNN:adagrad(func, config, state)
 		state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
 		torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
 		self.L[col_i]:addcdiv(-voca_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
-		--self.L[col_i]:add(-voca_clr, grad.L[col_i])  -- don't use adagrad for word embeddings
+		--[[local inv_delta = torch.div(state.paramStd.L[col_i]:add(1e-1), voca_clr)
+		inv_delta[torch.lt(inv_delta,1)] = 1
+		self.L[col_i]:addcdiv(-1, grad.L[col_i], inv_delta)]]
 	end
 
 	-- (5) update evaluation counter
@@ -695,7 +697,7 @@ function IORNN:label(tree, node_id, label)
 end
 ]]
 
-function IORNN:predict_srl(treebank, filename)
+function IORNN:compute_class_prediction(treebank)
 	for _,tree in ipairs(treebank) do 
 		if tree.target_verb:max() > 0 then
 			self:forward_inside(tree)
@@ -703,13 +705,16 @@ function IORNN:predict_srl(treebank, filename)
 			self:forward_predict_class(tree)
 		end
 	end
+	return treebank
+end
 
+function IORNN:predict_srl(treebank, filename)
 	--local ftemp = io.open('/tmp/probs', 'w')
 
 	local ret = {}
 	local srls = nil
 	local prev_tree = nil
-	for _,tree in ipairs(treebank) do
+	for it,tree in ipairs(treebank) do
 		-- check if this is a new sentence
 		if prev_tree == nil or prev_tree.n_nodes ~= tree.n_nodes or torch.ne(prev_tree.word_id,tree.word_id):double():sum() > 0 then
 			if srls ~= nil then
@@ -721,11 +726,13 @@ function IORNN:predict_srl(treebank, filename)
 			end
  
 			--[[
+			ftemp:write(it .. '\n')
 			for i = 1,tree.n_nodes do
-				if tree.n_children[i] == 0 then
+				if tree.is_candidate[i] == 1 then
+					ftemp:write(tree.cover[{1,i}] .. '-' .. tree.cover[{2,i}] .. '\n')
 					for j = 1,self.class:size() do
-						if tree.word_class_predict ~= nil then
-							ftemp:write(tree.word_class_predict[{j,i}]..' ')
+						if tree.class_predict ~= nil then
+							ftemp:write(tree.class_predict[{j,i}]..' ')
 						else
 							ftemp:write('NaN ')
 						end
@@ -815,6 +822,7 @@ function IORNN:predict_srl(treebank, filename)
 end
 
 function IORNN:eval(treebank, gold_path, eval_prog_path)
+	treebank = self:compute_class_prediction(treebank)
 	local predicts = self:predict_srl(treebank, '/tmp/predicts.txt')
 	--print(predicts)
 	os.execute('cat ' .. gold_path .. " | awk '{print $1}' > /tmp/verbs.txt")

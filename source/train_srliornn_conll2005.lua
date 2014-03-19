@@ -146,7 +146,7 @@ if #arg == 7 then
 	net.update_L = true
 	lambda = 1e-4
 	lambda_L = 1e-10
-	batchsize = 20
+	batchsize = 100
 
 	maxnepoch = 100
 

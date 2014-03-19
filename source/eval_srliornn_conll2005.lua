@@ -6,7 +6,7 @@ require 'dict'
 function load_treebank(path, vocaDic, ruleDic, classDic)
 	local treebank = {}
 
-	local parse = 'parse'
+	local parse = 'charniak'
 	print('load ' .. path..'.'..parse..'.head')
 	local head_treebank = {}
 	for line in io.lines(path .. '.'..parse..'.head') do
