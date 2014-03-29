@@ -25,9 +25,9 @@ function Depstruct:new( input )
 	-- set data
 	for i,row in ipairs(input) do
 		ds.word_id[i]	 = row[1]
-		ds.pos_id[i]	 = 1--row[2]
+		ds.pos_id[i]	 = row[2]
 		ds.head_id[i]	 = row[3]
-		ds.deprel_id[i]  = 1--row[4]
+		ds.deprel_id[i]  = row[4]
 		
 		local hid = row[3]
 		if hid == 0 then -- root
@@ -43,6 +43,7 @@ function Depstruct:new( input )
 end
 
 function Depstruct:create_from_strings(input, voca_dic, pos_dic, deprel_dic)
+	local sent = {}
 	for i,row in ipairs(input) do
 		local comps = split_string(row)
 		row = { voca_dic:get_id(comps[2]),
@@ -50,10 +51,11 @@ function Depstruct:create_from_strings(input, voca_dic, pos_dic, deprel_dic)
 				tonumber(comps[7]),
 				deprel_dic:get_id(comps[8])
 			}
-		input[i] = row	
+		input[i] = row
+		sent[i] = comps[2]
 	end
 
-	return Depstruct:new(input)
+	return Depstruct:new(input), sent
 end
 
 --[[ test
