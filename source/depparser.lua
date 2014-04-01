@@ -12,7 +12,8 @@ Depparser_mt = { __index = Depparser }
 torch.setnumthreads(1)
 
 -- setting for beam-search
-Depparser.MAX_NSTATES = 2
+Depparser.MAX_NSTATES = 1 -- any larger than 1 performs worse
+
 Depparser.LA_ID = 1
 Depparser.RA_ID = 2
 Depparser.SH_ID = 3
@@ -44,7 +45,7 @@ function Depparser:trans(sent, state)
 
 	-- left arc
 	if i ~= nil and j ~= nil and i ~= 0 then
-		for l = 1,self.deprel_dic:size() do
+		for l = 1,self.deprel_dic.size do
 			local class = self.label_map[l]
 			if class ~= nil then
 				local state_la = self:clone_state(state)
@@ -59,15 +60,15 @@ function Depparser:trans(sent, state)
 
 	-- right arc
 	if i ~= nil and j ~= nil then
-		for l = 1,self.deprel_dic:size() do
-			local class = self.label_map[l+self.deprel_dic:size()]
+		for l = 1,self.deprel_dic.size do
+			local class = self.label_map[l+self.deprel_dic.size]
 			if class ~= nil then
 				local state_ra = self:clone_state(state)
 				state_ra.head[j] = i
 				state_ra.deprel[j] = l
 				state_ra.stack_pos = state_ra.stack_pos - 1
 				state_ra.buffer[state_ra.buffer_pos] = i
-				state_ra.score = state.score + state.decision_scores[self.label_map[l+self.deprel_dic:size()]]
+				state_ra.score = state.score + state.decision_scores[self.label_map[l+self.deprel_dic.size]]
 				new_states[#new_states+1] = state_ra
 			end
 		end
@@ -79,7 +80,7 @@ function Depparser:trans(sent, state)
 		state_sh.stack_pos = state_sh.stack_pos + 1
 		state_sh.stack[state_sh.stack_pos] = j
 		state_sh.buffer_pos = state_sh.buffer_pos + 1
-		state_sh.score = state.score + state.decision_scores[self.label_map[2*self.deprel_dic:size()+1]]
+		state_sh.score = state.score + state.decision_scores[self.label_map[2*self.deprel_dic.size+1]]
 		new_states[#new_states+1] = state_sh
 	end
 
@@ -121,8 +122,8 @@ function Depparser:parse(sentbank)
 
 		-- compute prediction score
 		p:start('decision') 
-		_,_,dec = libsvm.predict(data, self.model, '-b 1')
-		dec = dec:log() --safe_compute_softmax(dec:t()):t():log()
+		_,_,dec = liblinear.predict(data, self.model)
+		dec = safe_compute_softmax(dec:t()):t():log()
 		local k = 1
 		for i,sent in ipairs(sentbank) do
 			if not_done[i] == 1 then
@@ -189,118 +190,140 @@ function Depparser:parse(sentbank)
 	return ret
 end
 
-function Depparser:get_feature(sent, state)
-	local feature = torch.Tensor(14):fill(-1)
+FEAT_FORM	= 1
+FEAT_POS	= 2
+FEAT_DRLDEP	= 3
+FEAT_DRRDEP	= 4
+FEAT_FORM_H	= 5
 
-	-- top stack:(form,pos,ldrel,rdrel)
-	if state.stack_pos > 0 then
-		local i = state.stack[state.stack_pos]
-		if i == 0 then --ROOT
-			feature[1] = self.voca_dic:size() + 1
-			feature[2] = self.pos_dic:size() + 1
-		else 
-			feature[1] = sent.word_id[i]
-			feature[2] = sent.pos_id[i]
+function Depparser:get_feature_stack_buffer(sent, state, position, features, mem)
+	if mem == state.stack and position > 0 and position <= state.stack_pos
+	or mem == state.buffer and position <= sent.n_words and position >= state.buffer_pos then
+		local i = mem[position]
+		if features[FEAT_FORM] ~= nil then
+			if i == 0 then features[FEAT_FORM] = self.voca_dic.size + 1 
+			else features[FEAT_FORM] = sent.word_id[i] end
 		end
-		for k = 1,i-1 do
-			if state.head[k] == i then
-				feature[3] = state.deprel[k]
-				break
+		if features[FEAT_POS] ~= nil then
+			if i == 0 then features[FEAT_POS] = self.pos_dic.size + 1
+			else features[FEAT_POS] = sent.pos_id[i] end
+		end
+		if features[FEAT_DRLDEP] ~= nil then
+			for k = 1,i-1 do
+				if state.head[k] == i then
+					features[FEAT_DRLDEP] = state.deprel[k]
+					break
+				end
 			end
 		end
-		for k = sent.n_words,i+1,-1 do
-			if state.head[k] == i then
-				feature[4] = state.deprel[k]
-				break
+		if features[FEAT_DRRDEP] ~= nil then
+			for k = sent.n_words,i+1,-1 do
+				if state.head[k] == i then
+					features[FEAT_DRRDEP] = state.deprel[k]
+					break
+				end
 			end
 		end
-		-- form of head(stack[top])
-		if i > 0 then 
+		if features[FEAT_FORM_H] ~= nil and i > 0 then
 			local h = state.head[i]
-			if 		h == 0	then feature[5] = self.voca_dic:size() + 1 -- ROOT
-			elseif 	h > 0	then feature[5] = sent.word_id[h] end
+			if h == 0 then features[FEAT_FORM_H] = self.voca_dic.size + 1 
+			elseif h > 0 then features[FEAT_FORM_H] = sent.word_id[h] end
 		end
 	end
 
-	-- next top stack: (form)
-	if state.stack_pos > 1 then
-		local i = state.stack[state.stack_pos-1]
-		if i == 0 then
-			feature[6] = self.voca_dic:size() + 1
-		else
-			feature[6] = sent.word_id[i]
-		end
-	end
+	return features
+end
 
-	-- top buffer (form,pos,ldrep,rdrep)
-	if state.buffer_pos <= sent.n_words then
-		local j = state.buffer[state.buffer_pos]
-		if j == 0 then -- ROOT
-			feature[7] = self.voca_dic:size() + 1
-			feature[8] = self.pos_dic:size() + 1
-		else
-			feature[7] = sent.word_id[j]
-			feature[8] = sent.pos_id[j]
-		end
-		for k = 1,j-1 do
-			if state.head[k] == j then
-				feature[9] = state.deprel[k]
-				break
-			end
-		end
-		for k = sent.n_words,j+1,-1 do
-			if state.head[k] == j then
-				feature[10] = state.deprel[k]
-				break
-			end
-		end
-	end
+function Depparser:get_feature(sent, state)
+	local fstop		= {[FEAT_FORM] = -1, [FEAT_POS] = -1, [FEAT_DRLDEP] = -1, [FEAT_DRRDEP] = -1, [FEAT_FORM_H] = 1}
+	local fstop1	= {[FEAT_POS] = -1}
+	local fbtop		= {[FEAT_FORM] = -1, [FEAT_POS] = -1, [FEAT_DRLDEP] = -1, [FEAT_DRRDEP] = -1}
+	local fbtop1	= {[FEAT_FORM] = -1, [FEAT_POS] = -1}
+	local fbtop2	= {[FEAT_POS] = -1}
+	local fbtop3	= {[FEAT_POS] = -1}
 
-	-- next top buffer (form,pos)
-	if state.buffer_pos <= sent.n_words -1 then
-		feature[11] = sent.word_id[state.buffer[state.buffer_pos+1]]
-		feature[12] = sent.pos_id[state.buffer[state.buffer_pos+1]]
-	end
+	self:get_feature_stack_buffer(sent, state, state.stack_pos, fstop, state.stack)
+	self:get_feature_stack_buffer(sent, state, state.stack_pos-1, fstop1, state.stack)
 
-	-- next next top buffer (form,pos)
-	if state.buffer_pos <= sent.n_words -2 then
-		feature[13] = sent.pos_id[state.buffer[state.buffer_pos+2]]
-	end
+	self:get_feature_stack_buffer(sent, state, state.buffer_pos, fbtop, state.buffer)
+	self:get_feature_stack_buffer(sent, state, state.buffer_pos+1, fbtop1, state.buffer)
+	self:get_feature_stack_buffer(sent, state, state.buffer_pos+2, fbtop2, state.buffer)
+	self:get_feature_stack_buffer(sent, state, state.buffer_pos+3, fbtop3, state.buffer)
 
-	-- next next top buffer (pos)
-	if state.buffer_pos <= sent.n_words -3 then
-		feature[14] = sent.pos_id[state.buffer[state.buffer_pos+3]]
-	end
+	local fs = {fstop, fstop1, fbtop, fbtop1, fbtop2, fbtop3}
 
-	local form	= { [1] = 1, [5] = 1, [6] = 1, [7] = 1, [11] = 1 }
-	local pos	= { [2] = 1, [8] = 1, [12] = 1, [13] = 1, [14] = 1 }
-	local drel 	= { [3] = 1, [4] = 1, [9] = 1, [10] = 1 }
-
--- convert to torch-matrix form
+-- store in vectors
 	local d = {}
 	d[1] = nil
 	d[2] = {}
-	local n = feature:ge(0):double():sum()
-	d[2][1] = torch.IntTensor(n)
-	d[2][2] = torch.FloatTensor(n):fill(1)
-
-	local k = 0
+	local index = torch.IntTensor(30)
+	local i = 0
 	local offset = 0
-	for j = 1,feature:numel() do
-		if feature[j] >= 0 then
-			k = k + 1
-			d[2][1][k] = offset + feature[j]
-		end
-		if form[j] ~= nil then -- word form
-			offset = offset + self.voca_dic:size() + 1
-		elseif pos[j] ~= nil then -- pos tags
-			offset = offset + self.pos_dic:size() + 1
-		elseif drel[j] ~= nil then -- deprel
-			offset = offset + self.deprel_dic:size()
-		else 
-			error('feature not match')
+
+	-- singular features
+	for _,f in ipairs(fs) do
+		for k = 1,5 do -- FEAT_FORM,...,FEAT_FORM_H
+			if f[k] ~= nil and f[k] >= 0 then
+				i = i + 1
+				index[i] = offset + f[k]
+			end
+			if f[k] ~= nil then 
+				if 		k == FEAT_FORM 		then offset = offset + self.voca_dic.size + 1
+				elseif	k == FEAT_POS		then offset = offset + self.pos_dic.size + 1
+				elseif	k == FEAT_DRLDEP	then offset = offset + self.deprel_dic.size 
+				elseif 	k == FEAT_DRRDEP	then offset = offset + self.deprel_dic.size
+				elseif 	k == FEAT_FORM_H	then offset = offset + self.voca_dic.size + 1
+				end
+			end
 		end
 	end
+
+	-- merged features
+	if fstop[FEAT_POS] >= 0 and fbtop[FEAT_POS] >= 0 then
+		i = i + 1
+		index[i] = (fstop[FEAT_POS]-1) * (self.pos_dic.size+1) + fbtop[FEAT_POS]
+	end
+	offset = offset + (self.pos_dic.size+1)*(self.pos_dic.size+1)
+
+	if fstop[FEAT_POS] >= 0 and fstop1[FEAT_POS] >= 0 and fbtop[FEAT_POS] >= 0 then
+		i = i + 1
+		index[i] = (index[i-1]-1)*(self.pos_dic.size+1) + fstop1[FEAT_POS]
+	end
+	offset = offset + (self.pos_dic.size+1)*(self.pos_dic.size+1)*(self.pos_dic.size+1)
+
+	if fstop[FEAT_POS] >= 0 and fbtop[FEAT_POS] >= 0 and fbtop1[FEAT_POS] >= 0 then
+		i = i + 1
+		index[i] = (index[i-1]-1)*(self.pos_dic.size+1) + fbtop1[FEAT_POS]
+	end
+	offset = offset + (self.pos_dic.size+1)*(self.pos_dic.size+1)*(self.pos_dic.size+1)
+
+	if fbtop[FEAT_POS] >= 0 and fbtop1[FEAT_POS] >= 0 and fbtop2[FEAT_POS] >= 0 then
+		i = i + 1
+		index[i] = ((fbtop[FEAT_POS]-1)*(self.pos_dic.size+1) + fbtop1[FEAT_POS]-1)*(self.pos_dic.size+1) + fbtop2[FEAT_POS]
+	end
+	offset = offset + (self.pos_dic.size+1)*(self.pos_dic.size+1)*(self.pos_dic.size+1)
+
+	if fbtop1[FEAT_POS] >= 0 and fbtop2[FEAT_POS] >= 0 and fbtop3[FEAT_POS] >= 0 then
+		i = i + 1
+		index[i] = ((fbtop1[FEAT_POS]-1)*(self.pos_dic.size+1) + fbtop2[FEAT_POS]-1)*(self.pos_dic.size+1) + fbtop3[FEAT_POS]
+	end
+	offset = offset + (self.pos_dic.size+1)*(self.pos_dic.size+1)*(self.pos_dic.size+1)
+
+	if fstop[FEAT_POS] >= 0 and fstop[FEAT_DRLDEP] >= 0 and fstop[FEAT_DRRDEP] >0 then
+		i = i + 1
+		index[i] = ((fstop[FEAT_POS]-1)*self.deprel_dic.size + fstop[FEAT_DRLDEP] - 1)*self.deprel_dic.size + fstop[FEAT_DRRDEP]
+	end
+	offset = offset + (self.pos_dic.size+1)*self.deprel_dic.size*self.deprel_dic.size
+	
+	if fbtop[FEAT_POS] >= 0 and fbtop[FEAT_DRLDEP] >= 0 and fbtop[FEAT_DRRDEP] >0 then
+		i = i + 1
+		index[i] = ((fbtop[FEAT_POS]-1)*self.deprel_dic.size + fbtop[FEAT_DRLDEP] - 1)*self.deprel_dic.size + fbtop[FEAT_DRRDEP]
+	end
+	offset = offset + (self.pos_dic.size+1)*self.deprel_dic.size*self.deprel_dic.size
+
+	d[2][1] = index[{{1,i}}]:clone()
+	d[2][2] = torch.FloatTensor(i):fill(1)
+
 	return d
 end
 
@@ -353,14 +376,14 @@ function Depparser:extract_training_examples(ds, examples)
 
 			-- check if righ-arc
 			if j > 0 and ds.head_id[j] == i and ok then 
-				class = ds.deprel_id[j] + self.deprel_dic:size() -- plus offset
+				class = ds.deprel_id[j] + self.deprel_dic.size -- plus offset
 				state.stack_pos = state.stack_pos - 1
 				state.buffer[state.buffer_pos] = i
 				state.head[j] = i
 				--print('ra')
 
 			else -- shift
-				class = self.deprel_dic:size() * 2 + 1 -- offset
+				class = self.deprel_dic.size * 2 + 1 -- offset
 				state.stack_pos = state.stack_pos + 1
 				state.stack[state.stack_pos] = j
 				state.buffer_pos = state.buffer_pos + 1
@@ -406,13 +429,13 @@ function Depparser:train(treebank_path)
 			t = t + 1
 			self.label_map[d[1]] = t
 		end
-		if t == 2*self.deprel_dic:size() + 1 then break end
+		if t == 2*self.deprel_dic.size + 1 then break end
 	end
-	print(self.label_map)
+--	print(self.label_map)
 
 -- train svm
 	print(#examples)
-	self.model = libsvm.train(examples, '-s 0 -t 1 -d 2 -g 0.2 -c 0.5 -r 0 -e 1 -b 1')
+	self.model = liblinear.train(examples, '-s 4 -c 0.1')
 end
 
 function Depparser:load_treebank(path)
@@ -460,22 +483,26 @@ function Depparser:eval(path, output)
 	f:close()
 end
 
-print('load dics')
-local voca_dic = Dict:new(collobert_template)
-voca_dic:load('../data/wsj-dep/stanford/dic/collobert/words.lst')
+if #arg == 1 then
+	print('load dics')
+	local voca_dic = Dict:new(collobert_template)
+	voca_dic:load('../data/wsj-dep/stanford/dic/collobert/words.lst')
  
-local pos_dic = Dict:new()
-pos_dic:load("../data/wsj-dep/stanford/dic/pos.lst")
+	local pos_dic = Dict:new()
+	pos_dic:load("../data/wsj-dep/stanford/dic/pos.lst")
 
-local deprel_dic = Dict:new()
-deprel_dic:load('../data/wsj-dep/stanford/dic/deprel.lst')
+	local deprel_dic = Dict:new()
+	deprel_dic:load('../data/wsj-dep/stanford/dic/deprel.lst')
 
-print('training...')
-local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
-parser:train('../data/wsj-dep/stanford/data/train.conll')
-collectgarbage()
+	print('training...')
+	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
+	parser:train('../data/wsj-dep/stanford/data/train.conll')
+	collectgarbage()
 
-parser:eval('../data/wsj-dep/stanford/data/dev.conll', '/tmp/parsed.conll')
+	parser:eval('../data/wsj-dep/stanford/data/dev.conll', arg[1])
+else
+	print('[output]')
+end
 
 --[[
 print('take a sentence')

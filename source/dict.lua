@@ -8,6 +8,7 @@ function Dict:new(wfunc)
 	d.word2id = {} --['UNKNOWN'] = 1}
 	d.id2word = {} --'UNKNOWN'}
 	d.func = wfunc
+	d.size = 0
 
 	setmetatable(d, Dict_mt)
 
@@ -27,14 +28,16 @@ function Dict:load(filename)
 		word = line
 		local id = self.word2id[word]
 		if id == nil then
-			id = self:size() + 1
+			id = self.size + 1
 			self.word2id[word] = id
 			self.id2word[id] = word
+			self.size = self.size + 1
 		end
 	end
 end
 
 --***************** size ****************
+-- do not use it
 function Dict:size()
 	return #self.id2word
 end
@@ -47,9 +50,10 @@ function Dict:addword(word)
 
 	local id = self.word2id[word]
 	if id == nil then
-		id = self:size() + 1
+		id = self.size + 1
 		self.word2id[word] = id
 		self.id2word[id] = word
+		self.size = self.size + 1
 	end
 	return id
 end
