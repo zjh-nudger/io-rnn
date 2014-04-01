@@ -121,8 +121,8 @@ function Depparser:parse(sentbank)
 
 		-- compute prediction score
 		p:start('decision') 
-		_,_,dec = libsvm.predict(data, self.model)
-		dec = safe_compute_softmax(dec:t()):t():log()
+		_,_,dec = libsvm.predict(data, self.model, '-b 1')
+		dec = dec:log() --safe_compute_softmax(dec:t()):t():log()
 		local k = 1
 		for i,sent in ipairs(sentbank) do
 			if not_done[i] == 1 then
@@ -376,14 +376,29 @@ function Depparser:extract_training_examples(ds, examples)
 	return examples
 end
 
-function Depparser:train_classifier(treebank)
+function Depparser:train(treebank_path)
 -- extract examples
 	local examples = {}
-	for i,ds in ipairs(treebank) do
-		examples = self:extract_training_examples(ds, examples)
-		if math.mod(i,1000) == 0 then print(i) end
-	end
+	local i = 0
 
+	local tokens = {}
+	for line in io.lines(treebank_path) do
+		line = trim_string(line)
+		if line == '' then
+			if pcall( function() ds,sent = Depstruct:create_from_strings(tokens, self.voca_dic, self.pos_dic, self.deprel_dic) end ) then
+				examples = self:extract_training_examples(ds, examples)
+				if math.mod(i,1000) == 0 then print(i) end
+				i = i + 1
+			else 
+				print('error')
+				print(tokens)
+			end
+			tokens = {}
+		else 
+			tokens[#tokens+1] = line
+		end
+	end
+	
 	self.label_map = {}
 	local t = 0
 	for i,d in ipairs(examples) do
@@ -397,7 +412,7 @@ function Depparser:train_classifier(treebank)
 
 -- train svm
 	print(#examples)
-	self.model = libsvm.train(examples, '-s 0 -t 1 -d 2 -g 0.2 -c 0.5 -r 0 -e 1')
+	self.model = libsvm.train(examples, '-s 0 -t 1 -d 2 -g 0.2 -c 0.5 -r 0 -e 1 -b 1')
 end
 
 function Depparser:load_treebank(path)
@@ -455,15 +470,12 @@ pos_dic:load("../data/wsj-dep/stanford/dic/pos.lst")
 local deprel_dic = Dict:new()
 deprel_dic:load('../data/wsj-dep/stanford/dic/deprel.lst')
 
-local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
-
-print('load treebank')
-local treebank = parser:load_treebank('../data/wsj-dep/stanford/data/train-small.conll')
-
 print('training...')
-parser:train_classifier(treebank)
+local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
+parser:train('../data/wsj-dep/stanford/data/train.conll')
+collectgarbage()
 
-parser:eval('../data/wsj-dep/stanford/data/train-small.conll', '/tmp/parsed.conll')
+parser:eval('../data/wsj-dep/stanford/data/dev.conll', '/tmp/parsed.conll')
 
 --[[
 print('take a sentence')
