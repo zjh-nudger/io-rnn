@@ -361,6 +361,7 @@ function Depparser:extract_training_examples(ds, examples)
 			class = ds.deprel_id[i]
 			state.stack_pos = state.stack_pos - 1
 			state.head[i] = j
+			state.deprel[i] = ds.deprel_id[i]
 			--print('la')
 		else
 			-- check the condition of right-arc
@@ -380,6 +381,7 @@ function Depparser:extract_training_examples(ds, examples)
 				state.stack_pos = state.stack_pos - 1
 				state.buffer[state.buffer_pos] = i
 				state.head[j] = i
+				state.deprel[j] = ds.deprel_id[j]
 				--print('ra')
 
 			else -- shift

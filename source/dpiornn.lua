@@ -21,7 +21,7 @@ end
 
 -- logistic function
 function logistic(X)
-	return torch.cdiv(torch.ones(X:size()), (-X):exp():add(1))
+	return torch.cdiv(torch.ones(X.size), (-X):exp():add(1))
 end
 
 -- derivative of logistic function
@@ -45,13 +45,13 @@ function identity(X)
 end
 
 function identityPrime(X)
-	return torch.ones(X:size())
+	return torch.ones(X.size)
 end
 
 --************************* construction ********************--
 -- create a new recursive autor encoder with a given structure
 function IORNN:new(input)
-	local net = {dim = input.dim, voca_dic = input.voca_dic, pos_dic = input.pos_dic, deprel_dic = input.deprel_dic}
+	local net = {dim = input.lookup:size(1), voca_dic = input.voca_dic, pos_dic = input.pos_dic, deprel_dic = input.deprel_dic}
 	net.func = input.func
 	net.funcPrime = input.funcPrime
 	setmetatable(net, IORNN_mt)
@@ -67,7 +67,7 @@ function IORNN:init_params(input)
 	local deprel_dic = net.deprel_dic
 
 	-- create params
-	local n_params = 2*dim + deprel_dic.size*dim*dim*2 + dim*dim + 2*dim + deprel_dic.size*dim*4 + deprel_dic.size + voca_dic.size*dim
+	local n_params = 2*dim + deprel_dic.size*dim*dim*2 + dim*dim + 2*dim + (2*deprel_dic.size+1)*dim*4 + (2*deprel_dic.size+1) + voca_dic.size*dim
 	net.params = torch.zeros(n_params)
 
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
@@ -97,16 +97,16 @@ function IORNN:init_params(input)
 	index = index + dim
 
 	-- for classification tanh(Wco * o + Wci * i + Wch * h + bc)
-	net.Wci_stack = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim):copy(uniform(deprel_dic.size,dim, -r, r))
-	index = index + deprel_dic.size*dim
-	net.Wco_stack = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim):copy(uniform(deprel_dic.size,dim, -r, r))
-	index = index + deprel_dic.size*dim
-	net.Wci_buffer = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim):copy(uniform(deprel_dic.size,dim, -r, r))
-	index = index + deprel_dic.size*dim
-	net.Wco_buffer = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim):copy(uniform(deprel_dic.size,dim, -r, r))
-	index = index + deprel_dic.size*dim
-	net.bc = net.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
-	index = index + deprel_dic.size
+	net.Wci_stack = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim):copy(uniform((2*deprel_dic.size+1),dim,-r,r))
+	index = index + (2*deprel_dic.size+1)*dim
+	net.Wco_stack = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim):copy(uniform((2*deprel_dic.size+1),dim,-r,r))
+	index = index + (2*deprel_dic.size+1)*dim
+	net.Wci_buffer = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim):copy(uniform((2*deprel_dic.size+1),dim,-r,r))
+	index = index + (2*deprel_dic.size+1)*dim
+	net.Wco_buffer = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim):copy(uniform((2*deprel_dic.size+1),dim,-r,r))
+	index = index + (2*deprel_dic.size+1)*dim
+	net.bc = net.params[{{index,index+(2*deprel_dic.size+1)-1}}]:resize((2*deprel_dic.size+1),1)
+	index = index + (2*deprel_dic.size+1)
 
 	--  word embeddings (always always always at the end of params)
 	net.L = net.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size):copy(input.lookup)		-- word embeddings 
@@ -147,16 +147,16 @@ function IORNN:create_grad()
 	index = index + dim
 
 	-- for classification tanh(Wco * o + Wci * i + Wch * h + bc)
-	grad.Wci_stack = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim)
-	index = index + deprel_dic.size*dim
-	grad.Wco_stack = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim)
-	index = index + deprel_dic.size*dim
-	grad.Wci_buffer = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim)
-	index = index + deprel_dic.size*dim
-	grad.Wco_buffer = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim)
-	index = index + deprel_dic.size*dim
-	grad.bc = grad.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
-	index = index + deprel_dic.size
+	grad.Wci_stack = grad.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim)
+	index = index + (2*deprel_dic.size+1)*dim
+	grad.Wco_stack = grad.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim)
+	index = index + (2*deprel_dic.size+1)*dim
+	grad.Wci_buffer = grad.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim)
+	index = index + (2*deprel_dic.size+1)*dim
+	grad.Wco_buffer = grad.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim)
+	index = index + (2*deprel_dic.size+1)*dim
+	grad.bc = grad.params[{{index,index+(2*deprel_dic.size+1)-1}}]:resize((2*deprel_dic.size+1),1)
+	index = index + (2*deprel_dic.size+1)
 
 	--  word embeddings (always always always at the end of params)
 	grad.L = grad.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size)
@@ -211,13 +211,13 @@ function IORNN:forward_inside(tree)
 			local input = torch.zeros(self.dim,1)
 			for j = 2,tree.n_children[i] do
 				local child = tree.children_id[{j,i}]
-				input:add(self.Wi[tree.deprel_id[child]] * tree.inner[{{},{child}}]}}])
+				input:add(self.Wi[tree.deprel_id[child]] * tree.inner[{{},{child}}])
 			end
 			if tree.n_children[i] > 1 then
 				input:div(tree.n_children[i]-1)
 			end
 			input:add(self.Wihead * tree.inner[{{},{tree.children_id[{1,i}]}}])
-			input:add(rule.bi)
+			input:add(self.bi)
 			tree.inner[col_i]:copy(self.func(input))
 		end
 	end
@@ -226,10 +226,10 @@ function IORNN:forward_inside(tree)
 	local input = torch.zeros(self.dim,1)
 	for j = 1,tree.n_children[1] do
 		local child = tree.children_id[{j,1}]
-		input:add(self.Wi[tree.deprel_id[child]] * tree.inner[{{},{child}}]}}])
+		input:add(self.Wi[tree.deprel_id[child]] * tree.inner[{{},{child}}])
 	end
 	input:div(tree.n_children[1])
-	input:add(rule.bi)
+	input:add(self.bi)
 	tree.inner[{{},{1}}]:copy(self.func(input))
 end
 
@@ -243,30 +243,30 @@ function IORNN:with_state(tree, state, mem)
 
 	if word == 0 then --ROOT
 		ret.node_id = 0
-		ret.inner = tree.anon_inner
-		ret.outer = tree.anon_outer
+		ret.inner = self.anon_inner
+		ret.outer = self.anon_outer
 	else 
 		ret.node_id = tree.wnode_id[word]
-		ret.inner = tree.inner[tree.stop_node_id]
+		ret.inner = tree.inner[{{},{ret.node_id}}]
 		ret.outer = torch.zeros(self.dim,1)
 
 		ret.depnode_id = {}
-		ret.stop_deprel_id = {}
+		ret.deprel_id = {}
 		for i = 1,state.head:nElement() do
 			if state.head[i] == word then
-				local depnode = tree.wnode_id[state.head[i]]
+				local depnode = tree.wnode_id[i]
 				if tree.deprel_id[depnode] == 0 then -- this is a head, pick its parent
 					depnode = tree.parent_id[depnode]
 				end
 				ret.outer:add(self.Wo[state.deprel[i]] * tree.inner[{{},{depnode}}])
 
-				tree.depnode_id[#tree.depnode_id+1] = depnode
+				ret.depnode_id[#ret.depnode_id+1] = depnode
 				ret.deprel_id[#ret.deprel_id+1] = state.deprel[i]
 			end
 		end
 
 		if #ret.depnode_id == 0 then -- this word has no dependents
-			ret.outer = tree.anon_outer
+			ret.outer = self.anon_outer
 		else
 			ret.outer:div(#ret.depnode_id)
 			ret.outer:add(self.bohead)
@@ -277,17 +277,19 @@ function IORNN:with_state(tree, state, mem)
 	return ret
 end
 
-function IORNN:forward_outside(tree, state, action)
-	tree.classify = { 	stack = self:with_state(tree, state, state.stack)
+function IORNN:forward_outside(tree, state)
+	tree.classify = { 	stack = self:with_state(tree, state, state.stack),
 						buffer = self:with_state(tree, state, state.buffer) }
 
-	local input = (self.Wci_stack * tree.classify.stack.inner):add(self.Wco_stack * tree.classify.stack.outer)
-				:add(self.Wci_buffer * tree.classify.buffer.inner):add(self.Wco_buffer * tree.classify.buffer.outer)
+	local input = (self.Wci_stack * tree.classify.stack.inner)
+				:add(self.Wco_stack * tree.classify.stack.outer)
+				:add(self.Wci_buffer * tree.classify.buffer.inner)
+				:add(self.Wco_buffer * tree.classify.buffer.outer)
 				:add(self.bc)
 	tree.score = self.func(input)
 	tree.prob = safe_compute_softmax(tree.score)
-	tree.action = action
-	tree.error = - math.log(tree.prob[{action,1}])
+	tree.action = state.action
+	tree.error = -math.log(tree.prob[{tree.action,1}])
 
 	return tree.error
 end
@@ -299,23 +301,24 @@ function IORNN:backpropagate_outside(tree, grad)
 	end
 
 	local gZc = tree.prob:clone(); gZc[{tree.action,1}] = gZc[{tree.action,1}] - 1
+	grad.bc:add(gZc)
+
 	for v,typ in pairs(tree.classify) do
 		grad['Wco_'..v]:add(gZc * typ.outer:t())
 		grad['Wci_'..v]:add(gZc * typ.inner:t())
-		grad.bc:add(gZc)
 
 		-- for inner
 		if typ.inner == self.anon_inner then --ROOT
-			grad.anon_inner:add(self['Wci_'..v]:t(), gZc)
+			grad.anon_inner:add(self['Wci_'..v]:t() * gZc)
 		else
-			tree.gradi[{{},{[typ.node_id]}}]:add(self['Wci_'..v]:t(), gZc)
+			tree.gradi[{{},{typ.node_id}}]:add(self['Wci_'..v]:t() * gZc)
 		end
 
 		-- for outer
 		if typ.outer == self.anon_outer then --ROOT or single word
-			grad.anon_outer:add(self['Wco_'..v]:t(), gZc)
+			grad.anon_outer:add(self['Wco_'..v]:t() * gZc)
 		else
-			local gZo = torch.zeros(dim, 1)
+			local gZo = torch.zeros(self.dim, 1)
 			torch.mm(gZo, self['Wco_'..v]:t(), gZc)
 			grad.bohead:add(gZo)
 			local n = #typ.depnode_id
@@ -339,7 +342,7 @@ function IORNN:backpropagate_inside(tree, grad)
 		local gZi = tree.gradi[col_i]
 
 		-- for internal node
-		if tree.n_children[i] > 0 then	
+		if tree.n_children[i] > 0 then
 			gZi:cmul(self.funcPrime(tree.inner[col_i]))
 			tree.gradZi[col_i]:add(gZi)
 
@@ -380,6 +383,7 @@ else
 
 	local cost = 0
 	local nSample = 0
+	local tword_id = {}
 
 	p:start('process treebank')
 	for i, tree in ipairs(treebank) do
@@ -392,18 +396,24 @@ else
 		end	
 
 		for _,state in ipairs(tree.states) do
-			local lcost = self:forward_outside(tree, state)
-			cost = cost + lcost
-			self:backpropagate_outside(tree, grad)
+			if state.stack_pos > 0 then 
+				local lcost = self:forward_outside(tree, state)
+				cost = cost + lcost
+				self:backpropagate_outside(tree, grad)
+			end
 		end
 		nSample = nSample + #tree.states
 		self:backpropagate_inside(tree, grad)
+
+		for i=1,tree.wnode_id:nElement() do
+			tword_id[tree.word_id[tree.wnode_id[i]]] = 1
+		end
 	end
 	p:lap('process treebank') 
 
 	p:start('compute grad')
-	local wparams = self.params[{{1,-1-self.dim*self.voca_dic:size()}}]
-	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca_dic:size()}}]
+	local wparams = self.params[{{1,-1-self.dim*self.voca_dic.size}}]
+	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca_dic.size}}]
 	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
 	grad_wparams:div(nSample):add(wparams * config.lambda)
 	
@@ -489,7 +499,7 @@ function IORNN:adagrad(func, config, state)
 	end
 
 	-- for weights
-	local wparamindex = {{1,-1-self.dim*self.voca_dic:size()}}
+	local wparamindex = {{1,-1-self.dim*self.voca_dic.size}}
 	state.paramVariance.params[wparamindex]:addcmul(1,grad.params[wparamindex],grad.params[wparamindex])
 	torch.sqrt(state.paramStd.params[wparamindex],state.paramVariance.params[wparamindex])
 	self.params[wparamindex]:addcdiv(-weight_clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
@@ -640,7 +650,7 @@ function IORNN:predict_srl(treebank, filename)
 			for i = 1,tree.n_nodes do
 				if tree.is_candidate[i] == 1 then
 					ftemp:write(tree.cover[{1,i}] .. '-' .. tree.cover[{2,i}] .. '\n')
-					for j = 1,self.class:size() do
+					for j = 1,self.class.size do
 						if tree.class_predict ~= nil then
 							ftemp:write(tree.class_predict[{j,i}]..' ')
 						else
@@ -741,6 +751,7 @@ function IORNN:eval(treebank, gold_path, eval_prog_path)
 end
 
 --********************************** test ******************************--
+	require 'depparser'
 	torch.setnumthreads(1)
 
 	local voca_dic = Dict:new()
@@ -750,46 +761,21 @@ end
 	local deprel_dic = Dict:new()
 	deprel_dic:load('../data/wsj-dep/toy/dic/deprel.lst')
 
-	local head_treebank = Tree:load_treebank('../data/SRL/toy/train-set.parse.head')
-	local treebank = {}
-	local tokens = {}
-	local i = 0
-	for line in io.lines('../data/SRL/toy/train-set') do
-		if line ~= '' then
-			tokens[#tokens+1] = split_string(line, '[^ ]+')
-		else 
-			i = i + 1
-			local tree,srls = Tree:create_CoNLL2005_SRL(tokens)
-			tree = head_treebank[i]:to_torch_matrices(voca_dicDic, ruleDic, true)
-			for _,srl in ipairs(srls) do
-				local t = Tree:copy_torch_matrix_tree(tree)
-				t = Tree:add_srl_torch_matrix_tree(t, srl, classDic)
-				treebank[#treebank+1] = t
-			end
-		end
-	end
-		
-	local rules = {}
-	for _,str in ipairs(ruleDic.id2word) do
-		local comps = split_string(str, "[^ \t]+")
-		local rule = {lhs = comps[1], rhs = {}}
-		for i = 2,#comps do
-			rule.rhs[i-1] = comps[i]
-		end
-		rules[#rules+1] = rule
-	end
+	print('training...')
+	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
+	local treebank = parser:load_train_treebank('../data/wsj-dep/toy/data/train.conll')
+	treebank = {treebank[1]}
+	print(treebank)
 
 	local dim = 2
-	input = {	lookup = torch.randn(dim,voca_dicDic:size()), 
-				func = identity, funcPrime = identityPrime, 
-				rules = rules,
-				voca_dic = voca_dicDic,
-				class = classDic }
+	input = {	lookup = torch.randn(dim,voca_dic.size), 
+				func = tanh, funcPrime = tanhPrime, 
+				voca_dic = voca_dic,
+				pos_dic = pos_dic,
+				deprel_dic = deprel_dic }
 	net = IORNN:new(input)
-
-	--print(net)	
 
 	config = {lambda = 1e-4, lambda_L = 1e-7}
 	net.update_L = true
-	net:checkGradient(treebank, config)
+--	net:checkGradient(treebank, config)
 

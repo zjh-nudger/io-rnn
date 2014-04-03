@@ -3,7 +3,7 @@ require 'utils'
 Depstruct = {}
 Depstruct_mt = { __index=Depstruct }
 
-N_DEPS = 10
+N_DEPS = 40
 
 function Depstruct:new( input )
 	local len = #input
