@@ -190,7 +190,6 @@ end
 
 
 --************************ forward **********************--
-
 function IORNN:forward_inside(tree)
 	if tree.inner == nil then
 		tree.inner = torch.zeros(self.dim, tree.n_nodes)
@@ -281,25 +280,20 @@ function IORNN:forward_outside(tree, state)
 	tree.classify = { 	stack = self:with_state(tree, state, state.stack),
 						buffer = self:with_state(tree, state, state.buffer) }
 
-	local input = (self.Wci_stack * tree.classify.stack.inner)
+	tree.score = (self.Wci_stack * tree.classify.stack.inner)
 				:add(self.Wco_stack * tree.classify.stack.outer)
 				:add(self.Wci_buffer * tree.classify.buffer.inner)
 				:add(self.Wco_buffer * tree.classify.buffer.outer)
 				:add(self.bc)
-	tree.score = self.func(input)
 	tree.prob = safe_compute_softmax(tree.score)
 	tree.action = state.action
-	tree.error = -math.log(tree.prob[{tree.action,1}])
+	tree.cost = -math.log(tree.prob[{tree.action,1}])
 
-	return tree.error
+	return tree.cost
 end
 
 --*********************** backpropagate *********************--
 function IORNN:backpropagate_outside(tree, grad)
-	if tree.gradi == nil then
-		tree.gradi = torch.zeros(self.dim, tree.n_nodes)
-	end
-
 	local gZc = tree.prob:clone(); gZc[{tree.action,1}] = gZc[{tree.action,1}] - 1
 	grad.bc:add(gZc)
 
@@ -315,11 +309,10 @@ function IORNN:backpropagate_outside(tree, grad)
 		end
 
 		-- for outer
-		if typ.outer == self.anon_outer then --ROOT or single word
+		if typ.outer == self.anon_outer then --ROOT or 'free' word
 			grad.anon_outer:add(self['Wco_'..v]:t() * gZc)
 		else
-			local gZo = torch.zeros(self.dim, 1)
-			torch.mm(gZo, self['Wco_'..v]:t(), gZc)
+			local gZo = (self['Wco_'..v]:t() * gZc):cmul(self.funcPrime(typ.outer))
 			grad.bohead:add(gZo)
 			local n = #typ.depnode_id
 			for i,depnode_id in ipairs(typ.depnode_id) do
@@ -355,8 +348,10 @@ function IORNN:backpropagate_inside(tree, grad)
 				local deprel_id = tree.deprel_id[child_id]
 				if deprel_id == 0 then -- this is head, note ROOT has no head
 					grad.Wihead:add(gZi * tree.inner[{{},{child_id}}]:t())
+					tree.gradi[{{},{child_id}}]:add(self.Wihead:t() * gZi)
 				else
 					grad.Wi[deprel_id]:add((gZi * tree.inner[{{},{child_id}}]:t()):div(n))
+					tree.gradi[{{},{child_id}}]:add((self.Wi[deprel_id]:t() * gZi):div(n))
 				end
 			end
 			grad.bi:add(gZi)
@@ -420,13 +415,13 @@ else
 	for wid,_ in pairs(tword_id) do
 		cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
 		grad.L[{{},{wid}}]:div(nSample):add(self.L[{{},{wid}}] * config.lambda_L)
-	end
+	end 
 	p:lap('compute grad')
 
 	p:lap('compute cost and grad') 
 	--p:printAll()
 
-	return cost, grad, treebank
+	return cost, grad, treebank, tword_id
 end
 
 end
@@ -510,9 +505,6 @@ function IORNN:adagrad(func, config, state)
 		state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
 		torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
 		self.L[col_i]:addcdiv(-voca_dic_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
-		--[[local inv_delta = torch.div(state.paramStd.L[col_i]:add(1e-1), voca_dic_clr)
-		inv_delta[torch.lt(inv_delta,1)] = 1
-		self.L[col_i]:addcdiv(-1, grad.L[col_i], inv_delta)]]
 	end
 
 	-- (5) update evaluation counter
@@ -750,7 +742,7 @@ function IORNN:eval(treebank, gold_path, eval_prog_path)
 	os.execute(eval_prog_path .. ' ' .. gold_path .. ' ' .. 'predicts.txt')
 end
 
---********************************** test ******************************--
+--[[********************************** test ******************************--
 	require 'depparser'
 	torch.setnumthreads(1)
 
@@ -764,8 +756,9 @@ end
 	print('training...')
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
 	local treebank = parser:load_train_treebank('../data/wsj-dep/toy/data/train.conll')
-	treebank = {treebank[1]}
-	print(treebank)
+	--treebank = {treebank[1]}
+	--treebank[1].states = {treebank[1].states[1]}
+	--print(treebank)
 
 	local dim = 2
 	input = {	lookup = torch.randn(dim,voca_dic.size), 
@@ -777,5 +770,5 @@ end
 
 	config = {lambda = 1e-4, lambda_L = 1e-7}
 	net.update_L = true
---	net:checkGradient(treebank, config)
-
+	net:checkGradient(treebank, config)
+]]
