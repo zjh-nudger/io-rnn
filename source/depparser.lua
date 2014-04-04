@@ -19,22 +19,14 @@ Depparser.RA_ID = 2
 Depparser.SH_ID = 3
 
 function Depparser:new(voca_dic, pos_dic, deprel_dic)
-	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic }
+	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, 
+					deprel_dic = deprel_dic }
 	setmetatable(parser, Depparser_mt)
 	return parser
 end
 
-function Depparser:clone_state(state) 
-	local new_state = { stack = state.stack:clone(), stack_pos = state.stack_pos, 
-						buffer = state.buffer:clone(), buffer_pos = state.buffer_pos,
-						head = state.head:clone(), deprel = state.deprel:clone(), 
-						score = state.score }
-	return new_state
-end
+function Depparser:trans(sent, state, decision_scores)
 
-function Depparser:trans(sent, state)
-	local new_states = {}
-	
 	local i = nil; j = nil
 	if state.stack_pos > 0 then
 		i = state.stack[state.stack_pos]
@@ -43,48 +35,47 @@ function Depparser:trans(sent, state)
 		j = state.buffer[state.buffer_pos]
 	end
 
-	-- left arc
-	if i ~= nil and j ~= nil and i ~= 0 then
-		for l = 1,self.deprel_dic.size do
-			local class = self.label_map[l]
-			if class ~= nil then
-				local state_la = self:clone_state(state)
-				state_la.head[i] = j
-				state_la.deprel[i] = l
-				state_la.stack_pos = state_la.stack_pos - 1
-				state_la.score = state.score + state.decision_scores[class]
-				new_states[#new_states+1] = state_la
-			end
-		end
+	-- remove impossible actions
+	if i == nil or j == nil then
+		decision_scores[{{1,2*self.deprel_dic.size}}]:fill(0)
 	end
+	if i == 0 then
+		decision_scores[{{1,self.deprel_dic.size}}]:fill(0)
+	end
+	if j == nil then
+		decision_scores[2*self.deprel_dic+1] = 0
+	end
+
+	local _,action = decision_scores:max(1)
+	action = action[1]
+
+	-- left arc
+	if action <= self.deprel_dic.size then
+		local tree = self.net:merge_treelets(state.treelets[j], 
+											state.treelets[i], action)
+		state.treelets[j] = tree
+		state.head[i] = j
+		state.deprel[i] = action
+		state.stack_pos = state.stack_pos - 1
 
 	-- right arc
-	if i ~= nil and j ~= nil then
-		for l = 1,self.deprel_dic.size do
-			local class = self.label_map[l+self.deprel_dic.size]
-			if class ~= nil then
-				local state_ra = self:clone_state(state)
-				state_ra.head[j] = i
-				state_ra.deprel[j] = l
-				state_ra.stack_pos = state_ra.stack_pos - 1
-				state_ra.buffer[state_ra.buffer_pos] = i
-				state_ra.score = state.score + state.decision_scores[self.label_map[l+self.deprel_dic.size]]
-				new_states[#new_states+1] = state_ra
-			end
-		end
+	elseif action <= 2*self.deprel_dic.size then
+		action = action - self.deprel_dic.size
+		local tree = self.net:merge_treelets(state.treelets[i], 
+											state.treelets[j], action)
+		state.treelets[i] = tree
+		state.head[j] = i
+		state.deprel[j] = action
+		state.stack_pos = state.stack_pos - 1
+		state.buffer[state.buffer_pos] = i
+
+	else -- shift
+		state.stack_pos = state.stack_pos + 1
+		state.stack[state.stack_pos] = j
+		state.buffer_pos = state.buffer_pos + 1
 	end
 
-	-- shift
-	if j ~= nil then
-		local state_sh = self:clone_state(state)
-		state_sh.stack_pos = state_sh.stack_pos + 1
-		state_sh.stack[state_sh.stack_pos] = j
-		state_sh.buffer_pos = state_sh.buffer_pos + 1
-		state_sh.score = state.score + state.decision_scores[self.label_map[2*self.deprel_dic.size+1]]
-		new_states[#new_states+1] = state_sh
-	end
-
-	return new_states
+	return state
 end
 
 function Depparser:parse(sentbank)
@@ -93,15 +84,17 @@ function Depparser:parse(sentbank)
 -- init
 	for i,sent in ipairs(sentbank) do
 		local n_words = sent.n_words
-		local state = { stack = torch.LongTensor(n_words+1):fill(-1), stack_pos = 1, 
-						buffer = torch.linspace(1,n_words,n_words), buffer_pos = 1,
+		local state = { stack = torch.LongTensor(n_words+1):fill(-1), 
+						stack_pos = 1, 
+						buffer = torch.linspace(1,n_words,n_words), 
+						buffer_pos = 1,
 						head = torch.LongTensor(n_words):fill(-1),
 						deprel = torch.LongTensor(n_words):fill(-1),
+						treelets = self.net:create_treelets(sent),
 						score = 0
 					}
 		state.stack[1] = 0 -- ROOT
-		local states = { state }
-		statebank[#statebank+1] = states
+		statebank[#statebank+1] = state
 	end
 
 -- parse
@@ -109,92 +102,44 @@ function Depparser:parse(sentbank)
 
 	while not_done:sum() ~= 0 do
 		-- collect state and sent & extract features
-		p:start('feature')
-		local data = {}
+		local active_states = {}
 		for i,sent in ipairs(sentbank) do
 			if not_done[i] == 1 then
-				for j,state in ipairs(statebank[i]) do
-					data[#data+1] = self:get_feature(sent, state)
-				end
+				active_states[#active_states+1] = statebank[i]
 			end
 		end
-		p:lap('feature')
 
 		-- compute prediction score
 		p:start('decision') 
-		_,_,dec = liblinear.predict(data, self.model)
-		dec = safe_compute_softmax(dec:t()):t():log()
+		local decision_scores = self.net:predict_action(active_states)
+		p:lap('decision')
+
+		-- process states
+		p:start('trans')
 		local k = 1
 		for i,sent in ipairs(sentbank) do
 			if not_done[i] == 1 then
-				for j,state in ipairs(statebank[i]) do
-					state.decision_scores = dec[{k,{}}]
-					k = k + 1
-				end
-			end
-		end
-		p:lap('decision')
-	
-		-- process sentences 
-		p:start('trans')
-		for i,states in ipairs(statebank) do
-			local sent = sentbank[i]
+				local state = statebank[i]
+				local decision_score = decision_scores[{{},k}]
+				k = k + 1
 
-			if not_done[i] == 1 then
-				not_done[i] = 0 
-				local new_states = {}
-				local scores = torch.Tensor(1000 * #states)
-
-				for _,state in ipairs(states) do
-					if state.buffer_pos == sent.n_words + 1 then -- buff empty
-						if state.stack_pos == 1 and state.stack[state.stack_pos] == 0 then -- valid projective dep-struct
-							new_states[#new_states+1] = state
-							scores[#new_states] = state.score
-						end
-					else 
-						not_done[i] = 1
-						local local_new_states = self:trans(sent, state)
-						for _,st in ipairs(local_new_states) do
-							new_states[#new_states+1] = st
-							scores[#new_states] = st.score
-						end
-					end
-				end
-	
-				-- extract best states
-				local n = #new_states
-				states = {}
-				if n > 0 then
-					top_scores,top_id = scores[{{1,n}}]:sort(1,true)
-					for i = 1,math.min(Depparser.MAX_NSTATES,n) do
-						states[i] = new_states[top_id[i]]
-					end		
-				end
-				statebank[i] = states
+				state = self:trans(sent, state, decision_score)
 			end
 		end
 		p:lap('trans')
 		p:printAll()
 	end
 	
-	-- get the best parses
-	local ret = {}
-	for i,states in ipairs(statebank) do
-		if #states > 0 then 
-			ret[i] = states[1]
-		else 
-			ret[i] = {}
-		end
-	end
-
-	return ret
+	return statebank
 end
 
 function Depparser:extract_training_states(ds)
 	-- init
 	local n_words = ds.n_words
-	local state = { stack = torch.LongTensor(n_words+1):fill(-1), stack_pos = 1, 
-					buffer = torch.linspace(1,n_words,n_words), buffer_pos = 1,
+	local state = { stack = torch.LongTensor(n_words+1):fill(-1), 
+					stack_pos = 1, 
+					buffer = torch.linspace(1,n_words,n_words), 
+					buffer_pos = 1,
 					head = torch.LongTensor(n_words):fill(-1),
 					deprel = torch.LongTensor(n_words):fill(-1),
 					score = 0
@@ -267,7 +212,11 @@ function Depparser:load_train_treebank(treebank_path)
 	for line in io.lines(treebank_path) do
 		line = trim_string(line)
 		if line == '' then
-			if pcall( function() ds,sent = Depstruct:create_from_strings(tokens, self.voca_dic, self.pos_dic, self.deprel_dic) end ) then
+			if pcall( function() 
+				ds,sent = Depstruct:create_from_strings(tokens, 
+					self.voca_dic, self.pos_dic, self.deprel_dic) 
+				end ) 
+			then
 				local states = self:extract_training_states(ds)
 				local tree = ds:to_torch_matrix_tree()
 				tree.states = states
@@ -293,7 +242,11 @@ function Depparser:load_treebank(path)
 		--print(line)
 		line = trim_string(line)
 		if line == '' then
-			if pcall( function() ds,sent = Depstruct:create_from_strings(tokens, self.voca_dic, self.pos_dic, self.deprel_dic) end ) then
+			if pcall( function() 
+					ds,sent = Depstruct:create_from_strings(tokens, 
+						self.voca_dic, self.pos_dic, self.deprel_dic) 
+				end ) 
+			then
 				treebank[#treebank+1] = ds
 				raw[#raw+1] = sent
 			else 

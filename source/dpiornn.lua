@@ -366,6 +366,126 @@ function IORNN:backpropagate_inside(tree, grad)
 	end
 end
 
+function IORNN:create_treelets(sent)
+	local treelets = {}
+	for i = 1,sent.n_words do
+		local tree = Depstruct:create_empty_tree(1, sent.n_words)
+		tree.word_id[1] = sent.word_id[i]
+		tree.wnode_id[i] = 1
+		tree.inner = self.L[{{}{tree.word_id[1]}}]:clone()
+		tree.head_inner = tree.inner
+		tree.head_outer = self.anon_outer
+		treelets[#treelets+1] = tree
+	end
+	return treelets
+end
+
+function IORNN:merge_treelets(htree, dtree, deprel)
+	local n_nodes = htree.n_nodes + dtree.n_nodes
+	local n_words = htree.wnode_id:nElement()
+	local next_id = htree.n_nodes + 1
+
+	if htree.n_nodes == 1 then
+		n_nodes = n_nodes + 1
+		next_id = next_id + 1
+	end
+
+	tree = Depstruct:create_empty_tree(n_nodes, n_words)
+	tree.inner = torch.zeros(self.dim, n_nodes)
+
+	-- copy htree into tree
+	if htree.n_nodes > 1 then
+		tree.word_id[{{1,htree.n_nodes}}]:copy(htree.word_id)
+		tree.parent_id[{{1,htree.n_nodes}}]:copy(htree.parent_id)
+		tree.n_children[{{1,htree.n_nodes}}]:copy(htree.n_children)
+		tree.children_id[{{},{1,htree.n_nodes}}]:copy(htree.children_id)
+		tree.wnode_id:add(htree.wnode_id)
+		tree.deprel_id[{{1,htree.n_nodes}}]:copy(htree.deprel_id)
+		tree.inner[{{},{1.htree.n_nodes}}]:copy(htree.inner)
+	elseif htree.n_nodes == 1 then
+		tree.word_id[2] = htree.word_id[1]
+		tree.parent_id[2] = 1
+		tree.n_children[1] = 1
+		tree.children_id[{1,1}] = 2
+		local temp = htree.wnode_id + 1; temp[temp:eq(1)] = 0
+		tree.wnode_id:add(temp)
+		tree.inner[{{},{2}}]:copy(htree.inner)
+	end
+
+	-- copy dtree into tree
+
+	tree.word_id[{{next_id,-1}}]:copy(dtree.word_id)
+	tree.parent_id[{{next_id,-1}}]:copy(dtree.parent_id):add(next_id-1)
+	tree.parent_id[next_id] = 1
+
+	tree.n_children[1] = tree.n_children[1] + 1
+	tree.n_children[{{next_id,-1}}]:copy(dtree.n_children)
+
+	tree.children_id[{tree.n_children[1],1}] = next_id
+	tree.children_id[{{},{next_id,-1}}]:copy(dtree.children_id):add(next_id-1)
+
+	local temp = dtree.wnode_id + (next_id-1); temp[temp:eq(next_id-1)] = 0
+	tree.wnode_id:add(temp)
+
+	tree.deprel_id[{{next_id,-1}}]:copy(dtree.deprel_id)
+	tree.deprel_id[next_id] = deprel
+
+	tree.inner[{{},{next_id,-1}}]:copy(dtree.inner)
+
+	-- dtree is 'complete', compute its inner representation
+	if next_id < n_nodes then
+		local input = torch.zeros(self.dim,1)
+		for j = 2,tree.n_children[next_id] do
+			local child = tree.children_id[{j,next_id}]
+			input:add(self.Wi[tree.deprel_id[child]] * tree.inner[{{},{child}}])
+		end
+		input:div(tree.n_children[next_id] - 1)
+		input:add(self.Wihead * tree.inner[{{},{tree.children_id[{1,next_id}]}}]):add(self.bi)
+		tree.inner[{{},{next_id}}]:copy(self.func(input))
+	end
+
+	-- compute outer representation at the head word
+	local input = torch.zeros(self.dim,1)
+	for j = 2,tree.n_children[1] do
+		local child = tree.children_id[{j,1}]
+		input:add(self.Wo[tree.deprel_id[child]] * tree.inner[{{},{child}}])
+	end
+	input:div(tree.n_children[1] - 1)
+	input:add(self.bohead)
+	tree.head_outer = self.func(input)
+	tree.head_inner = tree.inner[{{},{2}}]
+
+	return tree
+end
+
+function IORNN:predict_action(states)
+	local nstates = #states
+
+	local stack_inner = torch.ones(self.dim, nstates)
+	local stack_outer = torch.ones(self.dim, nstates)
+	local buffer_inner = torch.ones(self.dim, nstates)
+	local buffer_outer = torch.ones(self.dim, nstates)
+
+	for i,state in ipairs(states) do
+		if state.stack_pos >= 1 and state.buffer_pos <= state.n_words then
+			local stack_tree = state.treelets[state.stack[state.stack_pos]]
+			local buffer_tree = state.treelets[state.buffer[state.buffer_pos]]
+			local index = {{},{i}}
+			stack_inner[index]:copy(stack_tree.head_inner)
+			stack_outer[index]:copy(stack_tree.head_outer)
+			buffer_inner[index]:copy(buffer_tree.head_inner)
+			buffer_outer[index]:copy(buffer_tree.head_outer)
+		end
+	end
+	
+	scores = (self.Wci_stack * stack_inner)
+				:add(self.Wco_stack * stack_outer)
+				:add(self.Wci_buffer * buffer_inner)
+				:add(self.Wco_buffer * buffer_outer)
+				:add(torch.repeatTensor(self.bc, 1, nstates))
+	return safe_compute_softmax(tree.score)
+end
+
 function IORNN:computeCostAndGrad(treebank, config, grad)
 	local parse = config.parse or false
 

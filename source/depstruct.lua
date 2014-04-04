@@ -58,18 +58,21 @@ function Depstruct:create_from_strings(input, voca_dic, pos_dic, deprel_dic)
 	return Depstruct:new(input), sent
 end
 
+function Depstruct:create_empty_tree(n_nodes, n_words)
+	return {	n_nodes		= n_nodes,
+				word_id		= torch.zeros(n_nodes),
+				parent_id	= torch.zeros(n_nodes),
+				n_children	= torch.zeros(n_nodes),
+				children_id	= torch.zeros(N_DEPS, n_nodes),
+				wnode_id	= torch.zeros(self.n_words),
+				deprel_id	= torch.zeros(n_nodes) }
+end
+
 function Depstruct:to_torch_matrix_tree(id, node_id, tree)
 	local id = id or 0
 	local node_id = node_id or 1
 	local n_nodes = self.n_words + self.n_deps:gt(0):double():sum() + 1
-	local tree = tree or 
-					{	n_nodes		= n_nodes,
-						word_id		= torch.zeros(n_nodes),
-						parent_id	= torch.zeros(n_nodes),
-						n_children	= torch.zeros(n_nodes),
-						children_id	= torch.zeros(N_DEPS, n_nodes),
-						wnode_id	= torch.zeros(self.n_words),
-						deprel_id	= torch.zeros(n_nodes) }
+	local tree = tree or self:create_empty_tree(n_nodes, self.n_words)
 
 	local dep_id = nil
 	local n_deps = 0
