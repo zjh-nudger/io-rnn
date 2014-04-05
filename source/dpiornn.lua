@@ -496,7 +496,7 @@ function IORNN:predict_action(states)
 	return safe_compute_softmax(scores)
 end
 
-function IORNN:computeCostAndGrad(treebank, config, grad)
+function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 	local parse = config.parse or false
 
 	p:start('compute cost and grad')	
@@ -511,7 +511,9 @@ else
 	local tword_id = {}
 
 	p:start('process treebank')
-	for i, tree in ipairs(treebank) do
+	for i, ds in ipairs(treebank) do
+		local states = parser:extract_training_states(ds)
+		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
 
 		if tree.gradi == nil then 
@@ -520,14 +522,14 @@ else
 			tree.gradi:fill(0)
 		end	
 
-		for _,state in ipairs(tree.states) do
+		for _,state in ipairs(states) do
 			if state.stack_pos > 0 then 
 				local lcost = self:forward_outside(tree, state)
 				cost = cost + lcost
 				self:backpropagate_outside(tree, grad)
 			end
 		end
-		nSample = nSample + #tree.states
+		nSample = nSample + #states
 		self:backpropagate_inside(tree, grad)
 
 		for i=2,tree.wnode_id:nElement() do -- do not take the root into account
@@ -673,7 +675,7 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 	
 		local function func()
 			cost, grad, subtreebank, tword_id  = self:computeCostAndGrad(subtreebank, 
-							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad)
+							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad, parser)
 
 			print('iter ' .. j .. ': ' .. cost) io.flush()		
 			return cost, grad, subtreebank, tword_id

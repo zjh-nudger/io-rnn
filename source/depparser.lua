@@ -222,36 +222,7 @@ function Depparser:extract_training_states(ds)
 	return states
 end
 
-function Depparser:load_train_treebank(treebank_path)
-	local treebank = {}
-	local i = 0
-
-	local tokens = {}
-	for line in io.lines(treebank_path) do
-		line = trim_string(line)
-		if line == '' then
-			if pcall( function() 
-				ds,sent = Depstruct:create_from_strings(tokens, 
-					self.voca_dic, self.pos_dic, self.deprel_dic) 
-				end ) 
-			then
-				local states = self:extract_training_states(ds)
-				local tree = ds:to_torch_matrix_tree()
-				tree.states = states
-				treebank[#treebank+1] = tree
-			else 
-				print('error')
-				print(tokens)
-			end
-			tokens = {}
-		else 
-			tokens[#tokens+1] = line
-		end
-	end
-	return treebank
-end
-
-function Depparser:load_test_treebank(path)
+function Depparser:load_treebank(path)
 	local treebank = {}
 	local raw = {}
 
@@ -281,7 +252,8 @@ function Depparser:load_test_treebank(path)
 end
 
 function Depparser:train(traintrebank_path, devtreebank_path, model_dir)
-	local traintreebank = self:load_train_treebank(traintrebank_path)
+	print('load train treebank')
+	local traintreebank,_ = self:load_treebank(traintrebank_path)
 	
 	self.net.update_L = true
 	lambda = 1e-4
@@ -290,6 +262,7 @@ function Depparser:train(traintrebank_path, devtreebank_path, model_dir)
 	maxnepoch = 100
 
 	-- shuf the traintreebank
+	print('shufing train treebank')
 	local new_i = torch.randperm(#traintreebank)
 	temp = {}
 	for i = 1,#traintreebank do
@@ -304,6 +277,8 @@ function Depparser:train(traintrebank_path, devtreebank_path, model_dir)
 
 	self.net:save(model_dir .. '/model_0')
 	local prefix = model_dir..'/model'
+
+	print('train net')
 	adagrad_config, adagrad_state = self.net:train_with_adagrad(traintreebank, batchsize,
 															maxnepoch, {lambda = lambda, lambda_L = lambda_L}, 
 															prefix, adagrad_config, adagrad_state, 
@@ -311,7 +286,7 @@ function Depparser:train(traintrebank_path, devtreebank_path, model_dir)
 end
 
 function Depparser:eval(path, output)
-	local treebank, raw = self:load_test_treebank(path)
+	local treebank, raw = self:load_treebank(path)
 	local parses = self:parse(treebank)
 	
 	local f = io.open(output, 'w')
@@ -329,7 +304,7 @@ function Depparser:eval(path, output)
 	end
 	f:close()
 
-	os.execute('java -jar ../tools/MaltEval/lib/MaltEval.jar -s '..output..' -g ../data/wsj-dep/universal/data/dev.conll')
+	os.execute('java -jar ../tools/MaltEval/lib/MaltEval.jar -s '..output..' -g '..path)
 end
 
 
