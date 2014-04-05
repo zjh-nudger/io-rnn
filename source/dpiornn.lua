@@ -75,9 +75,9 @@ function IORNN:init_params(input)
 	local index = 1
 	
 	-- anonymous outer/inner
-	net.anon_outer = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -1e-3, 1e-3)) 
+	net.root_inner = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -1e-3, 1e-3)) 
 	index = index + dim
-	net.anon_inner = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -1e-3, 1e-3)) 
+	net.anon_outer = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -1e-3, 1e-3)) 
 	index = index + dim
 
 	-- weights
@@ -125,9 +125,9 @@ function IORNN:create_grad()
 	local index = 1
 	
 	-- anonymous outer
-	grad.anon_outer = grad.params[{{index,index+dim-1}}]:resize(dim,1)
+	grad.root_inner = grad.params[{{index,index+dim-1}}]:resize(dim,1)
 	index = index + dim
-	grad.anon_inner = grad.params[{{index,index+dim-1}}]:resize(dim,1)
+	grad.anon_outer = grad.params[{{index,index+dim-1}}]:resize(dim,1)
 	index = index + dim
 
 	-- weights
@@ -197,12 +197,16 @@ function IORNN:forward_inside(tree)
 		tree.inner:fill(0)
 	end
 
-	for i = tree.n_nodes,2,-1 do 
+	for i = tree.n_nodes,1,-1 do 
 		local col_i = {{},{i}}
 
 		-- for leaves
 		if tree.n_children[i] == 0 then
-			tree.inner[col_i]:copy(self.L[{{},{tree.word_id[i]}}])
+			if i == 2 then -- ROOT 
+				tree.inner[col_i]:copy(self.root_inner)
+			else
+				tree.inner[col_i]:copy(self.L[{{},{tree.word_id[i]}}])
+			end
 
 		-- for internal nodes
 		else
@@ -220,16 +224,6 @@ function IORNN:forward_inside(tree)
 			tree.inner[col_i]:copy(self.func(input))
 		end
 	end
-
-	-- for root
-	local input = torch.zeros(self.dim,1)
-	for j = 1,tree.n_children[1] do
-		local child = tree.children_id[{j,1}]
-		input:add(self.Wi[tree.deprel_id[child]] * tree.inner[{{},{child}}])
-	end
-	input:div(tree.n_children[1])
-	input:add(self.bi)
-	tree.inner[{{},{1}}]:copy(self.func(input))
 end
 
 function IORNN:with_state(tree, state, mem)
@@ -239,38 +233,36 @@ function IORNN:with_state(tree, state, mem)
 	end
 
 	local ret = {}
+	ret.node_id = tree.wnode_id[word]
 
-	if word == 0 then --ROOT
-		ret.node_id = 0
-		ret.inner = self.anon_inner
-		ret.outer = self.anon_outer
-	else 
-		ret.node_id = tree.wnode_id[word]
-		ret.inner = tree.inner[{{},{ret.node_id}}]
-		ret.outer = torch.zeros(self.dim,1)
+	if word == 1 then --ROOT
+		ret.inner = self.root_inner
+	else
+ 		ret.inner = tree.inner[{{},{ret.node_id}}]
+	end
 
-		ret.depnode_id = {}
-		ret.deprel_id = {}
-		for i = 1,state.head:nElement() do
-			if state.head[i] == word then
-				local depnode = tree.wnode_id[i]
-				if tree.deprel_id[depnode] == 0 then -- this is a head, pick its parent
-					depnode = tree.parent_id[depnode]
-				end
-				ret.outer:add(self.Wo[state.deprel[i]] * tree.inner[{{},{depnode}}])
+	ret.outer = torch.zeros(self.dim,1)
 
-				ret.depnode_id[#ret.depnode_id+1] = depnode
-				ret.deprel_id[#ret.deprel_id+1] = state.deprel[i]
+	ret.depnode_id = {}
+	ret.deprel_id = {}
+	for i = 1,state.head:nElement() do
+		if state.head[i] == word then
+			local depnode = tree.wnode_id[i]
+			if tree.deprel_id[depnode] == 0 then -- this is a head, pick its parent
+				depnode = tree.parent_id[depnode]
 			end
+			ret.outer:add(self.Wo[state.deprel[i]] * tree.inner[{{},{depnode}}])
+			ret.depnode_id[#ret.depnode_id+1] = depnode
+			ret.deprel_id[#ret.deprel_id+1] = state.deprel[i]
 		end
+	end
 
-		if #ret.depnode_id == 0 then -- this word has no dependents
-			ret.outer = self.anon_outer
-		else
-			ret.outer:div(#ret.depnode_id)
-			ret.outer:add(self.bohead)
-			ret.outer = self.func(ret.outer)
-		end
+	if #ret.depnode_id == 0 then -- this word has no dependents
+		ret.outer = self.anon_outer
+	else
+		ret.outer:div(#ret.depnode_id)
+		ret.outer:add(self.bohead)
+		ret.outer = self.func(ret.outer)
 	end
 
 	return ret
@@ -302,14 +294,14 @@ function IORNN:backpropagate_outside(tree, grad)
 		grad['Wci_'..v]:add(gZc * typ.inner:t())
 
 		-- for inner
-		if typ.inner == self.anon_inner then --ROOT
-			grad.anon_inner:add(self['Wci_'..v]:t() * gZc)
+		if typ.inner == self.root_inner then --ROOT
+			grad.root_inner:add(self['Wci_'..v]:t() * gZc)
 		else
 			tree.gradi[{{},{typ.node_id}}]:add(self['Wci_'..v]:t() * gZc)
 		end
 
 		-- for outer
-		if typ.outer == self.anon_outer then --ROOT or 'free' word
+		if typ.outer == self.anon_outer then -- 'free' word
 			grad.anon_outer:add(self['Wco_'..v]:t() * gZc)
 		else
 			local gZo = (self['Wco_'..v]:t() * gZc):cmul(self.funcPrime(typ.outer))
@@ -341,12 +333,10 @@ function IORNN:backpropagate_inside(tree, grad)
 
 			-- weight matrix for inner
 			local n = tree.n_children[i] - 1
-			if i == 1 then n = tree.n_children[i] end -- ROOT
-
 			for j = 1,tree.n_children[i] do
 				local child_id = tree.children_id[{j,i}]
 				local deprel_id = tree.deprel_id[child_id]
-				if deprel_id == 0 then -- this is head, note ROOT has no head
+				if deprel_id == 0 then -- this is head
 					grad.Wihead:add(gZi * tree.inner[{{},{child_id}}]:t())
 					tree.gradi[{{},{child_id}}]:add(self.Wihead:t() * gZi)
 				else
@@ -360,7 +350,9 @@ function IORNN:backpropagate_inside(tree, grad)
 			tree.gradZi[col_i]:add(gZi)
 
 			if self.update_L then
-				grad.L[{{},{tree.word_id[i]}}]:add(gZi)
+				if i > 2 then -- not ROOT
+					grad.L[{{},{tree.word_id[i]}}]:add(gZi)
+				end
 			end
 		end
 	end
@@ -368,17 +360,24 @@ end
 
 function IORNN:create_treelets(sent)
 	local treelets = {}
-	for i = 1,sent.n_words do
+	for i = 0,sent.n_words do
 		local tree = Depstruct:create_empty_tree(1, sent.n_words)
-		tree.word_id[1] = sent.word_id[i]
-		tree.wnode_id[i] = 1
-		tree.inner = self.L[{{}{tree.word_id[1]}}]:clone()
-		tree.head_inner = tree.inner
+		if i > 1 then
+			tree.word_id[1] = sent.word_id[i]
+			tree.wnode_id[i] = 1
+			tree.inner = self.L[{{},{tree.word_id[1]}}]:clone()
+			tree.head_inner = tree.inner
+		else -- ROOT
+			tree.inner = self.root_inner
+			tree.head_inner = self.root_inner
+		end
 		tree.head_outer = self.anon_outer
-		treelets[#treelets+1] = tree
-	end
+		treelets[i] = tree
+	end	
+
 	return treelets
 end
+
 
 function IORNN:merge_treelets(htree, dtree, deprel)
 	local n_nodes = htree.n_nodes + dtree.n_nodes
@@ -401,7 +400,7 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 		tree.children_id[{{},{1,htree.n_nodes}}]:copy(htree.children_id)
 		tree.wnode_id:add(htree.wnode_id)
 		tree.deprel_id[{{1,htree.n_nodes}}]:copy(htree.deprel_id)
-		tree.inner[{{},{1.htree.n_nodes}}]:copy(htree.inner)
+		tree.inner[{{},{1,htree.n_nodes}}]:copy(htree.inner)
 	elseif htree.n_nodes == 1 then
 		tree.word_id[2] = htree.word_id[1]
 		tree.parent_id[2] = 1
@@ -413,7 +412,6 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 	end
 
 	-- copy dtree into tree
-
 	tree.word_id[{{next_id,-1}}]:copy(dtree.word_id)
 	tree.parent_id[{{next_id,-1}}]:copy(dtree.parent_id):add(next_id-1)
 	tree.parent_id[next_id] = 1
@@ -422,7 +420,8 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 	tree.n_children[{{next_id,-1}}]:copy(dtree.n_children)
 
 	tree.children_id[{tree.n_children[1],1}] = next_id
-	tree.children_id[{{},{next_id,-1}}]:copy(dtree.children_id):add(next_id-1)
+	local temp = dtree.children_id + (next_id-1); temp[temp:eq(next_id-1)] = 0
+	tree.children_id[{{},{next_id,-1}}]:copy(temp)
 
 	local temp = dtree.wnode_id + (next_id-1); temp[temp:eq(next_id-1)] = 0
 	tree.wnode_id:add(temp)
@@ -444,7 +443,7 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 		tree.inner[{{},{next_id}}]:copy(self.func(input))
 	end
 
-	-- compute outer representation at the head word
+	-- only if htree does not contain ROOT compute outer representation at the head word
 	local input = torch.zeros(self.dim,1)
 	for j = 2,tree.n_children[1] do
 		local child = tree.children_id[{j,1}]
@@ -454,6 +453,17 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 	input:add(self.bohead)
 	tree.head_outer = self.func(input)
 	tree.head_inner = tree.inner[{{},{2}}]
+
+--[[
+	print('##########################################################')
+	for _,t in ipairs({htree,dtree,tree}) do
+		print('------------------------------')
+		for v,k in pairs(t) do
+			print(v)
+			print(k)
+		end
+	end
+]]
 
 	return tree
 end
@@ -483,7 +493,7 @@ function IORNN:predict_action(states)
 				:add(self.Wci_buffer * buffer_inner)
 				:add(self.Wco_buffer * buffer_outer)
 				:add(torch.repeatTensor(self.bc, 1, nstates))
-	return safe_compute_softmax(tree.score)
+	return safe_compute_softmax(scores)
 end
 
 function IORNN:computeCostAndGrad(treebank, config, grad)
@@ -520,7 +530,7 @@ else
 		nSample = nSample + #tree.states
 		self:backpropagate_inside(tree, grad)
 
-		for i=1,tree.wnode_id:nElement() do
+		for i=2,tree.wnode_id:nElement() do -- do not take the root into account
 			tword_id[tree.word_id[tree.wnode_id[i]]] = 1
 		end
 	end
@@ -631,9 +641,10 @@ function IORNN:adagrad(func, config, state)
 	state.evalCounter = state.evalCounter + 1
 end
 
-function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize, 
+function IORNN:train_with_adagrad(traintreebank, batchSize, 
 									maxepoch, lambda, prefix,
-									adagrad_config, adagrad_state, bag_of_subtrees)
+									adagrad_config, adagrad_state, 
+									parser, devtreebank_path)
 	local nSample = #traintreebank
 	local grad = self:create_grad()
 	
@@ -649,9 +660,7 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 			j = 1 
 			epoch = epoch + 1
 
-			self:eval(devtreebank,  '../data/SRL/conll05st-release/devel/props/devel.24.props',
-									--'../data/SRL/toy/dev-props',
-									'../data/SRL/conll05st-release/srlconll-1.1/bin/srl-eval.pl')
+			parser:eval(devtreebank_path, '/tmp/parsed.conll')
 
 			if epoch > maxepoch then break end
 			print('===== epoch ' .. epoch .. '=====')
@@ -682,185 +691,6 @@ function IORNN:train_with_adagrad(traintreebank, devtreebank, batchSize,
 	return adagrad_config, adagrad_state
 end
 
-function IORNN:label(tree, node_id, label)
-	_,cid = tree.class_predict[{{},node_id}]:max(1)
-	cid = cid[1]
-	
-	if tree.is_candidate[node_id] == 0 or cid == self.class:get_id('NULL') then
-		for j = 1,tree.n_children[node_id] do
-			self:label(tree, tree.children_id[{j,node_id}], label)
-		end
-	else
-		local cover = tree.cover[{{},node_id}]
-		if cover[1] == cover[2] then
-			label[cover[1] ] = '('..self.class.id2word[cid]..'*)'
-		else
-			label[cover[1] ] = '('..self.class.id2word[cid]..'*'
-			label[cover[2] ] = '*)'
-		end
-	end
-	return label
-end
-
---[[
-function IORNN:label(tree, node_id, label)
-	local marked = false
-	for j = 1,tree.n_children[node_id] do
-		label, cmarked = self:label(tree, tree.children_id[{j,node_id}], label)
-		if cmarked == true then marked = true end
-	end
-
-	if marked == false then
-		_,cid = tree.class_predict[{{},node_id}]:max(1)
-		cid = cid[1]
-	
-		if tree.is_candidate[node_id] == 1 and cid ~= self.class:get_id('NULL') then
-			local cover = tree.cover[{{},node_id}]
-			if cover[1] == cover[2] then
-				label[cover[1] ] = '('..self.class.id2word[cid]..'*)'
-			else
-				label[cover[1] ] = '('..self.class.id2word[cid]..'*'
-				label[cover[2] ] = '*)'
-			end
-			marked = true
-		end
-	end
-	return label, marked
-end
-]]
-
-function IORNN:compute_class_prediction(treebank)
-	for _,tree in ipairs(treebank) do 
-		if tree.target_verb:max() > 0 then
-			self:forward_inside(tree)
-			self:forward_outside(tree)
-			self:forward_predict_class(tree)
-		end
-	end
-	return treebank
-end
-
-function IORNN:predict_srl(treebank, filename)
-	--local ftemp = io.open('/tmp/probs', 'w')
-
-	local ret = {}
-	local srls = nil
-	local prev_tree = nil
-	for it,tree in ipairs(treebank) do
-		-- check if this is a new sentence
-		if prev_tree == nil or prev_tree.n_nodes ~= tree.n_nodes or torch.ne(prev_tree.word_id,tree.word_id):double():sum() > 0 then
-			if srls ~= nil then
-				ret[#ret+1] = srls
-			end
-			srls = {verb = {}, role = {}}
-			for i = 1, tree.cover[{2,1}] do
-				srls.verb[i] = '-'
-			end
- 
-			--[[
-			ftemp:write(it .. '\n')
-			for i = 1,tree.n_nodes do
-				if tree.is_candidate[i] == 1 then
-					ftemp:write(tree.cover[{1,i}] .. '-' .. tree.cover[{2,i}] .. '\n')
-					for j = 1,self.class.size do
-						if tree.class_predict ~= nil then
-							ftemp:write(tree.class_predict[{j,i}]..' ')
-						else
-							ftemp:write('NaN ')
-						end
-					end
-					ftemp:write('\n')
-				end
-			end
-			ftemp:write('\n')
-			]]
-		end
-		prev_tree = tree
-		
-		-- marking target verb
-		local m,vid = tree.target_verb:max(1)
-		if m[1] > 0 then
-			vid = vid[1]
-			srls.verb[tree.cover[{1,vid}]] = self.voca_dic.id2word[tree.word_id[tree.children_id[{1,vid}]]]
-
-			-- read role
-			local label = {}
-			for i = 1,tree.cover[{2,1}] do
-				label[i] = '*'
-			end
-			self:label(tree, 1, label)
-			
-			-- merge label 
-			local cur_l = '*'
-			for i,l in ipairs(label) do
-				local h = l:sub(1,1)
-				local e = l:sub(l:len())
-				if h == '(' then
-					cur_l = split_string(l, '[^(*)]+')[1]
-					label[i] = cur_l			
-				elseif h == '*' then
-					label[i] = cur_l
-				end
-				if e == ')' then 
-					cur_l = '*'
-				end
-			end
-
-			cur_l = '*'
-			for i,l in ipairs(label) do
-				if l == cur_l then
-					label[i] = '*'
-				else
-					if l ~= '*' then
-						if cur_l ~= '*' then
-							label[i-1] = label[i-1] .. ')'
-						end
-						cur_l = l
-						label[i] = '('..label[i]..'*'
-					else
-						if cur_l ~= '*' then
-							label[i-1] = label[i-1] .. ')'
-						end
-						cur_l = l
-					end
-				end
-				if i == #label and cur_l ~= '*' then
-					label[i] = label[i] .. ')'
-				end
-			end
-
-			srls.role[#srls.role+1] = label
-		end
-	end
-	ret[#ret+1] = srls
-
-	-- print to file
-	if filename ~= nil then
-		local f = io.open(filename, 'w')
-		for _,srls in ipairs(ret) do
-			for i = 1, #srls.verb do
-				local str = '' --srls.verb[i]
-				for _,r in ipairs(srls.role) do
-					str = str .. '\t' .. r[i]
-				end
-				f:write(str .. '\n')
-			end
-			f:write('\n')
-		end
-		f:close()
-	end
-	--ftemp:close()
-	return ret
-end
-
-function IORNN:eval(treebank, gold_path, eval_prog_path)
-	treebank = self:compute_class_prediction(treebank)
-	local predicts = self:predict_srl(treebank, '/tmp/predicts.txt')
-	--print(predicts)
-	os.execute('cat ' .. gold_path .. " | awk '{print $1}' > /tmp/verbs.txt")
-	os.execute('paste /tmp/verbs.txt /tmp/predicts.txt > predicts.txt')
-	os.execute(eval_prog_path .. ' ' .. gold_path .. ' ' .. 'predicts.txt')
-end
 
 --[[********************************** test ******************************--
 	require 'depparser'
@@ -872,16 +702,16 @@ end
 	pos_dic:load('../data/wsj-dep/toy/dic/pos.lst')
 	local deprel_dic = Dict:new()
 	deprel_dic:load('../data/wsj-dep/toy/dic/deprel.lst')
+	local lookup = torch.rand(2, voca_dic.size)
 
 	print('training...')
-	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
+	local parser = Depparser:new(lookup, voca_dic, pos_dic, deprel_dic)
 	local treebank = parser:load_train_treebank('../data/wsj-dep/toy/data/train.conll')
 	--treebank = {treebank[1]}
 	--treebank[1].states = {treebank[1].states[1]}
 	--print(treebank)
 
-	local dim = 2
-	input = {	lookup = torch.randn(dim,voca_dic.size), 
+	input = {	lookup = lookup, 
 				func = tanh, funcPrime = tanhPrime, 
 				voca_dic = voca_dic,
 				pos_dic = pos_dic,

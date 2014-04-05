@@ -3,7 +3,9 @@ require 'utils'
 Depstruct = {}
 Depstruct_mt = { __index=Depstruct }
 
-N_DEPS = 40
+N_DEPS = 200
+
+-- ROOT is indexed 1, with word_id = 0, pos_id = 0, deprel_id = 0
 
 function Depstruct:new( input )
 	local len = #input
@@ -15,9 +17,6 @@ function Depstruct:new( input )
 		deprel_id	= torch.zeros(len),
 		n_deps		= torch.zeros(len),
 		dep_id		= torch.zeros(N_DEPS, len),
-
-		root_dep_id	= torch.zeros(N_DEPS),
-		root_n_deps = 0
 	}
 
 	setmetatable(ds, Depstruct_mt)
@@ -30,10 +29,7 @@ function Depstruct:new( input )
 		ds.deprel_id[i]  = row[4]
 		
 		local hid = row[3]
-		if hid == 0 then -- root
-			ds.root_n_deps = ds.root_n_deps + 1
-			ds.root_dep_id[ds.root_n_deps] = i
-		else 
+		if hid > 0 then -- not ROOT 
 			ds.n_deps[hid] = ds.n_deps[hid] + 1
 			ds.dep_id[{ds.n_deps[hid],hid}] = i
 		end
@@ -42,17 +38,18 @@ function Depstruct:new( input )
 	return ds
 end
 
-function Depstruct:create_from_strings(input, voca_dic, pos_dic, deprel_dic)
-	local sent = {}
-	for i,row in ipairs(input) do
+function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
+	local sent = { 'ROOT' }
+	local input = { { 0, 0, 0, 0 } }
+	for i,row in ipairs(rows) do
 		local comps = split_string(row)
 		row = { voca_dic:get_id(comps[2]),
 				pos_dic:get_id(comps[5]),
-				tonumber(comps[7]),
+				tonumber(comps[7]) + 1,
 				deprel_dic:get_id(comps[8])
 			}
-		input[i] = row
-		sent[i] = comps[2]
+		input[i+1] = row
+		sent[i+1] = comps[2]
 	end
 
 	return Depstruct:new(input), sent
@@ -64,25 +61,19 @@ function Depstruct:create_empty_tree(n_nodes, n_words)
 				parent_id	= torch.zeros(n_nodes),
 				n_children	= torch.zeros(n_nodes),
 				children_id	= torch.zeros(N_DEPS, n_nodes),
-				wnode_id	= torch.zeros(self.n_words),
+				wnode_id	= torch.zeros(n_words),
 				deprel_id	= torch.zeros(n_nodes) }
 end
 
 function Depstruct:to_torch_matrix_tree(id, node_id, tree)
-	local id = id or 0
+	local id = id or 1
 	local node_id = node_id or 1
-	local n_nodes = self.n_words + self.n_deps:gt(0):double():sum() + 1
+	local n_nodes = self.n_words + self.n_deps:gt(0):double():sum()
 	local tree = tree or self:create_empty_tree(n_nodes, self.n_words)
 
-	local dep_id = nil
-	local n_deps = 0
-	if id == 0 then 
-		dep_id = self.root_dep_id
-		n_deps = self.root_n_deps
-	else
-		dep_id = self.dep_id[{{},id}]
-		n_deps = self.n_deps[id]
-	end
+	local dep_id = self.dep_id[{{},id}]
+	local n_deps = self.n_deps[id]
+
 
 	if n_deps == 0 then
 		tree.wnode_id[id] = node_id	
@@ -95,20 +86,15 @@ function Depstruct:to_torch_matrix_tree(id, node_id, tree)
 		if id == 0 then tree.n_children[node_id] = n_deps
 		else tree.deprel_id[node_id] = self.deprel_id[id] end
 
-		-- the word is always the left-most child
-		if id ~= 0 then
-			tree.children_id[{1,node_id}] = node_id + 1
-			tree.wnode_id[id] = node_id + 1
-			tree.parent_id[node_id+1] = node_id
-			tree.word_id[node_id+1] = self.word_id[id]
-		end
+		-- the head word is always the left-most child
+		tree.children_id[{1,node_id}] = node_id + 1
+		tree.wnode_id[id] = node_id + 1
+		tree.parent_id[node_id+1] = node_id
+		tree.word_id[node_id+1] = self.word_id[id]
 		
 		local cur_node_id = node_id + 2
-		if id == 0 then cur_node_id = node_id + 1 end
-
 		for i = 1,n_deps do
 			local j = i + 1
-			if id == 0 then j = i end
 			tree.children_id[{j,node_id}] = cur_node_id
 			tree.parent_id[cur_node_id] = node_id
 			tree,cur_node_id = self:to_torch_matrix_tree(dep_id[i], cur_node_id, tree)

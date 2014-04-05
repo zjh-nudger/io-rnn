@@ -1,8 +1,8 @@
 require 'depstruct'
-require 'svm'
 require 'utils'
 require 'dict'
 require 'xlua'
+require 'dpiornn'
 
 p = xlua.Profiler()
 
@@ -18,11 +18,20 @@ Depparser.LA_ID = 1
 Depparser.RA_ID = 2
 Depparser.SH_ID = 3
 
-function Depparser:new(voca_dic, pos_dic, deprel_dic)
-	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, 
-					deprel_dic = deprel_dic }
+function Depparser:new(wembs, voca_dic, pos_dic, deprel_dic)
+	local net = IORNN:new({	voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
+							lookup = wembs, func = tanh, funcPrime = tanhPrime })
+	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, net = net }
 	setmetatable(parser, Depparser_mt)
 	return parser
+end
+
+function Depparser:clone_state(state) 
+	local new_state = { stack = state.stack:clone(), stack_pos = state.stack_pos, 
+						buffer = state.buffer:clone(), buffer_pos = state.buffer_pos,
+						head = state.head:clone(), deprel = state.deprel:clone(), 
+						score = state.score }
+	return new_state
 end
 
 function Depparser:trans(sent, state, decision_scores)
@@ -39,11 +48,11 @@ function Depparser:trans(sent, state, decision_scores)
 	if i == nil or j == nil then
 		decision_scores[{{1,2*self.deprel_dic.size}}]:fill(0)
 	end
-	if i == 0 then
+	if i == 1 then -- ROOT
 		decision_scores[{{1,self.deprel_dic.size}}]:fill(0)
 	end
 	if j == nil then
-		decision_scores[2*self.deprel_dic+1] = 0
+		decision_scores[2*self.deprel_dic.size+1] = 0
 	end
 
 	local _,action = decision_scores:max(1)
@@ -51,6 +60,7 @@ function Depparser:trans(sent, state, decision_scores)
 
 	-- left arc
 	if action <= self.deprel_dic.size then
+		--print('la')
 		local tree = self.net:merge_treelets(state.treelets[j], 
 											state.treelets[i], action)
 		state.treelets[j] = tree
@@ -60,6 +70,7 @@ function Depparser:trans(sent, state, decision_scores)
 
 	-- right arc
 	elseif action <= 2*self.deprel_dic.size then
+		--print('ra')
 		action = action - self.deprel_dic.size
 		local tree = self.net:merge_treelets(state.treelets[i], 
 											state.treelets[j], action)
@@ -70,6 +81,7 @@ function Depparser:trans(sent, state, decision_scores)
 		state.buffer[state.buffer_pos] = i
 
 	else -- shift
+		--print('sh')
 		state.stack_pos = state.stack_pos + 1
 		state.stack[state.stack_pos] = j
 		state.buffer_pos = state.buffer_pos + 1
@@ -84,16 +96,17 @@ function Depparser:parse(sentbank)
 -- init
 	for i,sent in ipairs(sentbank) do
 		local n_words = sent.n_words
-		local state = { stack = torch.LongTensor(n_words+1):fill(-1), 
+		local state = { n_words = n_words,
+						stack = torch.LongTensor(n_words+1):fill(-1), 
 						stack_pos = 1, 
 						buffer = torch.linspace(1,n_words,n_words), 
-						buffer_pos = 1,
+						buffer_pos = 2,
 						head = torch.LongTensor(n_words):fill(-1),
 						deprel = torch.LongTensor(n_words):fill(-1),
 						treelets = self.net:create_treelets(sent),
 						score = 0
 					}
-		state.stack[1] = 0 -- ROOT
+		state.stack[1] = 1 -- ROOT
 		statebank[#statebank+1] = state
 	end
 
@@ -122,12 +135,17 @@ function Depparser:parse(sentbank)
 				local state = statebank[i]
 				local decision_score = decision_scores[{{},k}]
 				k = k + 1
-
 				state = self:trans(sent, state, decision_score)
+				if state.buffer_pos > sent.n_words then
+					not_done[i] = 0
+					if state.stack_pos ~= 1 or state.stack[state.stack_pos] ~= 1 then -- valid projective dep-struct
+						state.head = nil
+					end
+				end
 			end
 		end
 		p:lap('trans')
-		p:printAll()
+		--p:printAll()
 	end
 	
 	return statebank
@@ -139,12 +157,12 @@ function Depparser:extract_training_states(ds)
 	local state = { stack = torch.LongTensor(n_words+1):fill(-1), 
 					stack_pos = 1, 
 					buffer = torch.linspace(1,n_words,n_words), 
-					buffer_pos = 1,
+					buffer_pos = 2,
 					head = torch.LongTensor(n_words):fill(-1),
 					deprel = torch.LongTensor(n_words):fill(-1),
 					score = 0
 				}
-	state.stack[1] = 0 -- ROOT
+	state.stack[1] = 1 -- ROOT
 	local states = {}
 
 	-- extract 
@@ -233,7 +251,7 @@ function Depparser:load_train_treebank(treebank_path)
 	return treebank
 end
 
-function Depparser:load_treebank(path)
+function Depparser:load_test_treebank(path)
 	local treebank = {}
 	local raw = {}
 
@@ -262,61 +280,57 @@ function Depparser:load_treebank(path)
 	return treebank, raw
 end
 
+function Depparser:train(traintrebank_path, devtreebank_path, model_dir)
+	local traintreebank = self:load_train_treebank(traintrebank_path)
+	
+	self.net.update_L = true
+	lambda = 1e-4
+	lambda_L = 1e-10
+	batchsize = 100
+	maxnepoch = 100
+
+	-- shuf the traintreebank
+	local new_i = torch.randperm(#traintreebank)
+	temp = {}
+	for i = 1,#traintreebank do
+		temp[i] = traintreebank[new_i[i]]
+	end
+	traintreebank = temp
+
+	-- train
+	local adagrad_config = {weight_learningRate = 0.1,
+							voca_learningRate = 0.1}
+	local adagrad_state = {}
+
+	self.net:save(model_dir .. '/model_0')
+	local prefix = model_dir..'/model'
+	adagrad_config, adagrad_state = self.net:train_with_adagrad(traintreebank, batchsize,
+															maxnepoch, {lambda = lambda, lambda_L = lambda_L}, 
+															prefix, adagrad_config, adagrad_state, 
+															self, devtreebank_path)
+end
+
 function Depparser:eval(path, output)
-	local treebank, raw = self:load_treebank(path)
+	local treebank, raw = self:load_test_treebank(path)
 	local parses = self:parse(treebank)
 	
 	local f = io.open(output, 'w')
 	for i, parse in ipairs(parses) do
 		local sent = raw[i]
 		if parse.head == nil then 
-			parse = { 	head = torch.zeros(#sent) , 
-						deprel = torch.zeros(#sent):fill(self.deprel_dic:get_id('root')) } 
+			parse = { 	head = torch.ones(#sent) , 
+						deprel = torch.zeros(#sent):fill(self.deprel_dic:get_id('ROOT')) } 
 		end
 
-		for j = 1,#sent do
-			f:write(j..'\t'..sent[j]..'\t_\t_\t_\t_\t'..parse.head[j]..'\t'..self.deprel_dic.id2word[parse.deprel[j]]..'\t_\t_\n')
+		for j = 2,#sent do
+			f:write((j-1)..'\t'..sent[j]..'\t_\t_\t_\t_\t'..(parse.head[j]-1)..'\t'..self.deprel_dic.id2word[parse.deprel[j]]..'\t_\t_\n')
 		end
 		f:write('\n')	
 	end
 	f:close()
+
+	os.execute('java -jar ../tools/MaltEval/lib/MaltEval.jar -s '..output..' -g ../data/wsj-dep/universal/data/dev.conll')
 end
 
---[[
-if #arg == 1 then
-	print('load dics')
-	local voca_dic = Dict:new(collobert_template)
-	voca_dic:load('../data/wsj-dep/stanford/dic/collobert/words.lst')
- 
-	local pos_dic = Dict:new()
-	pos_dic:load("../data/wsj-dep/stanford/dic/pos.lst")
 
-	local deprel_dic = Dict:new()
-	deprel_dic:load('../data/wsj-dep/stanford/dic/deprel.lst')
 
-	print('training...')
-	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
-	parser:train('../data/wsj-dep/stanford/data/train.conll')
-	collectgarbage()
-
-	parser:eval('../data/wsj-dep/stanford/data/dev.conll', arg[1])
-else
-	print('[output]')
-end
-]]
---[[
-print('take a sentence')
-local sent = 'This is a long sentence .'
-sent = split_string(sent)
-for i,tok in ipairs(sent) do
-	sent[i] = voca_dic:get_id(tok)
-end
-sent = { word_id = torch.Tensor(sent):long() }
-sent.n_words = sent.word_id:numel()
-
-print('parsing...')
-parser:parse(sent)
-for i = 1,10 do
-	print(parser.states[i].head)
-end
-]]
