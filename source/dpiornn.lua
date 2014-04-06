@@ -84,9 +84,9 @@ function IORNN:init_params(input)
 	net.Wi = {}
 	net.Wo = {}
 	for i = 1,deprel_dic.size do
-		net.Wi[i] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
+		net.Wi[i] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(torch.eye(dim) + uniform(dim, dim, -1e-3, 1e-3))
 		index = index + dim*dim
-		net.Wo[i] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
+		net.Wo[i] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(torch.eye(dim) + uniform(dim, dim, -1e-3, 1e-3))
 		index = index + dim*dim
 	end
 	net.Wihead = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
@@ -378,7 +378,7 @@ function IORNN:create_treelets(sent)
 	return treelets
 end
 
-
+-- note: htree and dtree are not changed during the merging
 function IORNN:merge_treelets(htree, dtree, deprel)
 	local n_nodes = htree.n_nodes + dtree.n_nodes
 	local n_words = htree.wnode_id:nElement()

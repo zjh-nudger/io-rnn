@@ -16,11 +16,6 @@ if #arg == 4 then
 	if dim == nil then
 		init_wemb_type = arg[3]
 	end
-
-	rule_type = arg[4]
-	weight_learn_rate = tonumber(arg[5])
-	voca_learn_rate = tonumber(arg[6])
-	local model_dir = arg[7]
  
 	-- load voca and embeddings
 	print('load vocabulary and word embeddings')
@@ -37,9 +32,9 @@ if #arg == 4 then
 		if init_wemb_type == 'collobert' then
 			dic_func = collobert_template
 			subdir = '/collobert/' 
-		elseif init_wemb_type == 'turian_25' then 
+		elseif init_wemb_type == 'turian_200' then 
 			dic_func = turian_template
-			subdir = '/turian_25/'
+			subdir = '/turian_200/'
 		end
 			
 		-- load dics
@@ -60,10 +55,10 @@ if #arg == 4 then
 	end
 
 	local pos_dic = Dict:new()
-	pos_dic:load("../data/wsj-dep/universal/dic/pos.lst")
+	pos_dic:load(dic_dir_path.."/pos.lst")
 
 	local deprel_dic = Dict:new()
-	deprel_dic:load('../data/wsj-dep/universal/dic/deprel.lst')
+	deprel_dic:load(dic_dir_path..'/deprel.lst')
 
 
 

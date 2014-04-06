@@ -11,13 +11,6 @@ Depparser_mt = { __index = Depparser }
 
 torch.setnumthreads(1)
 
--- setting for beam-search
-Depparser.MAX_NSTATES = 1 -- any larger than 1 performs worse
-
-Depparser.LA_ID = 1
-Depparser.RA_ID = 2
-Depparser.SH_ID = 3
-
 function Depparser:new(wembs, voca_dic, pos_dic, deprel_dic)
 	local net = IORNN:new({	voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
 							lookup = wembs, func = tanh, funcPrime = tanhPrime })
@@ -138,8 +131,9 @@ function Depparser:parse(sentbank)
 				state = self:trans(sent, state, decision_score)
 				if state.buffer_pos > sent.n_words then
 					not_done[i] = 0
-					if state.stack_pos ~= 1 or state.stack[state.stack_pos] ~= 1 then -- valid projective dep-struct
-						state.head = nil
+					if state.stack_pos ~= 1 or state.stack[state.stack_pos] ~= 1 then -- not valid projective dep-struct
+						state.head[state.head:eq(-1)] = 1
+						state.deprel[state.deprel:eq(-1)] = self.deprel_dic:get_id('ROOT')
 					end
 				end
 			end
@@ -292,10 +286,6 @@ function Depparser:eval(path, output)
 	local f = io.open(output, 'w')
 	for i, parse in ipairs(parses) do
 		local sent = raw[i]
-		if parse.head == nil then 
-			parse = { 	head = torch.ones(#sent) , 
-						deprel = torch.zeros(#sent):fill(self.deprel_dic:get_id('ROOT')) } 
-		end
 
 		for j = 2,#sent do
 			f:write((j-1)..'\t'..sent[j]..'\t_\t_\t_\t_\t'..(parse.head[j]-1)..'\t'..self.deprel_dic.id2word[parse.deprel[j]]..'\t_\t_\n')
