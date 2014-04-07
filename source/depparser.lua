@@ -2,7 +2,7 @@ require 'depstruct'
 require 'utils'
 require 'dict'
 require 'xlua'
-require 'dpiornn'
+--require 'dpiornn'
 
 p = xlua.Profiler()
 
@@ -18,7 +18,8 @@ function Depparser:new(wembs, voca_dic, pos_dic, deprel_dic)
 end
 
 function Depparser:clone_state(state) 
-	local new_state = { stack = state.stack:clone(), stack_pos = state.stack_pos, 
+	local new_state = { n_words = state.n_words,
+						stack = state.stack:clone(), stack_pos = state.stack_pos, 
 						buffer = state.buffer:clone(), buffer_pos = state.buffer_pos,
 						head = state.head:clone(), deprel = state.deprel:clone(), 
 						score = state.score }
@@ -146,7 +147,8 @@ end
 function Depparser:extract_training_states(ds)
 	-- init
 	local n_words = ds.n_words
-	local state = { stack = torch.LongTensor(n_words+1):fill(-1), 
+	local state = { n_words = n_words,
+					stack = torch.LongTensor(n_words+1):fill(-1), 
 					stack_pos = 1, 
 					buffer = torch.linspace(1,n_words,n_words), 
 					buffer_pos = 2,
