@@ -9,8 +9,6 @@ p = xlua.Profiler()
 Depparser = {}
 Depparser_mt = { __index = Depparser }
 
-torch.setnumthreads(1)
-
 function Depparser:new(wembs, voca_dic, pos_dic, deprel_dic)
 	local net = IORNN:new({	voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
 							lookup = wembs, func = tanh, funcPrime = tanhPrime })

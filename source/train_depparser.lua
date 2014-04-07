@@ -35,8 +35,11 @@ if #arg == 4 then
 		elseif init_wemb_type == 'turian_200' then 
 			dic_func = turian_template
 			subdir = '/turian_200/'
+		elseif init_wemb_type == 'turian_25' then 
+			dic_func = turian_template
+			subdir = '/turian_25/'
 		end
-			
+		
 		-- load dics
 		voca_dic = Dict:new(dic_func)
 		voca_dic:load(dic_dir_path..subdir..'/words.lst')

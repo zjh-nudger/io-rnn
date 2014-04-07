@@ -108,7 +108,7 @@ function IORNN:init_params(input)
 	net.bc = net.params[{{index,index+(2*deprel_dic.size+1)-1}}]:resize((2*deprel_dic.size+1),1)
 	index = index + (2*deprel_dic.size+1)
 
-	--  word embeddings (always always always at the end of params)
+	--  word embeddings (always always always at the end of the array of params)
 	net.L = net.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size):copy(input.lookup)		-- word embeddings 
 	index = index + voca_dic.size*dim
 end
@@ -165,7 +165,7 @@ function IORNN:create_grad()
 	return grad
 end
 
--- save net into a bin file
+-- save net into a file
 function IORNN:save( filename , binary )
 	local file = torch.DiskFile(filename, 'w')
 	if binary == nil or binary then file:binary() end
