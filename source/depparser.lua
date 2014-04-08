@@ -9,6 +9,8 @@ p = xlua.Profiler()
 Depparser = {}
 Depparser_mt = { __index = Depparser }
 
+ROOT_LABEL = 'ROOT'
+
 function Depparser:new(wembs, voca_dic, pos_dic, deprel_dic)
 	local net = IORNN:new({	voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
 							lookup = wembs, func = tanh, funcPrime = tanhPrime })
@@ -47,7 +49,7 @@ function Depparser:trans(sent, state, decision_scores)
 		decision_scores[2*self.deprel_dic.size+1] = 0
 	end
 
-	local _,action = decision_scores:max(1)
+	local score,action = decision_scores:max(1)
 	action = action[1]
 
 	-- left arc
@@ -89,7 +91,7 @@ function Depparser:parse(sentbank)
 	for i,sent in ipairs(sentbank) do
 		local n_words = sent.n_words
 		local state = { n_words = n_words,
-						stack = torch.LongTensor(n_words+1):fill(-1), 
+						stack = torch.LongTensor(n_words):fill(-1), 
 						stack_pos = 1, 
 						buffer = torch.linspace(1,n_words,n_words), 
 						buffer_pos = 2,
@@ -132,7 +134,7 @@ function Depparser:parse(sentbank)
 					not_done[i] = 0
 					if state.stack_pos ~= 1 or state.stack[state.stack_pos] ~= 1 then -- not valid projective dep-struct
 						state.head[state.head:eq(-1)] = 1
-						state.deprel[state.deprel:eq(-1)] = self.deprel_dic:get_id('ROOT')
+						state.deprel[state.deprel:eq(-1)] = self.deprel_dic:get_id(ROOT_LABEL)
 					end
 				end
 			end
@@ -294,7 +296,7 @@ function Depparser:eval(path, output)
 	end
 	f:close()
 
-	os.execute('java -jar ../tools/MaltEval/lib/MaltEval.jar -s '..output..' -g '..path)
+	os.execute('perl ../tools/TurboParser-2.1.0/scripts/eval.pl -q -s '..output..' -g '..path)
 end
 
 

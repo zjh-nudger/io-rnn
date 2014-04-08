@@ -418,12 +418,12 @@ end
 
 function IORNN:create_treelets(sent)
 	local treelets = {}
-	for i = 0,sent.n_words do
+	for i = 1,sent.n_words do
 		local tree = Depstruct:create_empty_tree(1, sent.n_words)
 		if i > 1 then
 			tree.word_id[1] = sent.word_id[i]
 			tree.wnode_id[i] = 1
-			tree.inner = self.L[{{},{tree.word_id[1]}}]:clone()
+			tree.inner = self.L[{{},{tree.word_id[1]}}]
 			tree.head_inner = tree.inner
 		else -- ROOT
 			tree.inner = self.root_inner
@@ -539,12 +539,14 @@ function IORNN:predict_action(states)
 		for i,state in ipairs(states) do
 			local spos = state.stack_pos - j + 1
 			local bpos = state.buffer_pos + j - 1
-			if spos >= 1 and bpos <= state.n_words then
+			local index = {{},{i}}
+			if spos >= 1 then
 				local stack_tree = state.treelets[state.stack[spos]]
-				local buffer_tree = state.treelets[state.buffer[bpos]]
-				local index = {{},{i}}
 				stack_inner[index]:copy(stack_tree.head_inner)
 				stack_outer[index]:copy(stack_tree.head_outer)
+			end
+			if bpos <= state.n_words then
+				local buffer_tree = state.treelets[state.buffer[bpos]]
 				buffer_inner[index]:copy(buffer_tree.head_inner)
 				buffer_outer[index]:copy(buffer_tree.head_outer)
 			end

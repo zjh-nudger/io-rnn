@@ -68,7 +68,7 @@ if #arg == 4 then
 -------------------------- train depparser ------------------
 
 	print('training...')
-	traintreebank_path = data_path .. 'train.conll'
+	traintreebank_path = data_path .. 'train-small.conll'
 	devtreebank_path = data_path .. 'dev.conll'
 	model_dir = arg[4]
 
