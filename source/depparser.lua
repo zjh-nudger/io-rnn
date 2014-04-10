@@ -2,7 +2,6 @@ require 'depstruct'
 require 'utils'
 require 'dict'
 require 'xlua'
---require 'dpiornn'
 
 p = xlua.Profiler()
 
@@ -11,8 +10,9 @@ Depparser_mt = { __index = Depparser }
 
 ROOT_LABEL = 'ROOT'
 
-function Depparser:new(wembs, voca_dic, pos_dic, deprel_dic)
-	local net = IORNN:new({	voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
+function Depparser:new(wembs, voca_dic, pos_dic, deprel_dic, dim)
+	local dim = dim or 2*wembs:size(1)
+	local net = IORNN:new({	dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
 							lookup = wembs, func = tanh, funcPrime = tanhPrime })
 	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, net = net }
 	setmetatable(parser, Depparser_mt)
@@ -297,6 +297,11 @@ function Depparser:eval(path, output)
 	f:close()
 
 	os.execute('perl ../tools/TurboParser-2.1.0/scripts/eval.pl -q -s '..output..' -g '..path)
+
+	-- mail
+	os.execute('perl ../tools/TurboParser-2.1.0/scripts/eval.pl -q -s '..output..' -g '..path..' > /tmp/mail')
+	os.execute('mail -s '..self.mail_subject..' lephong.xyz@gmail.com < /tmp/mail')
+
 end
 
 

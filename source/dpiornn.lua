@@ -52,9 +52,10 @@ end
 --************************* construction ********************--
 -- create a new recursive autor encoder with a given structure
 function IORNN:new(input)
-	local net = {dim = input.lookup:size(1), voca_dic = input.voca_dic, pos_dic = input.pos_dic, deprel_dic = input.deprel_dic}
-	net.func = input.func
-	net.funcPrime = input.funcPrime
+	local net = {	dim = input.dim, wdim = input.lookup:size(1), 
+					voca_dic = input.voca_dic, pos_dic = input.pos_dic, deprel_dic = input.deprel_dic}
+	net.func = input.func or tanh
+	net.funcPrime = input.funcPrime or tanhPrime
 	setmetatable(net, IORNN_mt)
 
 	net:init_params(input)
@@ -64,16 +65,24 @@ end
 function IORNN:init_params(input)
 	local net	 = self
 	local dim	 = net.dim
+	local wdim	 = net.wdim
 	local voca_dic	 = net.voca_dic
 	local deprel_dic = net.deprel_dic
 
 	-- create params
-	local n_params = 3*dim + deprel_dic.size*dim*dim*2 + dim*dim + 2*dim + (2*deprel_dic.size+1)*dim*4*N_CONTEXT + (2*deprel_dic.size+1) + voca_dic.size*dim
+	local n_params = dim*wdim + 4*dim + deprel_dic.size*dim*dim*2 + dim*dim + 2*dim + 
+					(2*deprel_dic.size+1)*dim*4*N_CONTEXT + (2*deprel_dic.size+1) + voca_dic.size*wdim
 	net.params = torch.zeros(n_params)
 
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
 	local r = 0.1
 	local index = 1
+
+	-- project word embs on to a higher-dim vector space
+	net.Wh = net.params[{{index,index+dim*wdim-1}}]:resize(dim,wdim):copy(uniform(dim, wdim, -1e-3, 1e-3))
+	index = index + dim*wdim
+	net.bh = net.params[{{index,index+dim-1}}]:resize(dim,1)
+	index = index + dim
 	
 	-- anonymous outer/inner
 	net.root_inner = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -1e-3, 1e-3)) 
@@ -83,13 +92,13 @@ function IORNN:init_params(input)
 	net.anon_inner = net.params[{{index,index+dim-1}}]:resize(dim,1):copy(uniform(dim, 1, -1e-3, 1e-3)) 
 	index = index + dim
 
-	-- weights
+	-- composition weight matrices
 	net.Wi = {}
 	net.Wo = {}
 	for i = 1,deprel_dic.size do
-		net.Wi[i] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(torch.eye(dim) + uniform(dim, dim, -1e-3, 1e-3))
+		net.Wi[i] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
 		index = index + dim*dim
-		net.Wo[i] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(torch.eye(dim) + uniform(dim, dim, -1e-3, 1e-3))
+		net.Wo[i] = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
 		index = index + dim*dim
 	end
 	net.Wihead = net.params[{{index,index+dim*dim-1}}]:resize(dim,dim):copy(uniform(dim, dim, -r, r))
@@ -103,7 +112,7 @@ function IORNN:init_params(input)
 	net.Wci_stack = {}
 	net.Wco_stack = {}
 	net.Wci_buffer = {}
-	net.Wco_buffer = {}
+	net.Wco_buffer = {} 
 	for i = 1,N_CONTEXT do
 		net.Wci_stack[i] = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]	:resize((2*deprel_dic.size+1),dim)
 																					:copy(uniform((2*deprel_dic.size+1),dim,-r,r))
@@ -122,13 +131,14 @@ function IORNN:init_params(input)
 	index = index + (2*deprel_dic.size+1)
 
 	--  word embeddings (always always always at the end of the array of params)
-	net.L = net.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size):copy(input.lookup)		-- word embeddings 
-	index = index + voca_dic.size*dim
+	net.L = net.params[{{index,index+voca_dic.size*wdim-1}}]:resize(wdim,voca_dic.size):copy(input.lookup)		-- word embeddings 
+	index = index + voca_dic.size*wdim
 end
 
 function IORNN:create_grad()
 	local grad = {}
 	local dim = self.dim
+	local wdim = self.wdim
 	local voca_dic = self.voca_dic
 	local deprel_dic = self.deprel_dic
 
@@ -136,7 +146,13 @@ function IORNN:create_grad()
 
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
 	local index = 1
-	
+
+	-- for projecting wembs onto a higher-dim space
+	grad.Wh = grad.params[{{index,index+dim*wdim-1}}]:resize(dim,wdim)
+	index = index + dim*wdim
+	grad.bh = grad.params[{{index,index+dim-1}}]:resize(dim,1)
+	index = index + dim
+
 	-- anonymous outer
 	grad.root_inner = grad.params[{{index,index+dim-1}}]:resize(dim,1)
 	index = index + dim
@@ -180,8 +196,8 @@ function IORNN:create_grad()
 	index = index + (2*deprel_dic.size+1)
 
 	--  word embeddings (always always always at the end of params)
-	grad.L = grad.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size)
-	index = index + voca_dic.size*dim
+	grad.L = grad.params[{{index,index+voca_dic.size*wdim-1}}]:resize(wdim,voca_dic.size)
+	index = index + voca_dic.size*wdim
 
 	return grad
 end
@@ -226,7 +242,7 @@ function IORNN:forward_inside(tree)
 			if i == 2 then -- ROOT 
 				tree.inner[col_i]:copy(self.root_inner)
 			else
-				tree.inner[col_i]:copy(self.L[{{},{tree.word_id[i]}}])
+				tree.inner[col_i]:copy(self.func((self.Wh * self.L[{{},{tree.word_id[i]}}]):add(self.bh)))
 			end
 
 		-- for internal nodes
@@ -383,10 +399,10 @@ function IORNN:backpropagate_inside(tree, grad)
 	for i = 1,tree.n_nodes do
 		local col_i = {{},{i}}
 		local gZi = tree.gradi[col_i]
+		gZi:cmul(self.funcPrime(tree.inner[col_i]))
 
 		-- for internal node
 		if tree.n_children[i] > 0 then
-			gZi:cmul(self.funcPrime(tree.inner[col_i]))
 			tree.gradZi[col_i]:add(gZi)
 
 			-- weight matrix for inner
@@ -409,7 +425,9 @@ function IORNN:backpropagate_inside(tree, grad)
 
 			if self.update_L then
 				if i > 2 then -- not ROOT
-					grad.L[{{},{tree.word_id[i]}}]:add(gZi)
+					grad.Wh:add(gZi * self.L[{{},{tree.word_id[i]}}]:t())
+					grad.bh:add(gZi)
+					grad.L[{{},{tree.word_id[i]}}]:add(self.Wh:t() * gZi)
 				end
 			end
 		end
@@ -423,7 +441,7 @@ function IORNN:create_treelets(sent)
 		if i > 1 then
 			tree.word_id[1] = sent.word_id[i]
 			tree.wnode_id[i] = 1
-			tree.inner = self.L[{{},{tree.word_id[1]}}]
+			tree.inner = self.func((self.Wh * self.L[{{},{tree.word_id[1]}}]):add(self.bh))
 			tree.head_inner = tree.inner
 		else -- ROOT
 			tree.inner = self.root_inner
@@ -571,7 +589,8 @@ function IORNN:create_tree_for_training(ds)
 					depnode_id = {}, deprel_id = {}, node_id = tree.wnode_id[1] }
 	for i = 2, ds.n_words do 
 		local word = tree.word_id[tree.wnode_id[i]]
-		tree.ds[i] = { 	inner = self.L[{{},{word}}], outer = self.anon_outer, 
+		tree.ds[i] = { 	inner = self.func((self.Wh * self.L[{{},{word}}]):add(self.bh)),
+						outer = self.anon_outer, 
 						depnode_id = {}, deprel_id = {},
 						node_id = tree.wnode_id[i] }
 	end	
@@ -618,8 +637,8 @@ else
 	p:lap('process treebank') 
 
 	p:start('compute grad')
-	local wparams = self.params[{{1,-1-self.dim*self.voca_dic.size}}]
-	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca_dic.size}}]
+	local wparams = self.params[{{1,-1-self.wdim*self.voca_dic.size}}]
+	local grad_wparams = grad.params[{{1,-1-self.wdim*self.voca_dic.size}}]
 	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
 	grad_wparams:div(nSample):add(wparams * config.lambda)
 	
@@ -707,7 +726,7 @@ function IORNN:adagrad(func, config, state)
 	end
 
 	-- for weights
-	local wparamindex = {{1,-1-self.dim*self.voca_dic.size}}
+	local wparamindex = {{1,-1-self.wdim*self.voca_dic.size}}
 	state.paramVariance.params[wparamindex]:addcmul(1,grad.params[wparamindex],grad.params[wparamindex])
 	torch.sqrt(state.paramStd.params[wparamindex],state.paramVariance.params[wparamindex])
 	self.params[wparamindex]:addcdiv(-weight_clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
@@ -788,19 +807,16 @@ end
 	deprel_dic:load('../data/wsj-dep/toy/dic/deprel.lst')
 	local lookup = torch.rand(2, voca_dic.size)
 
+	dim = 3
+
 	print('training...')
-	local parser = Depparser:new(lookup, voca_dic, pos_dic, deprel_dic)
+	local parser = Depparser:new(lookup, voca_dic, pos_dic, deprel_dic, dim)
 	local treebank,_ = parser:load_treebank('../data/wsj-dep/toy/data/train.conll')
 	--treebank = {treebank[1]}
 	--treebank[1].states = {treebank[1].states[1]}
 	--print(treebank)
 
-	input = {	lookup = lookup, 
-				func = tanh, funcPrime = tanhPrime, 
-				voca_dic = voca_dic,
-				pos_dic = pos_dic,
-				deprel_dic = deprel_dic }
-	net = IORNN:new(input)
+	net = parser.net
 
 	config = {lambda = 1e-4, lambda_L = 1e-7}
 	net.update_L = true

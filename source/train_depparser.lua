@@ -6,7 +6,7 @@ require 'dpiornn'
 
 torch.setnumthreads(1)
 
-if #arg == 4 then
+if #arg == 5 then
 	dic_dir_path = arg[1]
 	data_path = arg[2]
 
@@ -68,13 +68,15 @@ if #arg == 4 then
 -------------------------- train depparser ------------------
 
 	print('training...')
-	traintreebank_path = data_path .. 'train-small.conll'
+	traintreebank_path = data_path .. 'train.conll'
 	devtreebank_path = data_path .. 'dev.conll'
 	model_dir = arg[4]
+	dim = tonumber(arg[5])
 
-	local parser = Depparser:new(L, voca_dic, pos_dic, deprel_dic)
+	local parser = Depparser:new(L, voca_dic, pos_dic, deprel_dic, dim)
+	parser.mail_subject = model_dir
 	parser:train(traintreebank_path, devtreebank_path, model_dir)
 
 else
-	print("[dic dir path] [treebank] [dim/emb_model] [model dir]")
+	print("[dic dir path] [treebank] [emb_model] [model dir] [dim]")
 end
