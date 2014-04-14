@@ -753,6 +753,7 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 	local epoch = 1
 	local j = 0
 	parser:eval(devtreebank_path, '/tmp/parsed.conll')
+	collectgarbage()
 
 	print('===== epoch ' .. epoch .. '=====')
 

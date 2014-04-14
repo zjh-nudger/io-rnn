@@ -254,7 +254,7 @@ function Depparser:train(traintrebank_path, devtreebank_path, model_dir)
 	self.net.update_L = true
 	lambda = 1e-4
 	lambda_L = 1e-10
-	batchsize = 100
+	batchsize = 32
 	maxnepoch = 100
 
 	-- shuf the traintreebank
@@ -296,12 +296,13 @@ function Depparser:eval(path, output)
 	end
 	f:close()
 
-	os.execute('perl ../tools/TurboParser-2.1.0/scripts/eval.pl -q -s '..output..' -g '..path)
+	os.execute('perl ../tools/eval-dep.pl -q -s '..output..' -g '..path)
 
 	-- mail
-	os.execute('perl ../tools/TurboParser-2.1.0/scripts/eval.pl -q -s '..output..' -g '..path..' > /tmp/mail')
-	os.execute('mail -s '..self.mail_subject..' lephong.xyz@gmail.com < /tmp/mail')
-
+	if self.mail_subject then
+		os.execute('perl ../tools/eval-dep.pl -q -s '..output..' -g '..path..' > /tmp/mail')
+		os.execute('mail -s '..self.mail_subject..' lephong.xyz@gmail.com < /tmp/mail')
+	end
 end
 
 
