@@ -13,6 +13,7 @@ function Depstruct:new( input )
 		n_words 	= len,
 		word_id		= torch.zeros(len),
 		pos_id		= torch.zeros(len),
+		cap_id		= torch.zeros(len),
 		head_id		= torch.zeros(len),
 		deprel_id	= torch.zeros(len),
 		n_deps		= torch.zeros(len),
@@ -25,6 +26,8 @@ function Depstruct:new( input )
 	for i,row in ipairs(input) do
 		ds.word_id[i]	 = row[1]
 		ds.pos_id[i]	 = row[2]
+		ds.cap_id[i]	 = row[5]
+
 		ds.head_id[i]	 = row[3]
 		ds.deprel_id[i]  = row[4]
 		
@@ -40,13 +43,14 @@ end
 
 function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 	local sent = { 'ROOT' }
-	local input = { { 0, 0, 0, 0 } }
+	local input = { { 0, 0, 0, 0, 0 } }
 	for i,row in ipairs(rows) do
 		local comps = split_string(row)
 		row = { voca_dic:get_id(comps[2]),
-				pos_dic:get_id(comps[5]),
+				pos_dic:get_id(comps[4]),
 				tonumber(comps[7]) + 1,
-				deprel_dic:get_id(comps[8])
+				deprel_dic:get_id(comps[8]),
+				Dict:get_cap_feature(comps[2])
 			}
 		input[i+1] = row
 		sent[i+1] = comps[2]
@@ -58,6 +62,8 @@ end
 function Depstruct:create_empty_tree(n_nodes, n_words)
 	return {	n_nodes		= n_nodes,
 				word_id		= torch.zeros(n_nodes),
+				pos_id		= torch.zeros(n_nodes),
+				cap_id		= torch.zeros(n_nodes),
 				parent_id	= torch.zeros(n_nodes),
 				n_children	= torch.zeros(n_nodes),
 				children_id	= torch.zeros(N_DEPS, n_nodes),
@@ -79,6 +85,8 @@ function Depstruct:to_torch_matrix_tree(id, node_id, tree)
 		tree.wnode_id[id] = node_id	
 		tree.n_children[node_id] = 0
 		tree.word_id[node_id] = self.word_id[id]
+		tree.pos_id[node_id] = self.pos_id[id]
+		tree.cap_id[node_id] = self.cap_id[id]
 		tree.deprel_id[node_id] = self.deprel_id[id]
 		node_id = node_id + 1
 	else
@@ -91,6 +99,8 @@ function Depstruct:to_torch_matrix_tree(id, node_id, tree)
 		tree.wnode_id[id] = node_id + 1
 		tree.parent_id[node_id+1] = node_id
 		tree.word_id[node_id+1] = self.word_id[id]
+		tree.pos_id[node_id+1] = self.pos_id[id]
+		tree.cap_id[node_id+1] = self.cap_id[id]
 		
 		local cur_node_id = node_id + 2
 		for i = 1,n_deps do
@@ -136,5 +146,5 @@ for line in io.lines('../data/wsj-dep/universal/data/test.conll') do
 		tokens[#tokens+1] = line
 	end
 end
-print(deprel_dic)
+print(pos_dic)
 ]]

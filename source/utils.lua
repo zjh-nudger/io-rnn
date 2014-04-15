@@ -28,3 +28,4 @@ function safe_compute_softmax(A)
 	return (A - maxA - B):exp()
 end
 
+

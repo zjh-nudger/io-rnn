@@ -488,20 +488,20 @@ end
 if #arg == 1 then
 	print('load dics')
 	local voca_dic = Dict:new(collobert_template)
-	voca_dic:load('../data/wsj-dep/stanford/dic/collobert/words.lst')
+	voca_dic:load('../data/wsj-dep/universal/dic/collobert/words.lst')
  
 	local pos_dic = Dict:new()
-	pos_dic:load("../data/wsj-dep/stanford/dic/pos.lst")
+	pos_dic:load("../data/wsj-dep/universal/dic/pos.lst")
 
 	local deprel_dic = Dict:new()
-	deprel_dic:load('../data/wsj-dep/stanford/dic/deprel.lst')
+	deprel_dic:load('../data/wsj-dep/universal/dic/deprel.lst')
 
 	print('training...')
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
-	parser:train('../data/wsj-dep/stanford/data/train.conll')
+	parser:train('../data/wsj-dep/universal/data/train.conll')
 	collectgarbage()
 
-	parser:eval('../data/wsj-dep/stanford/data/dev.conll', arg[1])
+	parser:eval('../data/wsj-dep/universal/data/dev.conll', arg[1])
 else
 	print('[output]')
 end

@@ -135,3 +135,19 @@ function turian_template(word)
 	end
 end
 
+ALL_LOWER = 1
+ALL_UPPER = 2
+FIRST_UPPER = 3
+NOT_FIRST_UPPER = 4
+N_CAP_FEAT = 4
+
+function Dict:get_cap_feature(str)
+	local str_l = str:lower()
+	local str_u = str:upper()
+
+	if 		str == str_l then return ALL_LOWER
+	elseif 	str == str_u then return ALL_UPPER
+	elseif	str:sub(1,1) == str_u:sub(1,1) then return FIRST_UPPER
+	else return NOT_FIRST_UPPER
+	end
+end

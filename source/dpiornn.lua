@@ -68,10 +68,12 @@ function IORNN:init_params(input)
 	local wdim	 = net.wdim
 	local voca_dic	 = net.voca_dic
 	local deprel_dic = net.deprel_dic
+	local pos_dic	 = net.pos_dic
 
 	-- create params
 	local n_params = dim*wdim + 4*dim + deprel_dic.size*dim*dim*2 + dim*dim + 2*dim + 
-					(2*deprel_dic.size+1)*dim*4*N_CONTEXT + (2*deprel_dic.size+1) + voca_dic.size*wdim
+					(2*deprel_dic.size+1)*dim*4*N_CONTEXT + (2*deprel_dic.size+1) + 
+					pos_dic.size*dim + N_CAP_FEAT*dim + voca_dic.size*wdim
 	net.params = torch.zeros(n_params)
 
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
@@ -130,6 +132,14 @@ function IORNN:init_params(input)
 	net.bc = net.params[{{index,index+(2*deprel_dic.size+1)-1}}]:resize((2*deprel_dic.size+1),1)
 	index = index + (2*deprel_dic.size+1)
 
+	-- POS tag 
+	net.Lpos = net.params[{{index,index+pos_dic.size*dim-1}}]:resize(dim,pos_dic.size):copy(uniform(dim,pos_dic.size,-r,r))
+	index = index + pos_dic.size * dim	
+
+	-- capital letter feature
+	net.Lcap = net.params[{{index,index+N_CAP_FEAT*dim-1}}]:resize(dim,N_CAP_FEAT):copy(uniform(dim,N_CAP_FEAT,-r,r))
+	index = index + N_CAP_FEAT * dim
+
 	--  word embeddings (always always always at the end of the array of params)
 	net.L = net.params[{{index,index+voca_dic.size*wdim-1}}]:resize(wdim,voca_dic.size):copy(input.lookup)		-- word embeddings 
 	index = index + voca_dic.size*wdim
@@ -141,6 +151,7 @@ function IORNN:create_grad()
 	local wdim = self.wdim
 	local voca_dic = self.voca_dic
 	local deprel_dic = self.deprel_dic
+	local pos_dic = self.pos_dic
 
 	grad.params = torch.zeros(self.params:nElement())
 
@@ -195,6 +206,14 @@ function IORNN:create_grad()
 	grad.bc = grad.params[{{index,index+(2*deprel_dic.size+1)-1}}]:resize((2*deprel_dic.size+1),1)
 	index = index + (2*deprel_dic.size+1)
 
+	-- POS tag 
+	grad.Lpos = grad.params[{{index,index+pos_dic.size*dim-1}}]:resize(dim,pos_dic.size)
+	index = index + pos_dic.size * dim	
+
+	-- capital letter feature
+	grad.Lcap = grad.params[{{index,index+N_CAP_FEAT*dim-1}}]:resize(dim,N_CAP_FEAT)
+	index = index + N_CAP_FEAT * dim
+
 	--  word embeddings (always always always at the end of params)
 	grad.L = grad.params[{{index,index+voca_dic.size*wdim-1}}]:resize(wdim,voca_dic.size)
 	index = index + voca_dic.size*wdim
@@ -242,7 +261,11 @@ function IORNN:forward_inside(tree)
 			if i == 2 then -- ROOT 
 				tree.inner[col_i]:copy(self.root_inner)
 			else
-				tree.inner[col_i]:copy(self.func((self.Wh * self.L[{{},{tree.word_id[i]}}]):add(self.bh)))
+				local input = (self.Wh * self.L[{{},{tree.word_id[i]}}])
+								:add(self.Lpos[{{},{tree.pos_id[i]}}])
+								:add(self.Lcap[{{},{tree.cap_id[i]}}])
+								:add(self.bh)
+				tree.inner[col_i]:copy(self.func(input))
 			end
 
 		-- for internal nodes
@@ -428,6 +451,8 @@ function IORNN:backpropagate_inside(tree, grad)
 					grad.Wh:add(gZi * self.L[{{},{tree.word_id[i]}}]:t())
 					grad.bh:add(gZi)
 					grad.L[{{},{tree.word_id[i]}}]:add(self.Wh:t() * gZi)
+					grad.Lpos[{{},{tree.pos_id[i]}}]:add(gZi)
+					grad.Lcap[{{},{tree.cap_id[i]}}]:add(gZi)
 				end
 			end
 		end
@@ -440,8 +465,15 @@ function IORNN:create_treelets(sent)
 		local tree = Depstruct:create_empty_tree(1, sent.n_words)
 		if i > 1 then
 			tree.word_id[1] = sent.word_id[i]
+			tree.pos_id[1] = sent.pos_id[i]
+			tree.cap_id[1] = sent.cap_id[i]
 			tree.wnode_id[i] = 1
-			tree.inner = self.func((self.Wh * self.L[{{},{tree.word_id[1]}}]):add(self.bh))
+
+			local input = (self.Wh * self.L[{{},{tree.word_id[1]}}])
+							:add(self.Lpos[{{},{tree.pos_id[1]}}])
+							:add(self.Lcap[{{},{tree.cap_id[1]}}])
+							:add(self.bh)
+			tree.inner = self.func(input)
 			tree.head_inner = tree.inner
 		else -- ROOT
 			tree.inner = self.root_inner
@@ -471,6 +503,9 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 	-- copy htree into tree
 	if htree.n_nodes > 1 then
 		tree.word_id[{{1,htree.n_nodes}}]:copy(htree.word_id)
+		tree.pos_id[{{1,htree.n_nodes}}]:copy(htree.pos_id)
+		tree.cap_id[{{1,htree.n_nodes}}]:copy(htree.cap_id)
+
 		tree.parent_id[{{1,htree.n_nodes}}]:copy(htree.parent_id)
 		tree.n_children[{{1,htree.n_nodes}}]:copy(htree.n_children)
 		tree.children_id[{{},{1,htree.n_nodes}}]:copy(htree.children_id)
@@ -479,6 +514,9 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 		tree.inner[{{},{1,htree.n_nodes}}]:copy(htree.inner)
 	elseif htree.n_nodes == 1 then
 		tree.word_id[2] = htree.word_id[1]
+		tree.cap_id[2] = htree.cap_id[1]
+		tree.pos_id[2] = htree.pos_id[1]
+
 		tree.parent_id[2] = 1
 		tree.n_children[1] = 1
 		tree.children_id[{1,1}] = 2
@@ -489,6 +527,9 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 
 	-- copy dtree into tree
 	tree.word_id[{{next_id,-1}}]:copy(dtree.word_id)
+	tree.pos_id[{{next_id,-1}}]:copy(dtree.pos_id)
+	tree.cap_id[{{next_id,-1}}]:copy(dtree.cap_id)
+
 	tree.parent_id[{{next_id,-1}}]:copy(dtree.parent_id):add(next_id-1)
 	tree.parent_id[next_id] = 1
 
@@ -588,8 +629,13 @@ function IORNN:create_tree_for_training(ds)
 	tree.ds[1] = { 	inner = self.root_inner, outer = self.anon_outer, 
 					depnode_id = {}, deprel_id = {}, node_id = tree.wnode_id[1] }
 	for i = 2, ds.n_words do 
-		local word = tree.word_id[tree.wnode_id[i]]
-		tree.ds[i] = { 	inner = self.func((self.Wh * self.L[{{},{word}}]):add(self.bh)),
+		local wnode = tree.wnode_id[i]
+		local input = (self.Wh * self.L[{{},{tree.word_id[wnode]}}])
+							:add(self.Lpos[{{},{tree.pos_id[wnode]}}])
+							:add(self.Lcap[{{},{tree.cap_id[wnode]}}])
+							:add(self.bh)
+
+		tree.ds[i] = { 	inner = self.func(input),
 						outer = self.anon_outer, 
 						depnode_id = {}, deprel_id = {},
 						node_id = tree.wnode_id[i] }
