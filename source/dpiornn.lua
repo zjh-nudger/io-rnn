@@ -274,12 +274,12 @@ function IORNN:forward_inside(tree)
 			local input = torch.zeros(self.dim,1)
 			for j = 2,tree.n_children[i] do
 				local child = tree.children_id[{j,i}]
-				input:add(self.Wi[tree.deprel_id[child]] * tree.inner[{{},{child}}])
+				input:addmm(self.Wi[tree.deprel_id[child]], tree.inner[{{},{child}}])
 			end
 			if tree.n_children[i] > 1 then
 				input:div(tree.n_children[i]-1)
 			end
-			input:add(self.Wihead * tree.inner[{{},{tree.children_id[{1,i}]}}])
+			input:addmm(self.Wihead, tree.inner[{{},{tree.children_id[{1,i}]}}])
 			input:add(self.bi)
 			tree.inner[col_i]:copy(self.func(input))
 		end
@@ -304,7 +304,7 @@ function IORNN:update_with_state(tree, state)
 		ret.deprel_id[#ret.deprel_id+1] = action
 
 		for i,deprel in ipairs(ret.deprel_id) do
-			ret.outer:add(self.Wo[deprel] * tree.inner[{{},{ret.depnode_id[i]}}])
+			ret.outer:addmm(self.Wo[deprel], tree.inner[{{},{ret.depnode_id[i]}}])
 		end
 		ret.outer:div(#ret.depnode_id)
 		ret.outer:add(self.bohead)
@@ -323,7 +323,7 @@ function IORNN:update_with_state(tree, state)
 		ret.deprel_id[#ret.deprel_id+1] = action - self.deprel_dic.size
 
 		for i,deprel in ipairs(ret.deprel_id) do
-			ret.outer:add(self.Wo[deprel] * tree.inner[{{},{ret.depnode_id[i]}}])
+			ret.outer:addmm(self.Wo[deprel], tree.inner[{{},{ret.depnode_id[i]}}])
 		end
 		ret.outer:div(#ret.depnode_id)
 		ret.outer:add(self.bohead)
@@ -364,10 +364,10 @@ function IORNN:forward_outside(tree, state)
 	for i = 1,N_CONTEXT do
 		tree.classify[i] = { 	stack = self:with_state(tree, state, state.stack, state.stack_pos-i+1),
 								buffer = self:with_state(tree, state, state.buffer, state.buffer_pos+i-1) }
-		tree.score	:add(self.Wci_stack[i] * tree.classify[i].stack.inner)
-					:add(self.Wco_stack[i] * tree.classify[i].stack.outer)
-					:add(self.Wci_buffer[i] * tree.classify[i].buffer.inner)
-					:add(self.Wco_buffer[i] * tree.classify[i].buffer.outer)
+		tree.score	:addmm(self.Wci_stack[i], tree.classify[i].stack.inner)
+					:addmm(self.Wco_stack[i], tree.classify[i].stack.outer)
+					:addmm(self.Wci_buffer[i], tree.classify[i].buffer.inner)
+					:addmm(self.Wco_buffer[i], tree.classify[i].buffer.outer)
 	end
 	tree.score:add(self.bc)
 	tree.prob = safe_compute_softmax(tree.score)
@@ -384,28 +384,28 @@ function IORNN:backpropagate_outside(tree, grad)
 
 	for i = 1,N_CONTEXT do
 		for v,typ in pairs(tree.classify[i]) do
-			grad['Wco_'..v][i]:add(gZc * typ.outer:t())
-			grad['Wci_'..v][i]:add(gZc * typ.inner:t())
+			grad['Wco_'..v][i]:addmm(gZc, typ.outer:t())
+			grad['Wci_'..v][i]:addmm(gZc, typ.inner:t())
 
 			-- for inner
 			if typ.inner == self.anon_inner then 
-				grad.anon_inner:add(self['Wci_'..v][i]:t() * gZc)
+				grad.anon_inner:addmm(self['Wci_'..v][i]:t(), gZc)
 			elseif typ.inner == self.root_inner then --ROOT
-				grad.root_inner:add(self['Wci_'..v][i]:t() * gZc)
+				grad.root_inner:addmm(self['Wci_'..v][i]:t(), gZc)
 			else
-				tree.gradi[{{},{typ.node_id}}]:add(self['Wci_'..v][i]:t() * gZc)
+				tree.gradi[{{},{typ.node_id}}]:addmm(self['Wci_'..v][i]:t(), gZc)
 			end
 	
 			-- for outer
 			if typ.outer == self.anon_outer then -- 'free' word or out-of-stack/buffer
-				grad.anon_outer:add(self['Wco_'..v][i]:t() * gZc)
+				grad.anon_outer:addmm(self['Wco_'..v][i]:t(), gZc)
 			else
 				local gZo = (self['Wco_'..v][i]:t() * gZc):cmul(self.funcPrime(typ.outer))
 				grad.bohead:add(gZo)
 				local n = #typ.depnode_id
 				for i,depnode_id in ipairs(typ.depnode_id) do
-					tree.gradi[{{},{depnode_id}}]:add((self.Wo[typ.deprel_id[i]]:t() * gZo):div(n))
-					grad.Wo[typ.deprel_id[i]]:add((gZo * tree.inner[{{},{depnode_id}}]:t()):div(n))
+					tree.gradi[{{},{depnode_id}}]:addmm(1/n, self.Wo[typ.deprel_id[i]]:t(), gZo)
+					grad.Wo[typ.deprel_id[i]]:addmm(1/n, gZo, tree.inner[{{},{depnode_id}}]:t())
 				end
 			end
 		end
@@ -434,11 +434,11 @@ function IORNN:backpropagate_inside(tree, grad)
 				local child_id = tree.children_id[{j,i}]
 				local deprel_id = tree.deprel_id[child_id]
 				if deprel_id == 0 then -- this is head
-					grad.Wihead:add(gZi * tree.inner[{{},{child_id}}]:t())
-					tree.gradi[{{},{child_id}}]:add(self.Wihead:t() * gZi)
+					grad.Wihead:addmm(gZi, tree.inner[{{},{child_id}}]:t())
+					tree.gradi[{{},{child_id}}]:addmm(self.Wihead:t(), gZi)
 				else
-					grad.Wi[deprel_id]:add((gZi * tree.inner[{{},{child_id}}]:t()):div(n))
-					tree.gradi[{{},{child_id}}]:add((self.Wi[deprel_id]:t() * gZi):div(n))
+					grad.Wi[deprel_id]:addmm(1/n, gZi, tree.inner[{{},{child_id}}]:t())
+					tree.gradi[{{},{child_id}}]:addmm(1/n, self.Wi[deprel_id]:t(), gZi)
 				end
 			end
 			grad.bi:add(gZi)
@@ -448,9 +448,9 @@ function IORNN:backpropagate_inside(tree, grad)
 
 			if self.update_L then
 				if i > 2 then -- not ROOT
-					grad.Wh:add(gZi * self.L[{{},{tree.word_id[i]}}]:t())
+					grad.Wh:addmm(gZi, self.L[{{},{tree.word_id[i]}}]:t())
 					grad.bh:add(gZi)
-					grad.L[{{},{tree.word_id[i]}}]:add(self.Wh:t() * gZi)
+					grad.L[{{},{tree.word_id[i]}}]:addmm(self.Wh:t(), gZi)
 					grad.Lpos[{{},{tree.pos_id[i]}}]:add(gZi)
 					grad.Lcap[{{},{tree.cap_id[i]}}]:add(gZi)
 				end
@@ -556,7 +556,7 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 			input:add(self.Wi[tree.deprel_id[child]] * tree.inner[{{},{child}}])
 		end
 		input:div(tree.n_children[next_id] - 1)
-		input:add(self.Wihead * tree.inner[{{},{tree.children_id[{1,next_id}]}}]):add(self.bi)
+		input:addmm(self.Wihead, tree.inner[{{},{tree.children_id[{1,next_id}]}}]):add(self.bi)
 		tree.inner[{{},{next_id}}]:copy(self.func(input))
 	end
 
@@ -564,7 +564,7 @@ function IORNN:merge_treelets(htree, dtree, deprel)
 	local input = torch.zeros(self.dim,1)
 	for j = 2,tree.n_children[1] do
 		local child = tree.children_id[{j,1}]
-		input:add(self.Wo[tree.deprel_id[child]] * tree.inner[{{},{child}}])
+		input:addmm(self.Wo[tree.deprel_id[child]], tree.inner[{{},{child}}])
 	end
 	input:div(tree.n_children[1] - 1)
 	input:add(self.bohead)
@@ -611,13 +611,12 @@ function IORNN:predict_action(states)
 			end
 		end
 
-		scores	:add(self.Wci_stack[j] * stack_inner)
-				:add(self.Wco_stack[j] * stack_outer)
-				:add(self.Wci_buffer[j] * buffer_inner)
-				:add(self.Wco_buffer[j] * buffer_outer)
+		scores	:addmm(self.Wci_stack[j], stack_inner)
+				:addmm(self.Wco_stack[j], stack_outer)
+				:addmm(self.Wci_buffer[j], buffer_inner)
+				:addmm(self.Wco_buffer[j], buffer_outer)
 	end
 	scores:add(torch.repeatTensor(self.bc, 1, nstates))
-
 	return safe_compute_softmax(scores)
 end
 
@@ -660,25 +659,40 @@ else
 
 	p:start('process treebank')
 	for i, ds in ipairs(treebank) do
+		p:start('process tree')
 		local states = parser:extract_training_states(ds)
 		local tree = self:create_tree_for_training(ds)
 	
+		p:start('forward inside')
 		self:forward_inside(tree)
+		p:lap('forward inside')
 
+		p:start('outside')
 		for _,state in ipairs(states) do
 			if state.stack_pos > 0 then 
+				p:start('forward outside')
 				local lcost = self:forward_outside(tree, state)
+				p:lap('forward outside')
 				cost = cost + lcost
+				p:start('backward outside')
 				self:backpropagate_outside(tree, grad)
+				p:lap('backward outside')
+				p:start('update state')
 				self:update_with_state(tree, state)
+				p:lap('update state')
 			end
 		end
+		p:lap('outside')
+
 		nSample = nSample + #states
+		p:start('backward inside')
 		self:backpropagate_inside(tree, grad)
+		p:lap('backward inside')
 
 		for i=2,tree.wnode_id:nElement() do -- do not take the root into account
 			tword_id[tree.word_id[tree.wnode_id[i]]] = 1
 		end
+		p:lap('process tree')
 	end
 	p:lap('process treebank') 
 
@@ -690,7 +704,7 @@ else
 	
 	for wid,_ in pairs(tword_id) do
 		cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
-		grad.L[{{},{wid}}]:div(nSample):add(self.L[{{},{wid}}] * config.lambda_L)
+		grad.L[{{},{wid}}]:div(nSample):add(config.lambda_L, self.L[{{},{wid}}])
 	end 
 	p:lap('compute grad')
 
@@ -796,22 +810,22 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 	local nSample = #traintreebank
 	local grad = self:create_grad()
 	
-	local epoch = 1
+	local epoch = 0
 	local j = 0
-	parser:eval(devtreebank_path, '/tmp/parsed.conll')
-	collectgarbage()
+	os.execute('th eval_depparser.lua '..prefix..'_'..epoch..' '..devtreebank_path)
 
+
+	epoch = epoch + 1
 	print('===== epoch ' .. epoch .. '=====')
 
 	while true do
 		j = j + 1
 		if j > nSample/batchSize then 
 			self:save(prefix .. '_' .. epoch)
+			os.execute('th eval_depparser.lua '..prefix..'_'..epoch..' '..devtreebank_path)
+
 			j = 1 
 			epoch = epoch + 1
-
-			parser:eval(devtreebank_path, '/tmp/parsed.conll')
-
 			if epoch > maxepoch then break end
 			print('===== epoch ' .. epoch .. '=====')
 		end

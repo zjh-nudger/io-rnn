@@ -117,12 +117,9 @@ function Depparser:parse(sentbank)
 		end
 
 		-- compute prediction score
-		p:start('decision') 
 		local decision_scores = self.net:predict_action(active_states)
-		p:lap('decision')
 
 		-- process states
-		p:start('trans')
 		local k = 1
 		for i,sent in ipairs(sentbank) do
 			if not_done[i] == 1 then
@@ -139,8 +136,6 @@ function Depparser:parse(sentbank)
 				end
 			end
 		end
-		p:lap('trans')
-		--p:printAll()
 	end
 	
 	return statebank
@@ -267,8 +262,8 @@ function Depparser:train(traintrebank_path, devtreebank_path, model_dir)
 	traintreebank = temp
 
 	-- train
-	local adagrad_config = {weight_learningRate = 0.1,
-							voca_learningRate = 0.1}
+	local adagrad_config = {	weight_learningRate = 0.1,
+								voca_learningRate = 0.1	}
 	local adagrad_state = {}
 
 	self.net:save(model_dir .. '/model_0')
@@ -281,6 +276,7 @@ function Depparser:train(traintrebank_path, devtreebank_path, model_dir)
 															self, devtreebank_path)
 end
 
+-- should not call it directly when training, there's a mem-leak problem!!!
 function Depparser:eval(path, output)
 	local treebank, raw = self:load_treebank(path)
 	local parses = self:parse(treebank)
@@ -304,6 +300,7 @@ function Depparser:eval(path, output)
 		os.execute('mail -s '..self.mail_subject..' lephong.xyz@gmail.com < /tmp/mail')
 	end
 end
+
 
 
 
