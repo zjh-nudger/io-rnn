@@ -115,50 +115,50 @@ function IORNN:init_params(input)
 	net.Wco_buffer = {} 
 	for i = 1,IORNN_CONTEXT_SIZE do
 		-- for inner in stack
-		net.wci_stack[i] = {}
-		net.wci_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+		net.Wci_stack[i] = {}
+		net.Wci_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
 																	:copy(uniform(3,dim,-r,r))
 		index = index + 3*dim
-		net.wci_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		net.Wci_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
 																				:copy(uniform(deprel_dic.size,dim,-r,r))
 		index = index + deprel_dic.size*dim
-		net.wci_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		net.Wci_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
 																				:copy(uniform(deprel_dic.size,dim,-r,r))
 		index = index + deprel_dic.size*dim
 
 		-- for outer in stack
-		net.wco_stack[i] = {}
-		net.wco_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+		net.Wco_stack[i] = {}
+		net.Wco_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
 																	:copy(uniform(3,dim,-r,r))
 		index = index + 3*dim
-		net.wco_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		net.Wco_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
 																				:copy(uniform(deprel_dic.size,dim,-r,r))
 		index = index + deprel_dic.size*dim
-		net.wco_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		net.Wco_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
 																				:copy(uniform(deprel_dic.size,dim,-r,r))
 		index = index + deprel_dic.size*dim
 
 		-- for inner in buffer
-		net.wci_buffer[i] = {}
-		net.wci_buffer[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+		net.Wci_buffer[i] = {}
+		net.Wci_buffer[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
 																	:copy(uniform(3,dim,-r,r))
 		index = index + 3*dim
-		net.wci_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		net.Wci_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
 																				:copy(uniform(deprel_dic.size,dim,-r,r))
 		index = index + deprel_dic.size*dim
-		net.wci_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		net.Wci_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
 																				:copy(uniform(deprel_dic.size,dim,-r,r))
 		index = index + deprel_dic.size*dim
 
 		-- for outer in stack
-		net.wco_buffer[i] = {}
-		net.wco_buffer[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+		net.Wco_buffer[i] = {}
+		net.Wco_buffer[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
 																	:copy(uniform(3,dim,-r,r))
 		index = index + 3*dim
-		net.wco_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		net.Wco_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
 																				:copy(uniform(deprel_dic.size,dim,-r,r))
 		index = index + deprel_dic.size*dim
-		net.wco_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		net.Wco_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
 																				:copy(uniform(deprel_dic.size,dim,-r,r))
 		index = index + deprel_dic.size*dim
 	end
@@ -234,47 +234,47 @@ function IORNN:create_grad()
 
 	for i = 1,IORNN_CONTEXT_SIZE do
 		-- for inner in stack
-		grad.wci_stack[i] = {}
-		grad.wci_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+		grad.Wci_stack[i] = {}
+		grad.Wci_stack[i].arc = grad.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
 		index = index + 3*dim
-		grad.wci_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		grad.Wci_stack[i].rdr = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
 		index = index + deprel_dic.size*dim
-		grad.wci_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		grad.Wci_stack[i].ldr = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
 		index = index + deprel_dic.size*dim
 
 		-- for outer in stack
-		grad.wco_stack[i] = {}
-		grad.wco_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+		grad.Wco_stack[i] = {}
+		grad.Wco_stack[i].arc = grad.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
 		index = index + 3*dim
-		grad.wco_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		grad.Wco_stack[i].rdr = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
 		index = index + deprel_dic.size*dim
-		grad.wco_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		grad.Wco_stack[i].ldr = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
 		index = index + deprel_dic.size*dim
 
 		-- for inner in buffer
-		grad.wci_buffer[i] = {}
-		grad.wci_buffer[i].arc = net.params[{{index,index+3*dim-1}}]:resize(3,dim) -- arc decision (left/right/shift)
+		grad.Wci_buffer[i] = {}
+		grad.Wci_buffer[i].arc = grad.params[{{index,index+3*dim-1}}]:resize(3,dim) -- arc decision (left/right/shift)
 		index = index + 3*dim
-		grad.wci_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		grad.Wci_buffer[i].rdr = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
 		index = index + deprel_dic.size*dim
-		grad.wci_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		grad.Wci_buffer[i].ldr = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
 		index = index + deprel_dic.size*dim
 
 		-- for outer in stack
-		grad.wco_buffer[i] = {}
-		grda.wco_buffer[i].arc = net.params[{{index,index+3*dim-1}}]:resize(3,dim) -- arc decision (left/right/shift)
+		grad.Wco_buffer[i] = {}
+		grad.Wco_buffer[i].arc = grad.params[{{index,index+3*dim-1}}]:resize(3,dim) -- arc decision (left/right/shift)
 		index = index + 3*dim
-		grad.wco_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		grad.Wco_buffer[i].rdr = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
 		index = index + deprel_dic.size*dim
-		grda.wco_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		grad.Wco_buffer[i].ldr = grad.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
 		index = index + deprel_dic.size*dim
 	end
 	grad.bc = {}
-	grad.bc.arc = net.params[{{index,index+3-1}}]:resize(3,1)
+	grad.bc.arc = grad.params[{{index,index+3-1}}]:resize(3,1)
 	index = index + 3
-	grad.bc.rdr = net.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
+	grad.bc.rdr = grad.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
 	index = index + deprel_dic.size
-	grad.bc.ldr = net.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
+	grad.bc.ldr = grad.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
 	index = index + deprel_dic.size
 
 	-- POS tag 
@@ -431,13 +431,13 @@ end
 
 function IORNN:forward_outside(tree, state)
 	tree.arc_action = 3
-	tree.deprel_action = 0
+	tree.dr_action = 0
 	if state.action <= self.deprel_dic.size then -- left arc
 		tree.arc_action = 1
-		tree.deprel_action = state.action
+		tree.dr_action = state.action
 	elseif state.action <= 2*self.deprel_dic.size then
 		tree.arc_action = 2
-		tree.deprel_action = state.action - self.deprel_dic.size
+		tree.dr_action = state.action - self.deprel_dic.size
 	end
 
 	tree.classify = {}
@@ -468,7 +468,7 @@ function IORNN:forward_outside(tree, state)
 		end
 		tree.dr_score:add(self.bc.ldr)
 		tree.dr_prob = safe_compute_softmax(tree.dr_score)
-		tree.dr_cost = -math.log(tree.dr_prob[{tree.deprel_action,1}])
+		tree.dr_cost = -math.log(tree.dr_prob[{tree.dr_action,1}])
 
 	elseif tree.arc_action == 2 then -- right
 		for i = 1,IORNN_CONTEXT_SIZE do
@@ -479,7 +479,7 @@ function IORNN:forward_outside(tree, state)
 		end
 		tree.dr_score:add(self.bc.rdr)
 		tree.dr_prob = safe_compute_softmax(tree.dr_score)
-		tree.dr_cost = -math.log(tree.dr_prob[{tree.deprel_action,1}])
+		tree.dr_cost = -math.log(tree.dr_prob[{tree.dr_action,1}])
 	end
 
 
@@ -506,7 +506,7 @@ function IORNN:backpropagate_outside(tree, grad)
 			if tree.arc_action == 1 then --left arc
 				grad['Wco_'..v][i].ldr:addmm(gZc_dr, typ.outer:t())
 				grad['Wci_'..v][i].ldr:addmm(gZc_dr, typ.inner:t())
-			elseif tree.arc-action == 2 then --right arc
+			elseif tree.arc_action == 2 then --right arc
 				grad['Wco_'..v][i].rdr:addmm(gZc_dr, typ.outer:t())
 				grad['Wci_'..v][i].rdr:addmm(gZc_dr, typ.inner:t())
 			end
@@ -738,13 +738,17 @@ end
 
 function IORNN:predict_action(states)
 	local nstates = #states
-	local scores = torch.zeros(2*self.deprel_dic.size+1, nstates)
+
+	local stack_inner = {}
+	local stack_outer = {}
+	local buffer_inner = {}
+	local buffer_outer = {}
 
 	for j = 1,IORNN_CONTEXT_SIZE do
-		local stack_inner = torch.repeatTensor(self.anon_inner, 1, nstates)
-		local stack_outer = torch.repeatTensor(self.anon_outer, 1, nstates)
-		local buffer_inner = torch.repeatTensor(self.anon_inner, 1, nstates)
-		local buffer_outer = torch.repeatTensor(self.anon_outer, 1, nstates)
+		stack_inner[j] = torch.repeatTensor(self.anon_inner, 1, nstates)
+		stack_outer[j] = torch.repeatTensor(self.anon_outer, 1, nstates)
+		buffer_inner[j] = torch.repeatTensor(self.anon_inner, 1, nstates)
+		buffer_outer[j] = torch.repeatTensor(self.anon_outer, 1, nstates)
 
 		for i,state in ipairs(states) do
 			local spos = state.stack_pos - j + 1
@@ -752,23 +756,51 @@ function IORNN:predict_action(states)
 			local index = {{},{i}}
 			if spos >= 1 then
 				local stack_tree = state.treelets[state.stack[spos]]
-				stack_inner[index]:copy(stack_tree.head_inner)
-				stack_outer[index]:copy(stack_tree.head_outer)
+				stack_inner[j][index]:copy(stack_tree.head_inner)
+				stack_outer[j][index]:copy(stack_tree.head_outer)
 			end
 			if bpos <= state.n_words then
 				local buffer_tree = state.treelets[state.buffer[bpos]]
-				buffer_inner[index]:copy(buffer_tree.head_inner)
-				buffer_outer[index]:copy(buffer_tree.head_outer)
+				buffer_inner[j][index]:copy(buffer_tree.head_inner)
+				buffer_outer[j][index]:copy(buffer_tree.head_outer)
 			end
 		end
-
-		scores	:addmm(self.Wci_stack[j], stack_inner)
-				:addmm(self.Wco_stack[j], stack_outer)
-				:addmm(self.Wci_buffer[j], buffer_inner)
-				:addmm(self.Wco_buffer[j], buffer_outer)
 	end
-	scores:add(torch.repeatTensor(self.bc, 1, nstates))
-	return safe_compute_softmax(scores)
+
+	-- arc scores
+	local arc_scores = torch.zeros(3, nstates)
+	for j = 1,IORNN_CONTEXT_SIZE do
+		arc_scores	:addmm(self.Wci_stack[j].arc, stack_inner[j])
+					:addmm(self.Wco_stack[j].arc, stack_outer[j])
+					:addmm(self.Wci_buffer[j].arc, buffer_inner[j])
+					:addmm(self.Wco_buffer[j].arc, buffer_outer[j])
+	end
+	arc_scores:add(torch.repeatTensor(self.bc.arc, 1, nstates))
+	local arc_prob = safe_compute_softmax(arc_scores)
+
+	-- left-dr scores
+	local ldr_scores = torch.zeros(self.deprel_dic.size, nstates)
+	for j = 1,IORNN_CONTEXT_SIZE do
+		ldr_scores	:addmm(self.Wci_stack[j].ldr, stack_inner[j])
+					:addmm(self.Wco_stack[j].ldr, stack_outer[j])
+					:addmm(self.Wci_buffer[j].ldr, buffer_inner[j])
+					:addmm(self.Wco_buffer[j].ldr, buffer_outer[j])
+	end
+	ldr_scores:add(torch.repeatTensor(self.bc.ldr, 1, nstates))
+	local ldr_prob = safe_compute_softmax(ldr_scores)
+
+	-- right-dr scores
+	local rdr_scores = torch.zeros(self.deprel_dic.size, nstates)
+	for j = 1,IORNN_CONTEXT_SIZE do
+		rdr_scores	:addmm(self.Wci_stack[j].rdr, stack_inner[j])
+					:addmm(self.Wco_stack[j].rdr, stack_outer[j])
+					:addmm(self.Wci_buffer[j].rdr, buffer_inner[j])
+					:addmm(self.Wco_buffer[j].rdr, buffer_outer[j])
+	end
+	rdr_scores:add(torch.repeatTensor(self.bc.rdr, 1, nstates))
+	local rdr_prob = safe_compute_softmax(rdr_scores)
+
+	return {arc = arc_prob, ldr = ldr_prob, rdr = rdr_prob}
 end
 
 function IORNN:create_tree_for_training(ds) 
@@ -987,7 +1019,7 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 end
 
 
---********************************** test ******************************--
+--[[********************************** test ******************************--
 	require 'depparser'
 	torch.setnumthreads(1)
 
@@ -1000,17 +1032,16 @@ end
 	local lookup = torch.rand(2, voca_dic.size)
 
 	dim = 3
+	L = torch.rand(2, voca_dic.size)
 
 	print('training...')
-	local parser = Depparser:new(lookup, voca_dic, pos_dic, deprel_dic, dim)
-	local treebank,_ = parser:load_treebank('../data/wsj-dep/toy/data/train.conll')
-	--treebank = {treebank[1]}
-	--treebank[1].states = {treebank[1].states[1]}
-	--print(treebank)
+	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
+                            lookup = L, func = tanh, funcPrime = tanhPrime })
 
-	net = parser.net
+	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
+	local treebank,_ = parser:load_treebank('../data/wsj-dep/toy/data/train.conll')
 
 	config = {lambda = 1e-4, lambda_L = 1e-7}
 	net.update_L = true
 	net:checkGradient(treebank, parser, config)
-
+]]

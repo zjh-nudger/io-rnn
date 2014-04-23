@@ -36,37 +36,45 @@ function Depparser:trans(sent, state, decision_scores, net)
 
 	-- remove impossible actions
 	if i == nil or j == nil then
-		decision_scores[{{1,2*self.deprel_dic.size}}]:fill(0)
+		decision_scores.arc[{{1,2}}]:fill(0)
 	end
 	if i == 1 then -- ROOT
-		decision_scores[{{1,self.deprel_dic.size}}]:fill(0)
+		decision_scores.arc[1] = 0
 	end
 	if j == nil then
-		decision_scores[2*self.deprel_dic.size+1] = 0
+		decision_scores.arc[3] = 0
 	end
 
-	local score,action = decision_scores:max(1)
-	action = action[1]
+	local ldr_score,ldr_action = decision_scores.ldr:max(1)
+	ldr_action = ldr_action[1]
+	ldr_score = ldr_score[1]
+
+	local rdr_score,rdr_action = decision_scores.rdr:max(1)
+	rdr_action = rdr_action[1]
+	rdr_score = rdr_score[1]
+
+	--decision_scores.arc[1] = decision_scores.arc[1] * ldr_score
+	--decision_scores.arc[2] = decision_scores.arc[2] * rdr_score
+
+	local _,arc_action = decision_scores.arc:max(1)
+	arc_action = arc_action[1]
 
 	-- left arc
-	if action <= self.deprel_dic.size then
-		--print('la')
+	if arc_action == 1 then
 		local tree = net:merge_treelets(state.treelets[j], 
-										state.treelets[i], action)
+										state.treelets[i], ldr_action)
 		state.treelets[j] = tree
 		state.head[i] = j
-		state.deprel[i] = action
+		state.deprel[i] = ldr_action
 		state.stack_pos = state.stack_pos - 1
 
 	-- right arc
-	elseif action <= 2*self.deprel_dic.size then
-		--print('ra')
-		action = action - self.deprel_dic.size
+	elseif arc_action == 2 then
 		local tree = net:merge_treelets(state.treelets[i], 
-										state.treelets[j], action)
+										state.treelets[j], rdr_action)
 		state.treelets[i] = tree
 		state.head[j] = i
-		state.deprel[j] = action
+		state.deprel[j] = rdr_action
 		state.stack_pos = state.stack_pos - 1
 		state.buffer[state.buffer_pos] = i
 
@@ -125,10 +133,15 @@ function Depparser:parse(nets, sentbank)
 			if decision_scores == nil then
 				decision_scores = nets[j]:predict_action(active_states)
 			else
-				decision_scores:add(nets[j]:predict_action(active_states))
+				temp = nets[j]:predict_action(active_states)
+				decision_scores.arc:add(temp.arc)
+				decision_scores.ldr:add(temp.ldr)
+				decision_scores.rdr:add(temp.rdr)
 			end
 		end
-		decision_scores:div(#nets)
+		decision_scores.arc:div(#nets)
+		decision_scores.ldr:div(#nets)
+		decision_scores.rdr:div(#nets)
 
 		-- process states
 		local k = 1
@@ -136,7 +149,9 @@ function Depparser:parse(nets, sentbank)
 			if not_done[i] == 1 then
 				for j,statebank in ipairs(statebanks) do
 					local state = statebank[i]
-					local decision_score = decision_scores[{{},k}]
+					local decision_score = {	arc = decision_scores.arc[{{},k}], 
+												ldr = decision_scores.ldr[{{},k}], 
+												rdr = decision_scores.rdr[{{},k}] }
 					state = self:trans(sent, state, decision_score, nets[j])
 					if state.buffer_pos > sent.n_words then
 						not_done[i] = 0
