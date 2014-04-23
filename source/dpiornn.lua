@@ -1,9 +1,7 @@
 require 'depstruct'
 require 'utils'
 require 'dict'
-
-NPROCESS = 1
-N_CONTEXT = 4
+require 'dp_spec'
 
 require 'xlua'
 p = xlua.Profiler()
@@ -72,7 +70,7 @@ function IORNN:init_params(input)
 
 	-- create params
 	local n_params = dim*wdim + 4*dim + deprel_dic.size*dim*dim*2 + dim*dim + 2*dim + 
-					(2*deprel_dic.size+1)*dim*4*N_CONTEXT + (2*deprel_dic.size+1) + 
+					(2*deprel_dic.size+3)*dim*4*IORNN_CONTEXT_SIZE + (2*deprel_dic.size+3) + 
 					pos_dic.size*dim + N_CAP_FEAT*dim + voca_dic.size*wdim
 	net.params = torch.zeros(n_params)
 
@@ -115,22 +113,62 @@ function IORNN:init_params(input)
 	net.Wco_stack = {}
 	net.Wci_buffer = {}
 	net.Wco_buffer = {} 
-	for i = 1,N_CONTEXT do
-		net.Wci_stack[i] = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]	:resize((2*deprel_dic.size+1),dim)
-																					:copy(uniform((2*deprel_dic.size+1),dim,-r,r))
-		index = index + (2*deprel_dic.size+1)*dim
-		net.Wco_stack[i] = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]	:resize((2*deprel_dic.size+1),dim)
-																					:copy(uniform((2*deprel_dic.size+1),dim,-r,r))
-		index = index + (2*deprel_dic.size+1)*dim
-		net.Wci_buffer[i] = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]	:resize((2*deprel_dic.size+1),dim)
-																					:copy(uniform((2*deprel_dic.size+1),dim,-r,r))
-		index = index + (2*deprel_dic.size+1)*dim
-		net.Wco_buffer[i] = net.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]	:resize((2*deprel_dic.size+1),dim)
-																					:copy(uniform((2*deprel_dic.size+1),dim,-r,r))
-		index = index + (2*deprel_dic.size+1)*dim
+	for i = 1,IORNN_CONTEXT_SIZE do
+		-- for inner in stack
+		net.wci_stack[i] = {}
+		net.wci_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+																	:copy(uniform(3,dim,-r,r))
+		index = index + 3*dim
+		net.wci_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+																				:copy(uniform(deprel_dic.size,dim,-r,r))
+		index = index + deprel_dic.size*dim
+		net.wci_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+																				:copy(uniform(deprel_dic.size,dim,-r,r))
+		index = index + deprel_dic.size*dim
+
+		-- for outer in stack
+		net.wco_stack[i] = {}
+		net.wco_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+																	:copy(uniform(3,dim,-r,r))
+		index = index + 3*dim
+		net.wco_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+																				:copy(uniform(deprel_dic.size,dim,-r,r))
+		index = index + deprel_dic.size*dim
+		net.wco_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+																				:copy(uniform(deprel_dic.size,dim,-r,r))
+		index = index + deprel_dic.size*dim
+
+		-- for inner in buffer
+		net.wci_buffer[i] = {}
+		net.wci_buffer[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+																	:copy(uniform(3,dim,-r,r))
+		index = index + 3*dim
+		net.wci_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+																				:copy(uniform(deprel_dic.size,dim,-r,r))
+		index = index + deprel_dic.size*dim
+		net.wci_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+																				:copy(uniform(deprel_dic.size,dim,-r,r))
+		index = index + deprel_dic.size*dim
+
+		-- for outer in stack
+		net.wco_buffer[i] = {}
+		net.wco_buffer[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+																	:copy(uniform(3,dim,-r,r))
+		index = index + 3*dim
+		net.wco_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+																				:copy(uniform(deprel_dic.size,dim,-r,r))
+		index = index + deprel_dic.size*dim
+		net.wco_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+																				:copy(uniform(deprel_dic.size,dim,-r,r))
+		index = index + deprel_dic.size*dim
 	end
-	net.bc = net.params[{{index,index+(2*deprel_dic.size+1)-1}}]:resize((2*deprel_dic.size+1),1)
-	index = index + (2*deprel_dic.size+1)
+	net.bc = {}
+	net.bc.arc = net.params[{{index,index+3-1}}]:resize(3,1)
+	index = index + 3
+	net.bc.rdr = net.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
+	index = index + deprel_dic.size
+	net.bc.ldr = net.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
+	index = index + deprel_dic.size
 
 	-- POS tag 
 	net.Lpos = net.params[{{index,index+pos_dic.size*dim-1}}]:resize(dim,pos_dic.size):copy(uniform(dim,pos_dic.size,-r,r))
@@ -193,18 +231,51 @@ function IORNN:create_grad()
 	grad.Wco_stack = {}
 	grad.Wci_buffer = {}
 	grad.Wco_buffer = {}
-	for i = 1,N_CONTEXT do
-		grad.Wci_stack[i] = grad.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim)
-		index = index + (2*deprel_dic.size+1)*dim
-		grad.Wco_stack[i] = grad.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim)
-		index = index + (2*deprel_dic.size+1)*dim
-		grad.Wci_buffer[i] = grad.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim)
-		index = index + (2*deprel_dic.size+1)*dim
-		grad.Wco_buffer[i] = grad.params[{{index,index+(2*deprel_dic.size+1)*dim-1}}]:resize((2*deprel_dic.size+1),dim)
-		index = index + (2*deprel_dic.size+1)*dim
+
+	for i = 1,IORNN_CONTEXT_SIZE do
+		-- for inner in stack
+		grad.wci_stack[i] = {}
+		grad.wci_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+		index = index + 3*dim
+		grad.wci_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		index = index + deprel_dic.size*dim
+		grad.wci_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		index = index + deprel_dic.size*dim
+
+		-- for outer in stack
+		grad.wco_stack[i] = {}
+		grad.wco_stack[i].arc = net.params[{{index,index+3*dim-1}}]	:resize(3,dim) -- arc decision (left/right/shift)
+		index = index + 3*dim
+		grad.wco_stack[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		index = index + deprel_dic.size*dim
+		grad.wco_stack[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		index = index + deprel_dic.size*dim
+
+		-- for inner in buffer
+		grad.wci_buffer[i] = {}
+		grad.wci_buffer[i].arc = net.params[{{index,index+3*dim-1}}]:resize(3,dim) -- arc decision (left/right/shift)
+		index = index + 3*dim
+		grad.wci_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		index = index + deprel_dic.size*dim
+		grad.wci_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		index = index + deprel_dic.size*dim
+
+		-- for outer in stack
+		grad.wco_buffer[i] = {}
+		grda.wco_buffer[i].arc = net.params[{{index,index+3*dim-1}}]:resize(3,dim) -- arc decision (left/right/shift)
+		index = index + 3*dim
+		grad.wco_buffer[i].rdr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- left arc deprel
+		index = index + deprel_dic.size*dim
+		grda.wco_buffer[i].ldr = net.params[{{index,index+deprel_dic.size*dim-1}}]:resize(deprel_dic.size,dim) -- right arc deprel
+		index = index + deprel_dic.size*dim
 	end
-	grad.bc = grad.params[{{index,index+(2*deprel_dic.size+1)-1}}]:resize((2*deprel_dic.size+1),1)
-	index = index + (2*deprel_dic.size+1)
+	grad.bc = {}
+	grad.bc.arc = net.params[{{index,index+3-1}}]:resize(3,1)
+	index = index + 3
+	grad.bc.rdr = net.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
+	index = index + deprel_dic.size
+	grad.bc.ldr = net.params[{{index,index+deprel_dic.size-1}}]:resize(deprel_dic.size,1)
+	index = index + deprel_dic.size
 
 	-- POS tag 
 	grad.Lpos = grad.params[{{index,index+pos_dic.size*dim-1}}]:resize(dim,pos_dic.size)
@@ -359,48 +430,128 @@ function IORNN:with_state(tree, state, mem, pos)
 end
 
 function IORNN:forward_outside(tree, state)
+	tree.arc_action = 3
+	tree.deprel_action = 0
+	if state.action <= self.deprel_dic.size then -- left arc
+		tree.arc_action = 1
+		tree.deprel_action = state.action
+	elseif state.action <= 2*self.deprel_dic.size then
+		tree.arc_action = 2
+		tree.deprel_action = state.action - self.deprel_dic.size
+	end
+
 	tree.classify = {}
-	tree.score = torch.zeros(2*self.deprel_dic.size+1,1)
-	for i = 1,N_CONTEXT do
+	tree.arc_score = torch.zeros(3,1)
+
+	for i = 1,IORNN_CONTEXT_SIZE do
 		tree.classify[i] = { 	stack = self:with_state(tree, state, state.stack, state.stack_pos-i+1),
 								buffer = self:with_state(tree, state, state.buffer, state.buffer_pos+i-1) }
-		tree.score	:addmm(self.Wci_stack[i], tree.classify[i].stack.inner)
-					:addmm(self.Wco_stack[i], tree.classify[i].stack.outer)
-					:addmm(self.Wci_buffer[i], tree.classify[i].buffer.inner)
-					:addmm(self.Wco_buffer[i], tree.classify[i].buffer.outer)
+		tree.arc_score	:addmm(self.Wci_stack[i].arc, tree.classify[i].stack.inner)
+						:addmm(self.Wco_stack[i].arc, tree.classify[i].stack.outer)
+						:addmm(self.Wci_buffer[i].arc, tree.classify[i].buffer.inner)
+						:addmm(self.Wco_buffer[i].arc, tree.classify[i].buffer.outer)
 	end
-	tree.score:add(self.bc)
-	tree.prob = safe_compute_softmax(tree.score)
-	tree.action = state.action
-	tree.cost = -math.log(tree.prob[{tree.action,1}])
+	tree.arc_score:add(self.bc.arc)
+	tree.arc_prob = safe_compute_softmax(tree.arc_score)
+	tree.arc_cost = -math.log(tree.arc_prob[{tree.arc_action,1}])
 
-	return tree.cost
+	-- if arc_action == left/right
+	tree.dr_cost = 0 
+	tree.dr_score = torch.zeros(self.deprel_dic.size,1)
+
+	if tree.arc_action == 1 then -- left
+		for i = 1,IORNN_CONTEXT_SIZE do
+			tree.dr_score	:addmm(self.Wci_stack[i].ldr, tree.classify[i].stack.inner)
+							:addmm(self.Wco_stack[i].ldr, tree.classify[i].stack.outer)
+							:addmm(self.Wci_buffer[i].ldr, tree.classify[i].buffer.inner)
+							:addmm(self.Wco_buffer[i].ldr, tree.classify[i].buffer.outer)
+		end
+		tree.dr_score:add(self.bc.ldr)
+		tree.dr_prob = safe_compute_softmax(tree.dr_score)
+		tree.dr_cost = -math.log(tree.dr_prob[{tree.deprel_action,1}])
+
+	elseif tree.arc_action == 2 then -- right
+		for i = 1,IORNN_CONTEXT_SIZE do
+			tree.dr_score	:addmm(self.Wci_stack[i].rdr, tree.classify[i].stack.inner)
+							:addmm(self.Wco_stack[i].rdr, tree.classify[i].stack.outer)
+							:addmm(self.Wci_buffer[i].rdr, tree.classify[i].buffer.inner)
+							:addmm(self.Wco_buffer[i].rdr, tree.classify[i].buffer.outer)
+		end
+		tree.dr_score:add(self.bc.rdr)
+		tree.dr_prob = safe_compute_softmax(tree.dr_score)
+		tree.dr_cost = -math.log(tree.dr_prob[{tree.deprel_action,1}])
+	end
+
+
+	return tree.arc_cost + tree.dr_cost
 end
 
 --*********************** backpropagate *********************--
 function IORNN:backpropagate_outside(tree, grad)
-	local gZc = tree.prob:clone(); gZc[{tree.action,1}] = gZc[{tree.action,1}] - 1
-	grad.bc:add(gZc)
+	local gZc_arc = tree.arc_prob:clone(); gZc_arc[{tree.arc_action,1}] = gZc_arc[{tree.arc_action,1}] - 1
+	grad.bc.arc:add(gZc_arc)
 
-	for i = 1,N_CONTEXT do
+	local gZc_dr = nil
+	if tree.dr_action > 0 then
+		gZc_dr = tree.dr_prob:clone(); gZc_dr[{tree.dr_action,1}] = gZc_dr[{tree.dr_action,1}] - 1
+	end
+	if 		tree.arc_action == 1 then	grad.bc.ldr:add(gZc_dr)
+	elseif 	tree.arc_action == 2 then 	grad.bc.rdr:add(gZc_dr) end
+
+	for i = 1,IORNN_CONTEXT_SIZE do
 		for v,typ in pairs(tree.classify[i]) do
-			grad['Wco_'..v][i]:addmm(gZc, typ.outer:t())
-			grad['Wci_'..v][i]:addmm(gZc, typ.inner:t())
+			grad['Wco_'..v][i].arc:addmm(gZc_arc, typ.outer:t())
+			grad['Wci_'..v][i].arc:addmm(gZc_arc, typ.inner:t())
+
+			if tree.arc_action == 1 then --left arc
+				grad['Wco_'..v][i].ldr:addmm(gZc_dr, typ.outer:t())
+				grad['Wci_'..v][i].ldr:addmm(gZc_dr, typ.inner:t())
+			elseif tree.arc-action == 2 then --right arc
+				grad['Wco_'..v][i].rdr:addmm(gZc_dr, typ.outer:t())
+				grad['Wci_'..v][i].rdr:addmm(gZc_dr, typ.inner:t())
+			end
 
 			-- for inner
 			if typ.inner == self.anon_inner then 
-				grad.anon_inner:addmm(self['Wci_'..v][i]:t(), gZc)
+				grad.anon_inner:addmm(self['Wci_'..v][i].arc:t(), gZc_arc)
+				if tree.arc_action == 1 then
+					grad.anon_inner:addmm(self['Wci_'..v][i].ldr:t(), gZc_dr)			
+				elseif tree.arc_action == 2 then
+					grad.anon_inner:addmm(self['Wci_'..v][i].rdr:t(), gZc_dr)
+				end
 			elseif typ.inner == self.root_inner then --ROOT
-				grad.root_inner:addmm(self['Wci_'..v][i]:t(), gZc)
+				grad.root_inner:addmm(self['Wci_'..v][i].arc:t(), gZc_arc)
+				if tree.arc_action == 1 then
+					grad.root_inner:addmm(self['Wci_'..v][i].ldr:t(), gZc_dr)			
+				elseif tree.arc_action == 2 then
+					grad.root_inner:addmm(self['Wci_'..v][i].rdr:t(), gZc_dr)
+				end
+
 			else
-				tree.gradi[{{},{typ.node_id}}]:addmm(self['Wci_'..v][i]:t(), gZc)
+				tree.gradi[{{},{typ.node_id}}]:addmm(self['Wci_'..v][i].arc:t(), gZc_arc)
+				if tree.arc_action == 1 then
+					tree.gradi[{{},{typ.node_id}}]:addmm(self['Wci_'..v][i].ldr:t(), gZc_dr)			
+				elseif tree.arc_action == 2 then
+					tree.gradi[{{},{typ.node_id}}]:addmm(self['Wci_'..v][i].rdr:t(), gZc_dr)
+				end
 			end
 	
 			-- for outer
 			if typ.outer == self.anon_outer then -- 'free' word or out-of-stack/buffer
-				grad.anon_outer:addmm(self['Wco_'..v][i]:t(), gZc)
+				grad.anon_outer:addmm(self['Wco_'..v][i].arc:t(), gZc_arc)
+				if tree.arc_action == 1 then
+					grad.anon_outer:addmm(self['Wco_'..v][i].ldr:t(), gZc_dr)			
+				elseif tree.arc_action == 2 then
+					grad.anon_outer:addmm(self['Wco_'..v][i].rdr:t(), gZc_dr)
+				end
 			else
-				local gZo = (self['Wco_'..v][i]:t() * gZc):cmul(self.funcPrime(typ.outer))
+				local gZo = self['Wco_'..v][i].arc:t() * gZc_arc
+				if tree.arc_action == 1 then
+					gZo:addmm(self['Wco_'..v][i].ldr:t(), gZc_dr)			
+				elseif tree.arc_action == 2 then
+					gZo:addmm(self['Wco_'..v][i].rdr:t(), gZc_dr)
+				end
+				gZo:cmul(self.funcPrime(typ.outer))
 				grad.bohead:add(gZo)
 				local n = #typ.depnode_id
 				for i,depnode_id in ipairs(typ.depnode_id) do
@@ -589,7 +740,7 @@ function IORNN:predict_action(states)
 	local nstates = #states
 	local scores = torch.zeros(2*self.deprel_dic.size+1, nstates)
 
-	for j = 1,N_CONTEXT do
+	for j = 1,IORNN_CONTEXT_SIZE do
 		local stack_inner = torch.repeatTensor(self.anon_inner, 1, nstates)
 		local stack_outer = torch.repeatTensor(self.anon_outer, 1, nstates)
 		local buffer_inner = torch.repeatTensor(self.anon_inner, 1, nstates)
@@ -647,10 +798,6 @@ function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 	local parse = config.parse or false
 
 	p:start('compute cost and grad')	
-
-if NPROCESS > 1 then
-else
-
 	grad.params:fill(0)  -- always make sure that this grad is intialized with 0
 
 	local cost = 0
@@ -659,40 +806,25 @@ else
 
 	p:start('process treebank')
 	for i, ds in ipairs(treebank) do
-		p:start('process tree')
 		local states = parser:extract_training_states(ds)
-		local tree = self:create_tree_for_training(ds)
-	
-		p:start('forward inside')
+		local tree = self:create_tree_for_training(ds)	
 		self:forward_inside(tree)
-		p:lap('forward inside')
 
-		p:start('outside')
 		for _,state in ipairs(states) do
 			if state.stack_pos > 0 then 
-				p:start('forward outside')
 				local lcost = self:forward_outside(tree, state)
-				p:lap('forward outside')
 				cost = cost + lcost
-				p:start('backward outside')
 				self:backpropagate_outside(tree, grad)
-				p:lap('backward outside')
-				p:start('update state')
 				self:update_with_state(tree, state)
-				p:lap('update state')
 			end
 		end
-		p:lap('outside')
 
 		nSample = nSample + #states
-		p:start('backward inside')
 		self:backpropagate_inside(tree, grad)
-		p:lap('backward inside')
 
 		for i=2,tree.wnode_id:nElement() do -- do not take the root into account
 			tword_id[tree.word_id[tree.wnode_id[i]]] = 1
 		end
-		p:lap('process tree')
 	end
 	p:lap('process treebank') 
 
@@ -714,7 +846,6 @@ else
 	return cost, grad, treebank, tword_id
 end
 
-end
 
 -- check gradient
 function IORNN:checkGradient(treebank, parser, config)
@@ -812,7 +943,7 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 	
 	local epoch = 0
 	local j = 0
-	os.execute('th eval_depparser.lua '..prefix..'_'..epoch..' '..devtreebank_path)
+	--os.execute('th eval_depparser.lua '..prefix..'_'..epoch..' '..devtreebank_path)
 
 
 	epoch = epoch + 1
@@ -856,7 +987,7 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 end
 
 
---[[********************************** test ******************************--
+--********************************** test ******************************--
 	require 'depparser'
 	torch.setnumthreads(1)
 
@@ -882,4 +1013,4 @@ end
 	config = {lambda = 1e-4, lambda_L = 1e-7}
 	net.update_L = true
 	net:checkGradient(treebank, parser, config)
-]]
+

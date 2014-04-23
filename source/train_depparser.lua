@@ -3,8 +3,9 @@ require 'utils'
 require 'dict'
 require 'xlua'
 require 'dpiornn'
+require 'dp_spec'
 
-torch.setnumthreads(1)
+torch.setnumthreads(NUM_THREADS)
 
 if #arg == 5 then
 	dic_dir_path = arg[1]
@@ -49,7 +50,7 @@ if #arg == 5 then
 		local nword = info[1]	
 		local embdim = info[2]	
 		L = torch.Tensor(f:readDouble(nword*embdim))
-					:resize(nword, embdim):t()
+						:resize(nword, embdim):t()
 		dim = embdim
 		f:close()
 		if nword ~= voca_dic.size then
@@ -73,9 +74,12 @@ if #arg == 5 then
 	model_dir = arg[4]
 	dim = tonumber(arg[5])
 
-	local parser = Depparser:new(L, voca_dic, pos_dic, deprel_dic, dim)
+	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
+							lookup = L, func = tanh, funcPrime = tanhPrime }) 
+
+	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
 	parser.mail_subject = model_dir
-	parser:train(traintreebank_path, devtreebank_path, model_dir)
+	parser:train(net, traintreebank_path, devtreebank_path, model_dir)
 
 else
 	print("[dic dir path] [treebank] [emb_model] [model dir] [dim]")

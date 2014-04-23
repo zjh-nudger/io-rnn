@@ -1,9 +1,10 @@
 require 'utils'
+require 'dp_spec'
 
 Depstruct = {}
 Depstruct_mt = { __index=Depstruct }
 
-N_DEPS = 200
+DEPSTRUCT_N_DEPS = 200
 
 -- ROOT is indexed 1, with word_id = 0, pos_id = 0, deprel_id = 0
 
@@ -17,7 +18,7 @@ function Depstruct:new( input )
 		head_id		= torch.zeros(len),
 		deprel_id	= torch.zeros(len),
 		n_deps		= torch.zeros(len),
-		dep_id		= torch.zeros(N_DEPS, len),
+		dep_id		= torch.zeros(DEPSTRUCT_N_DEPS, len),
 	}
 
 	setmetatable(ds, Depstruct_mt)
@@ -66,7 +67,7 @@ function Depstruct:create_empty_tree(n_nodes, n_words)
 				cap_id		= torch.zeros(n_nodes),
 				parent_id	= torch.zeros(n_nodes),
 				n_children	= torch.zeros(n_nodes),
-				children_id	= torch.zeros(N_DEPS, n_nodes),
+				children_id	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes),
 				wnode_id	= torch.zeros(n_words),
 				deprel_id	= torch.zeros(n_nodes) }
 end
