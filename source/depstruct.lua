@@ -75,38 +75,27 @@ end
 function Depstruct:to_torch_matrix_tree(id, node_id, tree)
 	local id = id or 1
 	local node_id = node_id or 1
-	local n_nodes = self.n_words + self.n_deps:gt(0):double():sum()
+	local n_nodes = self.n_words 
 	local tree = tree or self:create_empty_tree(n_nodes, self.n_words)
 
 	local dep_id = self.dep_id[{{},id}]
 	local n_deps = self.n_deps[id]
 
+	tree.wnode_id[id]		= node_id
+	tree.word_id[node_id]	= self.word_id[id]
+	tree.pos_id[node_id]	= self.pos_id[id]
+	tree.cap_id[node_id]	= self.cap_id[id]
+	tree.deprel_id[node_id]	= self.deprel_id[id]
 
 	if n_deps == 0 then
-		tree.wnode_id[id] = node_id	
 		tree.n_children[node_id] = 0
-		tree.word_id[node_id] = self.word_id[id]
-		tree.pos_id[node_id] = self.pos_id[id]
-		tree.cap_id[node_id] = self.cap_id[id]
-		tree.deprel_id[node_id] = self.deprel_id[id]
 		node_id = node_id + 1
-	else
-		tree.n_children[node_id] = n_deps + 1
-		if id == 0 then tree.n_children[node_id] = n_deps
-		else tree.deprel_id[node_id] = self.deprel_id[id] end
 
-		-- the head word is always the left-most child
-		tree.children_id[{1,node_id}] = node_id + 1
-		tree.wnode_id[id] = node_id + 1
-		tree.parent_id[node_id+1] = node_id
-		tree.word_id[node_id+1] = self.word_id[id]
-		tree.pos_id[node_id+1] = self.pos_id[id]
-		tree.cap_id[node_id+1] = self.cap_id[id]
-		
-		local cur_node_id = node_id + 2
+	else
+		tree.n_children[node_id] = n_deps
+		local cur_node_id = node_id + 1
 		for i = 1,n_deps do
-			local j = i + 1
-			tree.children_id[{j,node_id}] = cur_node_id
+			tree.children_id[{i,node_id}] = cur_node_id
 			tree.parent_id[cur_node_id] = node_id
 			tree,cur_node_id = self:to_torch_matrix_tree(dep_id[i], cur_node_id, tree)
 		end
@@ -116,7 +105,7 @@ function Depstruct:to_torch_matrix_tree(id, node_id, tree)
 	return tree, node_id
 end
 
---[[ test
+-- test
 require 'dict'
 
 torch.setnumthreads(1)
@@ -148,4 +137,4 @@ for line in io.lines('../data/wsj-dep/universal/data/test.conll') do
 	end
 end
 print(pos_dic)
-]]
+
