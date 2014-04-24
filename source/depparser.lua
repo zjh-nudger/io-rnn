@@ -15,6 +15,22 @@ function Depparser:new(voca_dic, pos_dic, deprel_dic)
 	return parser
 end
 
+function Depparser:load_possible_word_dr(path)
+	self.word_deprel = {}
+	for line in io.lines(path) do
+		local comps = split_string(line)
+		local word_id = self.voca_dic:get_id(comps[1])
+		local cap_id = self.voca_dic:get_cap_feature(comps[1])
+		local deprel_id = self.deprel_dic:get_id(comps[2])
+		l = self.word_deprel[word_id* 10 + cap_id]
+		if l == nil then 
+			l = {}
+			self.word_deprel[word_id* 10 + cap_id] = l
+		end
+		l[deprel_id] = 1
+	end
+end
+
 function Depparser:clone_state(state) 
 	local new_state = { n_words = state.n_words,
 						stack = state.stack:clone(), stack_pos = state.stack_pos, 
@@ -32,6 +48,33 @@ function Depparser:trans(sent, state, decision_scores, net)
 	end
 	if state.buffer_pos <= state.buffer:numel() then
 		j = state.buffer[state.buffer_pos]
+	end
+
+	-- remove impossible deprel
+	if i ~= nil and i > 1 then
+		local word_id = sent.word_id[i]
+		local cap_id = sent.cap_id[i]
+		local drs = self.word_deprel[word_id*10 + cap_id]
+		if drs then
+			for k = 1,self.deprel_dic.size do
+				if drs[k] == nil then
+					--decision_scores[k] = 0
+				end
+			end
+		end
+	end
+
+	if j ~= nil then
+		local word_id = sent.word_id[j]
+		local cap_id = sent.cap_id[j]
+		local drs = self.word_deprel[word_id*10 + cap_id]
+		if drs then
+			for k = 1,self.deprel_dic.size do
+				if drs[k] == nil then
+					--decision_scores[k+self.deprel_dic.size] = 0
+				end
+			end
+		end
 	end
 
 	-- remove impossible actions

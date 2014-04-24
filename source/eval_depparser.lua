@@ -17,6 +17,7 @@ if #arg >= 2 then
 
 	print('create parser')
 	local parser = Depparser:new(nets[1].voca_dic, nets[1].pos_dic, nets[1].deprel_dic)
+	parser:load_possible_word_dr('../data/wsj-dep/universal/dic/word_deprel.lst')
 
 	local u = arg[1]:find('/model')
 	if u == nil then parser.mail_subject = path
