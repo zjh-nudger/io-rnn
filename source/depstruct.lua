@@ -44,7 +44,7 @@ end
 
 function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 	local sent = { 'ROOT' }
-	local input = { { 0, 0, 0, 0, 0 } }
+	local input = { { 1, 1, 0, 1, 1 } } -- set mocking value for ROOT
 	for i,row in ipairs(rows) do
 		local comps = split_string(row)
 		row = { voca_dic:get_id(comps[2]),
@@ -62,14 +62,14 @@ end
 
 function Depstruct:create_empty_tree(n_nodes, n_words)
 	return {	n_nodes		= n_nodes,
-				word_id		= torch.zeros(n_nodes),
-				pos_id		= torch.zeros(n_nodes),
-				cap_id		= torch.zeros(n_nodes),
-				parent_id	= torch.zeros(n_nodes),
-				n_children	= torch.zeros(n_nodes),
-				children_id	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes),
-				wnode_id	= torch.zeros(n_words),
-				deprel_id	= torch.zeros(n_nodes) }
+				word_id		= torch.zeros(n_nodes):long(),
+				pos_id		= torch.zeros(n_nodes):long(),
+				cap_id		= torch.zeros(n_nodes):long(),
+				parent_id	= torch.zeros(n_nodes):long(),
+				n_children	= torch.zeros(n_nodes):long(),
+				children_id	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):long(),
+				wnode_id	= torch.zeros(n_words):long(),
+				deprel_id	= torch.zeros(n_nodes):long() }
 end
 
 function Depstruct:to_torch_matrix_tree(id, node_id, tree)
@@ -105,7 +105,7 @@ function Depstruct:to_torch_matrix_tree(id, node_id, tree)
 	return tree, node_id
 end
 
--- test
+--[[ test
 require 'dict'
 
 torch.setnumthreads(1)
@@ -137,4 +137,4 @@ for line in io.lines('../data/wsj-dep/universal/data/test.conll') do
 	end
 end
 print(pos_dic)
-
+]]
