@@ -237,9 +237,9 @@ function IORNN:forward_inside(tree)
 		tree.inner:fill(0)
 	end
 
-	local input = (self.Wh * self.L:index(2, tree.word_id))
-					:add(self.Lpos:index(2, tree.pos_id))
-					:add(self.Lcap:index(2, tree.cap_id))
+	local input = (self.Wh * self.L:index(2, tree.word))
+					:add(self.Lpos:index(2, tree.pos))
+					:add(self.Lcap:index(2, tree.cap))
 					:add(torch.repeatTensor(self.bh, 1, tree.n_nodes))
 	tree.inner:copy(self.func(input))
 	tree.inner[{{},{1}}]:copy(self.root_inner)
@@ -264,7 +264,7 @@ function IORNN:forward_outside(tree)
 			tree.outer[col_i] = self.anon_outer
 
 		else
-			local parent = tree.parent_id[i]
+			local parent = tree.parent[i]
 			local input_parent = 	(self.Woh * tree.inner[{{},{parent}}])
 									:addmm(self.Wop, tree.outer[{{},{parent}}])
 									:add(self.bo)
@@ -273,9 +273,9 @@ function IORNN:forward_outside(tree)
 			else
 				local input = torch.zeros(self.dim, 1)
 				for j = 1, tree.n_children[parent] do
-					local sister = tree.children_id[{j,parent}]
+					local sister = tree.children[{j,parent}]
 					if sister ~= i then
-						input:addmm(self.Wo[tree.deprel_id[sister]], tree.inner[{{},{sister}}])
+						input:addmm(self.Wo[tree.deprel[sister]], tree.inner[{{},{sister}}])
 					end
 				end
 				tree.outer[col_i] = self.func(input_parent:add(input:div(tree.n_children[parent]-1)))
@@ -294,12 +294,12 @@ function IORNN:forward_outside(tree)
 			
 			-- compute outer rep. for its children
 			for j = 1, tree.n_children[i] do
-				local child = tree.children_id[{j,i}]
+				local child = tree.children[{j,i}]
 				local col_c = {{},{child}}
 
 				-- compute constructed outer
 				if left_sister then 
-					input:addmm(self.Wo[tree.deprel_id[left_sister]], tree.inner[{{},{left_sister}}])
+					input:addmm(self.Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
 					tree.cstr_outer[col_c] = self.func(torch.div(input, j-1):add(input_head))
 				else 
 					tree.cstr_outer[col_c] = self.func(input_head + self.anon_inner)
@@ -308,7 +308,7 @@ function IORNN:forward_outside(tree)
 			end
 
 			-- compute outer rep. for EOC
-			input:addmm(self.Wo[tree.deprel_id[left_sister]], tree.inner[{{},{left_sister}}])
+			input:addmm(self.Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
 			tree.EOC_outer[col_i] = self.func(input:div(tree.n_children[i]):add(input_head))
 		end
 	end
@@ -322,23 +322,23 @@ function IORNN:forward_outside(tree)
 
 	-- Pr(pos | deprel, outer)
 	tree.pos_score	= 	(self.Wpos * tree.cstr_outer)
-						:add(self.Ldrpos:index(2, tree.deprel_id))
+						:add(self.Ldrpos:index(2, tree.deprel))
 						:add(torch.repeatTensor(self.bpos, 1, tree.n_nodes))
 	tree.pos_prob	= safe_compute_softmax(tree.pos_score)
 
 	-- Pr(word | pos, deprel, outer)
 	tree.word_score	= 	(self.Wword * tree.cstr_outer)
-						:add(self.Ldrword:index(2, tree.deprel_id))
-						:add(self.Lposword:index(2, tree.pos_id))
+						:add(self.Ldrword:index(2, tree.deprel))
+						:add(self.Lposword:index(2, tree.pos))
 						:add(torch.repeatTensor(self.bword, 1, tree.n_nodes))
 	tree.word_prob	= safe_compute_softmax(tree.word_score)
 
 	-- compute error
 	tree.total_err = 0
 	for i = 2, tree.n_nodes do
-		tree.total_err = tree.total_err - math.log(tree.deprel_prob[{tree.deprel_id[i],i}])
-										- math.log(tree.pos_prob[{tree.pos_id[i],i}])
-										- math.log(tree.word_prob[{tree.word_id[i],i}])
+		tree.total_err = tree.total_err - math.log(tree.deprel_prob[{tree.deprel[i],i}])
+										- math.log(tree.pos_prob[{tree.pos[i],i}])
+										- math.log(tree.word_prob[{tree.word[i],i}])
 	end
 	tree.total_err = tree.total_err - torch.log(tree.EOC_prob[{self.deprel_dic.size+1,{}}]):sum()
 
@@ -365,9 +365,9 @@ function IORNN:backpropagate_outside(tree, grad)
 	local gZEOC		= tree.EOC_prob		:clone()
 
 	for i = 2, tree.n_nodes do
-		gZdr[{tree.deprel_id[i],i}]	= gZdr[{tree.deprel_id[i],i}]	- 1
-		gZpos[{tree.pos_id[i],i}]	= gZpos[{tree.pos_id[i],i}]		- 1
-		gZword[{tree.word_id[i],i}]	= gZword[{tree.word_id[i],i}]	- 1
+		gZdr[{tree.deprel[i],i}]	= gZdr[{tree.deprel[i],i}]	- 1
+		gZpos[{tree.pos[i],i}]	= gZpos[{tree.pos[i],i}]		- 1
+		gZword[{tree.word[i],i}]	= gZword[{tree.word[i],i}]	- 1
 	end
 	gZdr[{{},{1}}]	:fill(0) -- don't take ROOT into account
 	gZpos[{{},{1}}]	:fill(0)
@@ -392,9 +392,9 @@ function IORNN:backpropagate_outside(tree, grad)
 	tree.gradcstro	:addmm(self.Wword:t(), gZword)
 
 	for i = 2,tree.n_nodes do
-		grad.Ldrpos[{{},{tree.deprel_id[i]}}]	:add(gZpos[{{},{i}}])
-		grad.Ldrword[{{},{tree.deprel_id[i]}}]	:add(gZword[{{},{i}}])
-		grad.Lposword[{{},{tree.pos_id[i]}}]	:add(gZword[{{},{i}}])
+		grad.Ldrpos[{{},{tree.deprel[i]}}]	:add(gZpos[{{},{i}}])
+		grad.Ldrword[{{},{tree.deprel[i]}}]	:add(gZword[{{},{i}}])
+		grad.Lposword[{{},{tree.pos[i]}}]	:add(gZword[{{},{i}}])
 	end
 
 	-- backward 
@@ -419,16 +419,16 @@ function IORNN:backpropagate_outside(tree, grad)
 		else 
 			local t = 1/tree.n_children[i]
 			for j = 1,tree.n_children[i] do
-				local child = tree.children_id[{j,i}]
+				local child = tree.children[{j,i}]
 				local col_c = {{},{child}}
-				grad.Wo[tree.deprel_id[child]]:addmm(t, gz, tree.inner[col_c]:t())
-				tree.gradi[col_c]			  :addmm(t, self.Wo[tree.deprel_id[child]]:t(), gz)
+				grad.Wo[tree.deprel[child]]:addmm(t, gz, tree.inner[col_c]:t())
+				tree.gradi[col_c]			  :addmm(t, self.Wo[tree.deprel[child]]:t(), gz)
 			end
 		end
 
 		-- for children's constr outers
 		for j = 1,tree.n_children[i] do
-			local child = tree.children_id[{j,i}]
+			local child = tree.children[{j,i}]
 			local col_c = {{},{child}}
 			local gz = tree.gradZcstro[col_c]
 
@@ -444,10 +444,10 @@ function IORNN:backpropagate_outside(tree, grad)
 			else
 				local t = 1 / (j-1)
 				for k = 1,j-1 do
-					local sister = tree.children_id[{k,i}]
+					local sister = tree.children[{k,i}]
 					local col_s = {{},{sister}}
-					grad.Wo[tree.deprel_id[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-					tree.gradi[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz)
+					grad.Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+					tree.gradi[col_s]				:addmm(t, self.Wo[tree.deprel[sister]]:t(), gz)
 				end
 			end
 		end
@@ -457,7 +457,7 @@ function IORNN:backpropagate_outside(tree, grad)
 			grad.anon_outer:add(tree.grado[{{},{1}}])
 
 		else 
-			local parent = tree.parent_id[i]
+			local parent = tree.parent[i]
 			local col_p = {{},{parent}}
 			local gz = tree.grado[col_i]:cmul(self.funcPrime(tree.outer[col_i]))
 
@@ -473,11 +473,11 @@ function IORNN:backpropagate_outside(tree, grad)
 			else
 				local t = 1 / (tree.n_children[parent] - 1)
 				for j = 1,tree.n_children[parent] do
-					local sister = tree.children_id[{j,parent}]
+					local sister = tree.children[{j,parent}]
 					if sister ~= i then
 						local col_s = {{},{sister}}
-						grad.Wo[tree.deprel_id[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-						tree.gradi[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz)
+						grad.Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+						tree.gradi[col_s]				:addmm(t, self.Wo[tree.deprel[sister]]:t(), gz)
 					end
 				end
 			end	
@@ -490,16 +490,26 @@ function IORNN:backpropagate_inside(tree, grad)
 	grad.root_inner:add(tree.gradi[{{},{1}}])
 
 	tree.gradZi = tree.gradi:cmul(self.funcPrime(tree.inner))
-	grad.Wh		:addmm(tree.gradZi[{{},{2,-1}}], self.L:index(2, tree.word_id[{{2,-1}}]):t())
+	grad.Wh		:addmm(tree.gradZi[{{},{2,-1}}], self.L:index(2, tree.word[{{2,-1}}]):t())
 	grad.bh		:add(tree.gradZi[{{},{2,-1}}]:sum(2))
 
 	for i = 2, tree.n_nodes do
 		local col = {{},{i}}
 		local gz = tree.gradZi[col]
-		grad.L[{{},{tree.word_id[i]}}]:addmm(self.Wh:t(), gz)
-		grad.Lpos[{{},{tree.pos_id[i]}}]:add(gz)
-		grad.Lcap[{{},{tree.cap_id[i]}}]:add(gz)
+		grad.L[{{},{tree.word[i]}}]:addmm(self.Wh:t(), gz)
+		grad.Lpos[{{},{tree.pos[i]}}]:add(gz)
+		grad.Lcap[{{},{tree.cap[i]}}]:add(gz)
 	end
+end
+
+function IORNN:compute_log_prob(treebank)
+	local ret = {}
+	for i, ds in ipairs(treebank) do
+		local tree = ds:to_torch_matrix_tree()
+		self:forward_inside(tree)
+		ret[i] = self:forward_outside(tree)
+	end
+	return ret
 end
 
 function IORNN:computeCostAndGrad(treebank, config, grad, parser)
@@ -511,7 +521,7 @@ function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 
 	local cost = 0
 	local nSample = 0
-	local tword_id = {}
+	local tword = {}
 
 	p:start('process treebank')
 	for i, ds in ipairs(treebank) do
@@ -522,8 +532,8 @@ function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 		self:backpropagate_inside(tree, grad)
 
 		nSample = nSample + tree.n_nodes-1
-		for i=2,tree.wnode_id:numel() do -- do not take the root into account
-			tword_id[tree.word_id[tree.wnode_id[i]]] = 1
+		for i=2,tree.wnode:numel() do -- do not take the root into account
+			tword[tree.word[tree.wnode[i]]] = 1
 		end
 	end
 	p:lap('process treebank') 
@@ -534,7 +544,7 @@ function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
 	grad_wparams:div(nSample):add(wparams * config.lambda)
 	
-	for wid,_ in pairs(tword_id) do
+	for wid,_ in pairs(tword) do
 		cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
 		grad.L[{{},{wid}}]:div(nSample):add(config.lambda_L, self.L[{{},{wid}}])
 	end 
@@ -543,7 +553,7 @@ function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 	p:lap('compute cost and grad') 
 	--p:printAll()
 
-	return cost, grad, treebank, tword_id
+	return cost, grad, treebank, tword
 end
 
 -- check gradient
@@ -603,7 +613,7 @@ function IORNN:adagrad(func, config, state)
 	local nevals = state.evalCounter
 
 	-- (1) evaluate f(x) and df/dx
-	local cost, grad, _, tword_id = func()
+	local cost, grad, _, tword = func()
 
 	-- (3) learning rate decay (annealing)
 	local weight_clr	= weight_lr / (1 + nevals*lrd)
@@ -622,7 +632,7 @@ function IORNN:adagrad(func, config, state)
 	self.params[wparamindex]:addcdiv(-weight_clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
 
 	-- for word embeddings
-	for wid,_ in pairs(tword_id) do
+	for wid,_ in pairs(tword) do
 		local col_i = {{},{wid}}
 		state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
 		torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
@@ -636,13 +646,13 @@ end
 function IORNN:train_with_adagrad(traintreebank, batchSize, 
 									maxepoch, lambda, prefix,
 									adagrad_config, adagrad_state, 
-									parser, devtreebank_path)
+									parser, devtreebank_path, kbestdevtreebank_path)
 	local nSample = #traintreebank
 	local grad = self:create_grad()
 	
 	local epoch = 0
 	local j = 0
-	--os.execute('th eval_depparser.lua '..prefix..'_'..epoch..' '..devtreebank_path)
+	os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devtreebank_path..' '..kbestdevtreebank_path)
 
 
 	epoch = epoch + 1
@@ -652,7 +662,7 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 		j = j + 1
 		if j > nSample/batchSize then 
 			self:save(prefix .. '_' .. epoch)
-			os.execute('th eval_depparser.lua '..prefix..'_'..epoch..' '..devtreebank_path)
+			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devtreebank_path..' '..kbestdevtreebank_path)
 
 			j = 1 
 			epoch = epoch + 1
@@ -666,11 +676,11 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 		end
 	
 		local function func()
-			cost, grad, subtreebank, tword_id  = self:computeCostAndGrad(subtreebank, 
+			cost, grad, subtreebank, tword  = self:computeCostAndGrad(subtreebank, 
 							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad, parser)
 
 			print('iter ' .. j .. ': ' .. cost) io.flush()		
-			return cost, grad, subtreebank, tword_id
+			return cost, grad, subtreebank, tword
 		end
 
 		p:start("optim")
@@ -686,8 +696,8 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 end
 
 
---********************************** test ******************************--
-require 'depparser'
+--[[********************************** test ******************************--
+require 'depparser_trans'
 torch.setnumthreads(1)
 
 local voca_dic = Dict:new()
@@ -711,4 +721,4 @@ local treebank,_ = parser:load_treebank('../data/wsj-dep/toy/data/train.conll')
 config = {lambda = 1e-4, lambda_L = 1e-7}
 net.update_L = true
 net:checkGradient(treebank, parser, config)
-
+]]

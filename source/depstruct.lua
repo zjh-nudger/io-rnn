@@ -6,36 +6,36 @@ Depstruct_mt = { __index=Depstruct }
 
 DEPSTRUCT_N_DEPS = 200
 
--- ROOT is indexed 1, with word_id = 0, pos_id = 0, deprel_id = 0
+-- ROOT is indexed 1, with word = 0, pos = 0, deprel = 0
 
 function Depstruct:new( input )
 	local len = #input
 	local ds = {
-		n_words 	= len,
-		word_id		= torch.zeros(len),
-		pos_id		= torch.zeros(len),
-		cap_id		= torch.zeros(len),
-		head_id		= torch.zeros(len),
-		deprel_id	= torch.zeros(len),
-		n_deps		= torch.zeros(len),
-		dep_id		= torch.zeros(DEPSTRUCT_N_DEPS, len),
+		n_words	= len,
+		word	= torch.zeros(len),
+		pos		= torch.zeros(len),
+		cap		= torch.zeros(len),
+		head	= torch.zeros(len),
+		deprel	= torch.zeros(len),
+		n_deps	= torch.zeros(len),
+		dep		= torch.zeros(DEPSTRUCT_N_DEPS, len),
 	}
 
 	setmetatable(ds, Depstruct_mt)
 
 	-- set data
 	for i,row in ipairs(input) do
-		ds.word_id[i]	 = row[1]
-		ds.pos_id[i]	 = row[2]
-		ds.cap_id[i]	 = row[5]
+		ds.word[i]	 = row[1]
+		ds.pos[i]	 = row[2]
+		ds.cap[i]	 = row[5]
 
-		ds.head_id[i]	 = row[3]
-		ds.deprel_id[i]  = row[4]
+		ds.head[i]	 = row[3]
+		ds.deprel[i] = row[4]
 		
 		local hid = row[3]
 		if hid > 0 then -- not ROOT 
 			ds.n_deps[hid] = ds.n_deps[hid] + 1
-			ds.dep_id[{ds.n_deps[hid],hid}] = i
+			ds.dep[{ds.n_deps[hid],hid}] = i
 		end
 	end
 
@@ -48,7 +48,7 @@ function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 	for i,row in ipairs(rows) do
 		local comps = split_string(row)
 		row = { voca_dic:get_id(comps[2]),
-				pos_dic:get_id(comps[5]),
+				1, --pos_dic:get_id(comps[5]),
 				tonumber(comps[7]) + 1,
 				deprel_dic:get_id(comps[8]),
 				Dict:get_cap_feature(comps[2])
@@ -62,47 +62,47 @@ end
 
 function Depstruct:create_empty_tree(n_nodes, n_words)
 	return {	n_nodes		= n_nodes,
-				word_id		= torch.zeros(n_nodes):long(),
-				pos_id		= torch.zeros(n_nodes):long(),
-				cap_id		= torch.zeros(n_nodes):long(),
-				parent_id	= torch.zeros(n_nodes):long(),
+				word		= torch.zeros(n_nodes):long(),
+				pos			= torch.zeros(n_nodes):long(),
+				cap			= torch.zeros(n_nodes):long(),
+				parent		= torch.zeros(n_nodes):long(),
 				n_children	= torch.zeros(n_nodes):long(),
-				children_id	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):long(),
-				wnode_id	= torch.zeros(n_words):long(),
-				deprel_id	= torch.zeros(n_nodes):long() }
+				children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):long(),
+				wnode		= torch.zeros(n_words):long(),
+				deprel		= torch.zeros(n_nodes):long() }
 end
 
-function Depstruct:to_torch_matrix_tree(id, node_id, tree)
+function Depstruct:to_torch_matrix_tree(id, node, tree)
 	local id = id or 1
-	local node_id = node_id or 1
+	local node = node or 1
 	local n_nodes = self.n_words 
 	local tree = tree or self:create_empty_tree(n_nodes, self.n_words)
 
-	local dep_id = self.dep_id[{{},id}]
+	local dep = self.dep[{{},id}]
 	local n_deps = self.n_deps[id]
 
-	tree.wnode_id[id]		= node_id
-	tree.word_id[node_id]	= self.word_id[id]
-	tree.pos_id[node_id]	= self.pos_id[id]
-	tree.cap_id[node_id]	= self.cap_id[id]
-	tree.deprel_id[node_id]	= self.deprel_id[id]
+	tree.wnode[id]		= node
+	tree.word[node]		= self.word[id]
+	tree.pos[node]		= self.pos[id]
+	tree.cap[node]		= self.cap[id]
+	tree.deprel[node]	= self.deprel[id]
 
 	if n_deps == 0 then
-		tree.n_children[node_id] = 0
-		node_id = node_id + 1
+		tree.n_children[node] = 0
+		node = node + 1
 
 	else
-		tree.n_children[node_id] = n_deps
-		local cur_node_id = node_id + 1
+		tree.n_children[node] = n_deps
+		local cur_node = node + 1
 		for i = 1,n_deps do
-			tree.children_id[{i,node_id}] = cur_node_id
-			tree.parent_id[cur_node_id] = node_id
-			tree,cur_node_id = self:to_torch_matrix_tree(dep_id[i], cur_node_id, tree)
+			tree.children[{i,node}] = cur_node
+			tree.parent[cur_node] = node
+			tree,cur_node = self:to_torch_matrix_tree(dep[i], cur_node, tree)
 		end
-		node_id = cur_node_id
+		node = cur_node
 	end
 
-	return tree, node_id
+	return tree, node
 end
 
 --[[ test
