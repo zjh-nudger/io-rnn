@@ -256,11 +256,33 @@ function IORNN:forward_outside(tree)
 		tree.EOC_outer	:fill(0)
 	end
 
-	tree.outer[{{},{1}}]		= self.anon_outer
-	tree.cstr_outer[{{},{1}}]	:fill(0)
-
 	for i = 1,tree.n_nodes do
 		local col_i = {{},{i}}
+
+		-- compute full outer
+		if i == 1 then -- ROOT
+			tree.outer[col_i] = self.anon_outer
+
+		else
+			local parent = tree.parent_id[i]
+			local input_parent = 	(self.Woh * tree.inner[{{},{parent}}])
+									:addmm(self.Wop, tree.outer[{{},{parent}}])
+									:add(self.bo)
+			if tree.n_children[parent] == 1 then
+				tree.outer[col_i] = self.func(input_parent:add(self.anon_inner))
+			else
+				local input = torch.zeros(self.dim, 1)
+				for j = 1, tree.n_children[parent] do
+					local sister = tree.children_id[{j,parent}]
+					if sister ~= i then
+						input:addmm(self.Wo[tree.deprel_id[sister]], tree.inner[{{},{sister}}])
+					end
+				end
+				tree.outer[col_i] = self.func(input_parent:add(input:div(tree.n_children[parent]-1)))
+			end
+		end
+
+		-- compute children's constr. outers and EOC outer
 		local input_head = (self.Woh * tree.inner[col_i]):addmm(self.Wop, tree.outer[col_i]):add(self.bo)
 
 		if tree.n_children[i] == 0 then 
@@ -272,29 +294,17 @@ function IORNN:forward_outside(tree)
 			
 			-- compute outer rep. for its children
 			for j = 1, tree.n_children[i] do
-				local child_id = tree.children_id[{j,i}]
-				local col = {{},{child_id}}
+				local child = tree.children_id[{j,i}]
+				local col_c = {{},{child}}
 
 				-- compute constructed outer
 				if left_sister then 
 					input:addmm(self.Wo[tree.deprel_id[left_sister]], tree.inner[{{},{left_sister}}])
-					tree.cstr_outer[col] = self.func(torch.div(input, j-1):add(input_head))
+					tree.cstr_outer[col_c] = self.func(torch.div(input, j-1):add(input_head))
 				else 
-					tree.cstr_outer[col] = self.func(input_head + self.anon_inner)
+					tree.cstr_outer[col_c] = self.func(input_head + self.anon_inner)
 				end
-				left_sister = child_id
-				
-				-- compute full outer
-				local ip = input:clone()
-				for k = j+1, tree.n_children[i] do
-					local sister = tree.children_id[{k,i}]
-					ip:addmm(self.Wo[tree.deprel_id[sister]], tree.inner[{{},{sister}}])
-				end
-				if tree.n_children[i] == 1 then
-					tree.outer[col] = self.func(input_head + self.anon_inner)
-				else
-					tree.outer[col] = self.func(ip:div(tree.n_children[i]-1):add(input_head))
-				end
+				left_sister = child			
 			end
 
 			-- compute outer rep. for EOC
@@ -350,10 +360,12 @@ function IORNN:backpropagate_outside(tree, grad)
 		tree.gradEOCo	:fill(0)
 	end
 
-	local gZdr		= tree.deprel_score	:clone()
-	local gZpos		= tree.pos_score	:clone()
-	local gZword	= tree.word_score	:clone()
-	local gZEOC		= tree.EOC_score	:clone()
+	local wo_root = {{},{2,-1}}
+
+	local gZdr		= tree.deprel_prob	:clone()
+	local gZpos		= tree.pos_prob		:clone()
+	local gZword	= tree.word_prob	:clone()
+	local gZEOC		= tree.EOC_prob		:clone()
 
 	for i = 2, tree.n_nodes do
 		gZdr[{tree.deprel_id[i],i}]	= gZdr[{tree.deprel_id[i],i}]	- 1
@@ -389,87 +401,104 @@ function IORNN:backpropagate_outside(tree, grad)
 	end
 
 	-- backward 
-	tree.gradEOCo:cmul(self.funcPrime(tree.EOC_outer))
-	grad.Woh	:addmm(tree.gradEOCo, tree.inner:t())
-	grad.Wop	:addmm(tree.gradEOCo, tree.outer:t())
-	grad.bo		:add(tree.gradEOCo:sum(2))
-	tree.gradi:addmm(self.Woh:t(), tree.gradEOCo)
-	tree.grado:addmm(self.Wop:t(), tree.gradEOCo)	
+	tree.gradZEOCo  = tree.gradEOCo:cmul(self.funcPrime(tree.EOC_outer))
+	tree.gradZcstro = tree.gradcstro:cmul(self.funcPrime(tree.cstr_outer))
+
+	grad.Woh	:addmm(tree.gradZEOCo, tree.inner:t())
+	grad.Wop	:addmm(tree.gradZEOCo, tree.outer:t())
+	grad.bo		:add(tree.gradZEOCo:sum(2))
+
+	tree.gradi	:addmm(self.Woh:t(), tree.gradZEOCo)
+	tree.grado	:addmm(self.Wop:t(), tree.gradZEOCo)
 
 	for i = tree.n_nodes, 1, -1 do
-		local col = {{},{i}}
+		local col_i = {{},{i}}
 
-		-- for Pr(EOC | context)
-		local gz = tree.gradEOCo[col]
+		-- for EOC outer
+		local gz = tree.gradZEOCo[col_i]
 
 		if tree.n_children[i] == 0 then
 			grad.anon_inner:add(gz)
 		else 
 			local t = 1/tree.n_children[i]
 			for j = 1,tree.n_children[i] do
-				local child_id = tree.children_id[{j,i}]
-				local col_c = {{},{child_id}}
-				grad.Wo[tree.deprel_id[child_id]]:addmm(t, gz, tree.inner[col_c]:t())
-				tree.gradi[col_c]				 :addmm(t, self.Wo[tree.deprel_id[child_id]]:t(), gz)
+				local child = tree.children_id[{j,i}]
+				local col_c = {{},{child}}
+				grad.Wo[tree.deprel_id[child]]:addmm(t, gz, tree.inner[col_c]:t())
+				tree.gradi[col_c]			  :addmm(t, self.Wo[tree.deprel_id[child]]:t(), gz)
 			end
 		end
 
-		-- for the rest
+		-- for children's constr outers
 		for j = 1,tree.n_children[i] do
-			local child_id = tree.children_id[{j,i}]
-			local col_c = {{},{child_id}}
-			local gz_cstr = tree.gradcstro[col_c]:cmul(self.funcPrime(tree.cstr_outer[col_c]))
-			local gz = tree.grado[col_c]:cmul(self.funcPrime(tree.outer[col_c]))
-			local fused_gz = gz_cstr + gz
-			
-			grad.Woh		:addmm(fused_gz, tree.inner[col]:t())
-			grad.Wop		:addmm(fused_gz, tree.outer[col]:t())
-			grad.bo			:add(fused_gz)
-			tree.gradi[col]	:addmm(self.Woh:t(), fused_gz)
-			tree.grado[col]	:addmm(self.Wop:t(), fused_gz)
-			
+			local child = tree.children_id[{j,i}]
+			local col_c = {{},{child}}
+			local gz = tree.gradZcstro[col_c]
+
+			grad.Woh:addmm(gz, tree.inner[col_i]:t())
+			grad.Wop:addmm(gz, tree.outer[col_i]:t())
+			grad.bo	:add(gz)
+
+			tree.gradi[col_i]:addmm(self.Woh:t(), gz)
+			tree.grado[col_i]:addmm(self.Wop:t(), gz)
+	
 			if j == 1 then 
-				grad.anon_inner:add(fused_gz)
+				grad.anon_inner:add(gz)
 			else
-				-- for constructed outer
 				local t = 1 / (j-1)
 				for k = 1,j-1 do
 					local sister = tree.children_id[{k,i}]
 					local col_s = {{},{sister}}
-					grad.Wo[tree.deprel_id[sister]]	:addmm(t, gz_cstr, tree.inner[col_s]:t())
-					tree.inner[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz_cstr)
+					grad.Wo[tree.deprel_id[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+					tree.inner[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz)
 				end
+			end
+		end
 
-				-- for full outer
-				local t = 1 / (tree.n_children[i] - 1)
-				for k = 1,tree.n_children[i] do
-					if k ~= j then
-						local sister = tree.children_id[{k,i}]
+		-- for full outer
+		if i == 1 then 
+			grad.anon_outer:add(tree.grado[{{},{1}}])
+
+		else 
+			local parent = tree.parent_id[i]
+			local col_p = {{},{parent}}
+			local gz = tree.grado[col_i]:cmul(self.funcPrime(tree.outer[col_i]))
+
+			grad.Woh:addmm(gz, tree.inner[col_p]:t())	
+			grad.Wop:addmm(gz, tree.outer[col_p]:t())
+			grad.bo	:add(gz)
+
+			tree.gradi[col_p]:addmm(self.Woh:t(), gz)
+			tree.grado[col_p]:addmm(self.Wop:t(), gz)
+
+			if tree.n_children[parent] == 1 then
+				grad.anon_inner:add(gz)
+			else
+				local t = 1 / (tree.n_children[parent] - 1)
+				for j = 1,tree.n_children[parent] do
+					if j ~= i then
+						local sister = tree.children_id[{j,parent}]
 						local col_s = {{},{sister}}
 						grad.Wo[tree.deprel_id[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
 						tree.inner[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz)
 					end
 				end
-
 			end	
 		end
 	end
-	
-	-- at root
-	grad.anon_outer:add(tree.grado[{{},{1}}])
 end
 
 function IORNN:backpropagate_inside(tree, grad)
 	-- root
 	grad.root_inner:add(tree.gradi[{{},{1}}])
 
-	tree.gradi	:cmul(self.funcPrime(tree.inner))
-	grad.Wh		:addmm(tree.gradi[{{},{2,-1}}], self.L:index(2, tree.word_id[{{2,-1}}]):t())
-	grad.bh		:add(tree.gradi[{{},{2,-1}}]:sum(2))
+	tree.gradZi = tree.gradi:cmul(self.funcPrime(tree.inner))
+	grad.Wh		:addmm(tree.gradZi[{{},{2,-1}}], self.L:index(2, tree.word_id[{{2,-1}}]):t())
+	grad.bh		:add(tree.gradZi[{{},{2,-1}}]:sum(2))
 
 	for i = 2, tree.n_nodes do
 		local col = {{},{i}}
-		local gz = tree.gradi[col]
+		local gz = tree.gradZi[col]
 		grad.L[{{},{tree.word_id[i]}}]:addmm(self.Wh:t(), gz)
 		grad.Lpos[{{},{tree.pos_id[i]}}]:add(gz)
 		grad.Lcap[{{},{tree.cap_id[i]}}]:add(gz)
