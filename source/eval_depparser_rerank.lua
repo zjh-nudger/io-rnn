@@ -23,7 +23,7 @@ if #arg == 3 then
 	print(parser.mail_subject)
 
 	print('eval')
-	parser:eval(net, treebank_path, kbesttreebank_path, '/tmp/parsed.conll')
+	parser:eval(net, kbesttreebank_path, treebank_path) --, '/tmp/parsed.conll')
 
 else
 	print("[net path] [...] [treebank]")

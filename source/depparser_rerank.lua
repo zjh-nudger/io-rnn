@@ -140,6 +140,8 @@ function Depparser:rerank(net, kbesttreebank)
 	local ret = {}
 
 	for i,parses in ipairs(kbesttreebank) do
+		if math.mod(i, 100) == 0 then print(i) end
+
 		local best_parse = nil
 		local best_score = -100000000
 		local log_probs = net:compute_log_prob(parses)
