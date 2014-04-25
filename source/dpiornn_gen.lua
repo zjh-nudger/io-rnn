@@ -336,10 +336,9 @@ function IORNN:forward_outside(tree)
 	-- compute error
 	tree.total_err = 0
 	for i = 2, tree.n_nodes do
-		tree.total_err = tree.total_err 
-							- math.log(tree.deprel_prob[{tree.deprel_id[i],i}])
-							- math.log(tree.pos_prob[{tree.pos_id[i],i}])
-							- math.log(tree.word_prob[{tree.word_id[i],i}])
+		tree.total_err = tree.total_err - math.log(tree.deprel_prob[{tree.deprel_id[i],i}])
+										- math.log(tree.pos_prob[{tree.pos_id[i],i}])
+										- math.log(tree.word_prob[{tree.word_id[i],i}])
 	end
 	tree.total_err = tree.total_err - torch.log(tree.EOC_prob[{self.deprel_dic.size+1,{}}]):sum()
 
@@ -359,8 +358,6 @@ function IORNN:backpropagate_outside(tree, grad)
 		tree.gradcstro	:fill(0)
 		tree.gradEOCo	:fill(0)
 	end
-
-	local wo_root = {{},{2,-1}}
 
 	local gZdr		= tree.deprel_prob	:clone()
 	local gZpos		= tree.pos_prob		:clone()
@@ -450,7 +447,7 @@ function IORNN:backpropagate_outside(tree, grad)
 					local sister = tree.children_id[{k,i}]
 					local col_s = {{},{sister}}
 					grad.Wo[tree.deprel_id[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-					tree.inner[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz)
+					tree.gradi[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz)
 				end
 			end
 		end
@@ -476,11 +473,11 @@ function IORNN:backpropagate_outside(tree, grad)
 			else
 				local t = 1 / (tree.n_children[parent] - 1)
 				for j = 1,tree.n_children[parent] do
-					if j ~= i then
-						local sister = tree.children_id[{j,parent}]
+					local sister = tree.children_id[{j,parent}]
+					if sister ~= i then
 						local col_s = {{},{sister}}
 						grad.Wo[tree.deprel_id[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-						tree.inner[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz)
+						tree.gradi[col_s]				:addmm(t, self.Wo[tree.deprel_id[sister]]:t(), gz)
 					end
 				end
 			end	
