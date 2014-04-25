@@ -520,7 +520,7 @@ function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 	for i, ds in ipairs(treebank) do
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
-		local lcost = self:forward_outside(tree)
+		cost = cost + self:forward_outside(tree)
 		self:backpropagate_outside(tree, grad)
 		self:backpropagate_inside(tree, grad)
 
