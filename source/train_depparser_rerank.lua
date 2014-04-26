@@ -69,9 +69,9 @@ if #arg == 5 then
 -------------------------- train depparser ------------------
 
 	print('training...')
-	traintreebank_path = data_path .. 'train-small.conll'
-	devtreebank_path = data_path .. 'dev.conll'
-	kbestdevtreebank_path = data_path .. 'dev-10best-mst.conll'
+	traindsbank_path = data_path .. 'train-small.conll'
+	devdsbank_path = data_path .. 'dev.conll'
+	kbestdevdsbank_path = data_path .. 'dev-10best-mst.conll'
 
 	model_dir = arg[4]
 	dim = tonumber(arg[5])
@@ -81,8 +81,8 @@ if #arg == 5 then
 
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
 	parser.mail_subject = model_dir
-	parser:train(net, traintreebank_path, devtreebank_path, kbestdevtreebank_path, model_dir)
+	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
 
 else
-	print("[dic dir path] [treebank] [emb_model] [model dir] [dim]")
+	print("[dic dir] [dsbank dir] [emb_model] [model dir] [dim]")
 end
