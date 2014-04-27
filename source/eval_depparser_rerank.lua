@@ -6,9 +6,10 @@ require 'dpiornn_gen'
 
 torch.setnumthreads(1)
 
-if #arg == 3 then
+if #arg >= 3 then
 	treebank_path = arg[2]
 	kbesttreebank_path = arg[3]
+	K = tonumber(arg[4]) or 10
 
 	print('load net')
 	local net = IORNN:load(arg[1])
@@ -23,8 +24,19 @@ if #arg == 3 then
 	print(parser.mail_subject)
 
 	print('eval')
-	parser:eval(net, kbesttreebank_path, treebank_path) --, '/tmp/parsed.conll')
+--[[
+	print('oracle-best')
+	parser:eval('best', kbesttreebank_path, treebank_path, nil, K)
+
+	print('oracle-worst')
+	parser:eval('worst', kbesttreebank_path, treebank_path, nil, K)
+
+	print('first')
+	parser:eval('first', kbesttreebank_path, treebank_path, nil, K)
+]]
+	print('IORNN')
+	parser:eval(net, kbesttreebank_path, treebank_path, nil, K)
 
 else
-	print("[net path] [...] [treebank]")
+	print("[net path] [gold]  [kbest] [K] ")
 end

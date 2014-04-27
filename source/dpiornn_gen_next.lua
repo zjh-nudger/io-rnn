@@ -230,334 +230,392 @@ end
 
 
 --************************ forward **********************--
-function IORNN:forward_inside(forest)
-	if forest.inner == nil then
-		forest.inner = torch.zeros(self.dim, forest.n_nodes)
+function IORNN:forward_inside(tree)
+	if tree.inner == nil then
+		tree.inner = torch.zeros(self.dim, tree.n_nodes)
 	else
-		forest.inner:fill(0)
+		tree.inner:fill(0)
 	end
 
-	local input = (self.Wh * self.L:index(2, forest.word))
-					:add(self.Lpos:index(2, forest.pos))
-					:add(self.Lcap:index(2, forest.cap))
-					:add(torch.repeatTensor(self.bh, 1, forest.n_nodes))
-	forest.inner:copy(self.func(input))
-
-	for i = 1, forest.n_trees do
-		forest.inner[{{},{forest.tree_index[{1,i}]}}]:copy(self.root_inner)
-	end
+	local input = (self.Wh * self.L:index(2, tree.word))
+					:add(self.Lpos:index(2, tree.pos))
+					:add(self.Lcap:index(2, tree.cap))
+					:add(torch.repeatTensor(self.bh, 1, tree.n_nodes))
+	tree.inner:copy(self.func(input))
+	tree.inner[{{},{1}}]:copy(self.root_inner)
 end
 
-function IORNN:forward_outside(forest)
-
-	-- create matrixes
-	local attrs = { 'outer', 'cstr_outer', 'EOC_outer', 
-					'deprel_score', 'deprel_prob', 'EOC_score', 'EOC_prob',
-					'pos_score', 'pos_prob', 'word_score', 'word_prob' }
-
-	if forest.outer == nil then 
-		forest.outer 		= torch.zeros(self.dim, forest.n_nodes)
-		forest.cstr_outer 	= torch.zeros(self.dim, forest.n_nodes)
-		forest.EOC_outer 	= torch.zeros(self.dim, forest.n_nodes)
-
-		forest.deprel_score	= torch.zeros(self.deprel_dic.size+1, forest.n_nodes)
-		forest.deprel_prob	= torch.zeros(self.deprel_dic.size+1, forest.n_nodes)
-		forest.EOC_score	= torch.zeros(self.deprel_dic.size+1, forest.n_nodes)
-		forest.EOC_prob		= torch.zeros(self.deprel_dic.size+1, forest.n_nodes)
-
-		forest.pos_score	= torch.zeros(self.pos_dic.size, forest.n_nodes)
-		forest.pos_prob		= torch.zeros(self.pos_dic.size, forest.n_nodes)
-
-		forest.word_score	= torch.zeros(self.voca_dic.size, forest.n_nodes)
-		forest.word_prob	= torch.zeros(self.voca_dic.size, forest.n_nodes)
+function IORNN:forward_outside(tree)
+	if tree.outer == nil then 
+		tree.outer		= torch.zeros(self.dim, tree.n_nodes)
+		tree.cstr_outer	= torch.zeros(self.dim, tree.n_nodes) -- outer rep. during construction
+		tree.EOC_outer	= torch.zeros(self.dim, tree.n_nodes)
 	else
-		for _,attr in ipairs(attrs) do
-			forest[attr]:fill(0)
-		end
+		tree.outer		:fill(0)
+		tree.cstr_outer	:fill(0)
+		tree.EOC_outer	:fill(0)
 	end
 
-	-- compute outers
-	for t = 1, forest.n_trees do 
-	local root_id = forest.tree_index[{1,t}]
-	local end_id = forest.tree_index[{2,t}]
-
-	for i = root_id, end_id  do
+	for i = 1,tree.n_nodes do
 		local col_i = {{},{i}}
 
 		-- compute full outer
-		if i == root_id then -- ROOT
-			forest.outer[col_i]:copy(self.anon_outer)
+		if i == 1 then -- ROOT
+			tree.outer[col_i] = self.anon_outer
 
 		else
-			local parent = forest.parent[i]
-			local input_parent = 	(self.Woh * forest.inner[{{},{parent}}])
-									:addmm(self.Wop, forest.outer[{{},{parent}}])
+			local parent = tree.parent[i]
+			local input_parent = 	(self.Woh * tree.inner[{{},{parent}}])
+									:addmm(self.Wop, tree.outer[{{},{parent}}])
 									:add(self.bo)
-			if forest.n_children[parent] == 1 then
-				forest.outer[col_i] = self.func(input_parent:add(self.anon_inner))
+			if tree.n_children[parent] == 1 then
+				tree.outer[col_i] = self.func(input_parent:add(self.anon_inner))
 			else
 				local input = torch.zeros(self.dim, 1)
-				for j = 1, forest.n_children[parent] do
-					local sister = forest.children[{j,parent}]
+				for j = 1, tree.n_children[parent] do
+					local sister = tree.children[{j,parent}]
 					if sister ~= i then
-						input:addmm(self.Wo[forest.deprel[sister]], forest.inner[{{},{sister}}])
+						input:addmm(self.Wo[tree.deprel[sister]], tree.inner[{{},{sister}}])
 					end
 				end
-				forest.outer[col_i] = self.func(input_parent:add(input:div(forest.n_children[parent]-1)))
+				tree.outer[col_i] = self.func(input_parent:add(input:div(tree.n_children[parent]-1)))
 			end
 		end
 
 		-- compute children's constr. outers and EOC outer
-		local input_head = (self.Woh * forest.inner[col_i]):addmm(self.Wop, forest.outer[col_i]):add(self.bo)
+		local input_head = (self.Woh * tree.inner[col_i]):addmm(self.Wop, tree.outer[col_i]):add(self.bo)
 
-		if forest.n_children[i] == 0 then 
-			forest.EOC_outer[col_i] = self.func(input_head+self.anon_inner)
+		if tree.n_children[i] == 0 then 
+			tree.EOC_outer[col_i] = self.func(input_head+self.anon_inner)
 
 		else 
 			local input			= torch.zeros(self.dim, 1)
 			local left_sister	= nil
 			
 			-- compute outer rep. for its children
-			for j = 1, forest.n_children[i] do
-				local child = forest.children[{j,i}]
+			for j = 1, tree.n_children[i] do
+				local child = tree.children[{j,i}]
 				local col_c = {{},{child}}
 
 				-- compute constructed outer
 				if left_sister then 
-					input:addmm(self.Wo[forest.deprel[left_sister]], forest.inner[{{},{left_sister}}])
-					forest.cstr_outer[col_c] = self.func(torch.div(input, j-1):add(input_head))
+					input:addmm(self.Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+					tree.cstr_outer[col_c] = self.func(torch.div(input, j-1):add(input_head))
 				else 
-					forest.cstr_outer[col_c] = self.func(input_head + self.anon_inner)
+					tree.cstr_outer[col_c] = self.func(input_head + self.anon_inner)
 				end
-				left_sister = child
+				left_sister = child			
 			end
 
 			-- compute outer rep. for EOC
-			input:addmm(self.Wo[forest.deprel[left_sister]], forest.inner[{{},{left_sister}}])
-			forest.EOC_outer[col_i] = self.func(input:div(forest.n_children[i]):add(input_head))
+			input:addmm(self.Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+			tree.EOC_outer[col_i] = self.func(input:div(tree.n_children[i]):add(input_head))
 		end
-	end
 	end
 
 	-- compute probabilities
 	-- Pr(deprel | outer)
-	forest.deprel_score	= (self.Wdr * forest.cstr_outer):add(torch.repeatTensor(self.bdr, 1, forest.n_nodes))
-	forest.deprel_prob	= safe_compute_softmax(forest.deprel_score)
-	forest.EOC_score	= (self.Wdr * forest.EOC_outer):add(torch.repeatTensor(self.bdr, 1, forest.n_nodes))
-	forest.EOC_prob		= safe_compute_softmax(forest.EOC_score)
+	tree.deprel_score	= (self.Wdr * tree.cstr_outer):add(torch.repeatTensor(self.bdr, 1, tree.n_nodes))
+	tree.deprel_prob	= safe_compute_softmax(tree.deprel_score)
+	tree.EOC_score	= (self.Wdr * tree.EOC_outer):add(torch.repeatTensor(self.bdr, 1, tree.n_nodes))
+	tree.EOC_prob	= safe_compute_softmax(tree.EOC_score)
 
 	-- Pr(pos | deprel, outer)
-	forest.pos_score	= 	(self.Wpos * forest.cstr_outer)
-									:add(self.Ldrpos:index(2, forest.deprel))
-									:add(torch.repeatTensor(self.bpos, 1, forest.n_nodes))
-	forest.pos_prob		= safe_compute_softmax(forest.pos_score)
+	tree.pos_score	= 	(self.Wpos * tree.cstr_outer)
+						:add(self.Ldrpos:index(2, tree.deprel))
+						:add(torch.repeatTensor(self.bpos, 1, tree.n_nodes))
+	tree.pos_prob	= safe_compute_softmax(tree.pos_score)
 
 	-- Pr(word | pos, deprel, outer)
-	forest.word_score	= 	(self.Wword * forest.cstr_outer)
-									:add(self.Ldrword:index(2, forest.deprel))
-									:add(self.Lposword:index(2, forest.pos))
-									:add(torch.repeatTensor(self.bword, 1, forest.n_nodes))
-	forest.word_prob	= safe_compute_softmax(forest.word_score)
+	tree.word_score	= 	(self.Wword * tree.cstr_outer)
+						:add(self.Ldrword:index(2, tree.deprel))
+						:add(self.Lposword:index(2, tree.pos))
+						:add(torch.repeatTensor(self.bword, 1, tree.n_nodes))
+	tree.word_prob	= safe_compute_softmax(tree.word_score)
 
 	-- compute error
-	local tree_err = torch.zeros(forest.n_trees)
-	for t = 1, forest.n_trees do
-		for i = forest.tree_index[{1,t}]+1, forest.tree_index[{2,t}] do
-			tree_err[t] = tree_err[t]	- math.log(forest.deprel_prob[{forest.deprel[i],i}])
-										- math.log(forest.pos_prob[{forest.pos[i],i}])
-										- math.log(forest.word_prob[{forest.word[i],i}])
-		end
-		tree_err[t] = tree_err[t] - torch.log(forest.EOC_prob[{self.deprel_dic.size+1,{forest.tree_index[{1,t}], forest.tree_index[{2,t}]}}]):sum()
+	tree.total_err = 0
+	for i = 2, tree.n_nodes do
+		tree.total_err = tree.total_err - math.log(tree.deprel_prob[{tree.deprel[i],i}])
+										- math.log(tree.pos_prob[{tree.pos[i],i}])
+										- math.log(tree.word_prob[{tree.word[i],i}])
 	end
+	tree.total_err = tree.total_err - torch.log(tree.EOC_prob[{self.deprel_dic.size+1,{}}]):sum()
 
-	return tree_err
+	return tree.total_err
 end
 
 --*********************** backpropagate *********************--
-function IORNN:backpropagate_outside(forest, grad)
-
-	-- create matrices
-	local attrs = {'gradi', 'grado', 'gradcstro', 'gradEOCo'}
-
-	if forest.gradi == nil then
-		for _,attr in ipairs(attrs) do
-			forest[attr] = torch.zeros(self.dim, forest.n_nodes)
-		end
+function IORNN:backpropagate_outside(tree, grad)
+	if tree.gradi == nil then
+		tree.gradi		= torch.zeros(self.dim, tree.n_nodes)
+		tree.grado		= torch.zeros(self.dim, tree.n_nodes)
+		tree.gradcstro	= torch.zeros(self.dim, tree.n_nodes)
+		tree.gradEOCo	= torch.zeros(self.dim, tree.n_nodes)
 	else
-		for _,attr in ipairs(attrs) do
-			forest[attr]:fill(0)
-		end
+		tree.gradi		:fill(0)
+		tree.grado		:fill(0)
+		tree.gradcstro	:fill(0)
+		tree.gradEOCo	:fill(0)
 	end
 
-	-- compute grads for classification
-	local gZdr		= forest.deprel_prob
-	local gZpos		= forest.pos_prob
-	local gZword	= forest.word_prob
-	local gZEOC		= forest.EOC_prob
+	local gZdr		= tree.deprel_prob	:clone()
+	local gZpos		= tree.pos_prob		:clone()
+	local gZword	= tree.word_prob	:clone()
+	local gZEOC		= tree.EOC_prob		:clone()
 
-	for i = 1, forest.n_nodes do
-		gZdr	[{forest.deprel[i],i}]	= gZdr	[{forest.deprel[i],i}]	- 1
-		gZpos	[{forest.pos[i],i}]		= gZpos	[{forest.pos[i],i}]		- 1
-		gZword	[{forest.word[i],i}]	= gZword[{forest.word[i],i}]	- 1
+	for i = 2, tree.n_nodes do
+		gZdr[{tree.deprel[i],i}]	= gZdr[{tree.deprel[i],i}]	- 1
+		gZpos[{tree.pos[i],i}]	= gZpos[{tree.pos[i],i}]		- 1
+		gZword[{tree.word[i],i}]	= gZword[{tree.word[i],i}]	- 1
 	end
-
-	for t = 1,forest.n_trees do
-		local root = forest.tree_index[{1,t}]
-		gZdr	[{{},{root}}]:fill(0) -- don't take ROOT into account
-		gZpos	[{{},{root}}]:fill(0)
-		gZword	[{{},{root}}]:fill(0)
-	end
+	gZdr[{{},{1}}]	:fill(0) -- don't take ROOT into account
+	gZpos[{{},{1}}]	:fill(0)
+	gZword[{{},{1}}]:fill(0)
 
 	gZEOC[{self.deprel_dic.size+1,{}}]:add(-1)
 
 	-- for Pr( . | context)
-	grad.Wdr		:addmm(gZdr, forest.cstr_outer:t())
-					:addmm(gZEOC, forest.EOC_outer:t())
+	grad.Wdr		:addmm(gZdr, tree.cstr_outer:t())
+					:addmm(gZEOC, tree.EOC_outer:t())
 	grad.bdr		:add(gZdr:sum(2))
 					:add(gZEOC:sum(2))
+	tree.gradcstro	:addmm(self.Wdr:t(), gZdr)
+	tree.gradEOCo	:addmm(self.Wdr:t(), gZEOC)
 
-	forest.gradcstro:addmm(self.Wdr:t(), gZdr)
-	forest.gradEOCo	:addmm(self.Wdr:t(), gZEOC)
-
-	grad.Wpos		:addmm(gZpos, forest.cstr_outer:t())
+	grad.Wpos		:addmm(gZpos, tree.cstr_outer:t())
 	grad.bpos		:add(gZpos:sum(2))
-	forest.gradcstro:addmm(self.Wpos:t(), gZpos)
+	tree.gradcstro	:addmm(self.Wpos:t(), gZpos)
 
-	grad.Wword		:addmm(gZword, forest.cstr_outer:t())
+	grad.Wword		:addmm(gZword, tree.cstr_outer:t())
 	grad.bword		:add(gZword:sum(2))
-	forest.gradcstro:addmm(self.Wword:t(), gZword)
+	tree.gradcstro	:addmm(self.Wword:t(), gZword)
 
-	for t = 1, forest.n_trees do
-		for i = forest.tree_index[{1,t}]+1, forest.tree_index[{2,t}] do
-			grad.Ldrpos[{{},{forest.deprel[i]}}]	:add(gZpos[{{},{i}}])
-			grad.Ldrword[{{},{forest.deprel[i]}}]	:add(gZword[{{},{i}}])
-			grad.Lposword[{{},{forest.pos[i]}}]		:add(gZword[{{},{i}}])
-		end
+	for i = 2,tree.n_nodes do
+		grad.Ldrpos[{{},{tree.deprel[i]}}]	:add(gZpos[{{},{i}}])
+		grad.Ldrword[{{},{tree.deprel[i]}}]	:add(gZword[{{},{i}}])
+		grad.Lposword[{{},{tree.pos[i]}}]	:add(gZword[{{},{i}}])
 	end
 
 	-- backward 
-	forest.gradZEOCo  = forest.gradEOCo	:cmul(self.funcPrime(forest.EOC_outer))
-	forest.gradZcstro = forest.gradcstro:cmul(self.funcPrime(forest.cstr_outer))
+	tree.gradZEOCo  = tree.gradEOCo:cmul(self.funcPrime(tree.EOC_outer))
+	tree.gradZcstro = tree.gradcstro:cmul(self.funcPrime(tree.cstr_outer))
 
-	grad.Woh	:addmm(forest.gradZEOCo, forest.inner:t())
-	grad.Wop	:addmm(forest.gradZEOCo, forest.outer:t())
-	grad.bo		:add(forest.gradZEOCo:sum(2))
+	grad.Woh	:addmm(tree.gradZEOCo, tree.inner:t())
+	grad.Wop	:addmm(tree.gradZEOCo, tree.outer:t())
+	grad.bo		:add(tree.gradZEOCo:sum(2))
 
-	forest.gradi	:addmm(self.Woh:t(), forest.gradZEOCo)
-	forest.grado	:addmm(self.Wop:t(), forest.gradZEOCo)
+	tree.gradi	:addmm(self.Woh:t(), tree.gradZEOCo)
+	tree.grado	:addmm(self.Wop:t(), tree.gradZEOCo)
 
-	for t = 1, forest.n_trees do
-	local root = forest.tree_index[{1,t}]
-	local endid	 = forest.tree_index[{2,t}]
-
-	for i = endid, root, -1 do
+	for i = tree.n_nodes, 1, -1 do
 		local col_i = {{},{i}}
 
 		-- for EOC outer
-		local gz = forest.gradZEOCo[col_i]
+		local gz = tree.gradZEOCo[col_i]
 
-		if forest.n_children[i] == 0 then
+		if tree.n_children[i] == 0 then
 			grad.anon_inner:add(gz)
-
 		else 
-			local num = 1/forest.n_children[i]
-			for j = 1,forest.n_children[i] do
-				local child = forest.children[{j,i}]
+			local t = 1/tree.n_children[i]
+			for j = 1,tree.n_children[i] do
+				local child = tree.children[{j,i}]
 				local col_c = {{},{child}}
-				grad.Wo[forest.deprel[child]]	:addmm(num, gz, forest.inner[col_c]:t())
-				forest.gradi[col_c]				:addmm(num, self.Wo[forest.deprel[child]]:t(), gz)
+				grad.Wo[tree.deprel[child]]:addmm(t, gz, tree.inner[col_c]:t())
+				tree.gradi[col_c]			  :addmm(t, self.Wo[tree.deprel[child]]:t(), gz)
 			end
 		end
 
 		-- for children's constr outers
-		for j = 1,forest.n_children[i] do
-			local child = forest.children[{j,i}]
+		for j = 1,tree.n_children[i] do
+			local child = tree.children[{j,i}]
 			local col_c = {{},{child}}
-			local gz = forest.gradZcstro[col_c]
+			local gz = tree.gradZcstro[col_c]
 
-			grad.Woh:addmm(gz, forest.inner[col_i]:t())
-			grad.Wop:addmm(gz, forest.outer[col_i]:t())
+			grad.Woh:addmm(gz, tree.inner[col_i]:t())
+			grad.Wop:addmm(gz, tree.outer[col_i]:t())
 			grad.bo	:add(gz)
 
-			forest.gradi[col_i]:addmm(self.Woh:t(), gz)
-			forest.grado[col_i]:addmm(self.Wop:t(), gz)
+			tree.gradi[col_i]:addmm(self.Woh:t(), gz)
+			tree.grado[col_i]:addmm(self.Wop:t(), gz)
 	
 			if j == 1 then 
 				grad.anon_inner:add(gz)
 			else
 				local t = 1 / (j-1)
 				for k = 1,j-1 do
-					local sister = forest.children[{k,i}]
+					local sister = tree.children[{k,i}]
 					local col_s = {{},{sister}}
-					grad.Wo[forest.deprel[sister]]	:addmm(t, gz, forest.inner[col_s]:t())
-					forest.gradi[col_s]				:addmm(t, self.Wo[forest.deprel[sister]]:t(), gz)
+					grad.Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+					tree.gradi[col_s]				:addmm(t, self.Wo[tree.deprel[sister]]:t(), gz)
 				end
 			end
 		end
 
 		-- for full outer
-		if i == root then 
-			grad.anon_outer:add(forest.grado[{{},{root}}])
+		if i == 1 then 
+			grad.anon_outer:add(tree.grado[{{},{1}}])
 
 		else 
-			local parent = forest.parent[i]
+			local parent = tree.parent[i]
 			local col_p = {{},{parent}}
-			local gz = forest.grado[col_i]:cmul(self.funcPrime(forest.outer[col_i]))
-	
-			grad.Woh:addmm(gz, forest.inner[col_p]:t())	
-			grad.Wop:addmm(gz, forest.outer[col_p]:t())
+			local gz = tree.grado[col_i]:cmul(self.funcPrime(tree.outer[col_i]))
+
+			grad.Woh:addmm(gz, tree.inner[col_p]:t())	
+			grad.Wop:addmm(gz, tree.outer[col_p]:t())
 			grad.bo	:add(gz)
 
-			forest.gradi[col_p]:addmm(self.Woh:t(), gz)
-			forest.grado[col_p]:addmm(self.Wop:t(), gz)
+			tree.gradi[col_p]:addmm(self.Woh:t(), gz)
+			tree.grado[col_p]:addmm(self.Wop:t(), gz)
 
-			if forest.n_children[parent] == 1 then
+			if tree.n_children[parent] == 1 then
 				grad.anon_inner:add(gz)
 			else
-				local num = 1 / (forest.n_children[parent] - 1)
-				for j = 1,forest.n_children[parent] do
-					local sister = forest.children[{j,parent}]
+				local t = 1 / (tree.n_children[parent] - 1)
+				for j = 1,tree.n_children[parent] do
+					local sister = tree.children[{j,parent}]
 					if sister ~= i then
 						local col_s = {{},{sister}}
-						grad.Wo[forest.deprel[sister]]	:addmm(num, gz, forest.inner[col_s]:t())
-						forest.gradi[col_s]				:addmm(num, self.Wo[forest.deprel[sister]]:t(), gz)
+						grad.Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+						tree.gradi[col_s]				:addmm(t, self.Wo[tree.deprel[sister]]:t(), gz)
 					end
 				end
 			end	
 		end
 	end
+end
+
+function IORNN:backpropagate_inside(tree, grad)
+	-- root
+	grad.root_inner:add(tree.gradi[{{},{1}}])
+
+	tree.gradZi = tree.gradi:cmul(self.funcPrime(tree.inner))
+	grad.Wh		:addmm(tree.gradZi[{{},{2,-1}}], self.L:index(2, tree.word[{{2,-1}}]):t())
+	grad.bh		:add(tree.gradZi[{{},{2,-1}}]:sum(2))
+
+	for i = 2, tree.n_nodes do
+		local col = {{},{i}}
+		local gz = tree.gradZi[col]
+		grad.L[{{},{tree.word[i]}}]:addmm(self.Wh:t(), gz)
+		grad.Lpos[{{},{tree.pos[i]}}]:add(gz)
+		grad.Lcap[{{},{tree.cap[i]}}]:add(gz)
 	end
 end
 
-function IORNN:backpropagate_inside(forest, grad)
-	-- root
-	grad.root_inner:add(forest.gradi:index(2, forest.tree_index[{1,{}}]):sum(2))
+function IORNN:greedy_parse(sent, tree, node, word_position)
+	local tree = tree or nil
+	local node = node or 1
+	local col = {{},{node}}
 
-	forest.gradZi 	= forest.gradi:cmul(self.funcPrime(forest.inner))
-	for t = 1,forest.n_trees do 
-		forest.gradZi[{{},forest.tree_index[{1,t}]}]:fill(0)
-	end
-	grad.Wh	:addmm(forest.gradZi, self.L:index(2, forest.word):t())
-	grad.bh	:add(forest.gradZi:sum(2))
+	-- at the begining
+	if tree == nil then
+		local tree = Depstruct:create_empty_tree(sent.n_words)
+		tree.inner = torch.zeros(self.dim, sent.n_words)
+		tree.outer = torch.zeros(self.dim, sent.n_words)
 
-	for t = 1, forest.n_trees do
-		for i = forest.tree_index[{1,t}]+1, forest.tree_index[{2,t}] do
-			local col = {{},{i}}
-			local gz = forest.gradZi[col]
-			grad.L[{{},{forest.word[i]}}]:addmm(self.Wh:t(), gz)
-			grad.Lpos[{{},{forest.pos[i]}}]:add(gz)
-			grad.Lcap[{{},{forest.cap[i]}}]:add(gz)
+		-- set ROOT
+		tree.n_nodes = 1
+		tree.wnode[node] = 1
+		tree.inner[{{},{1}}]:copy(self.root_inner)
+		tree.outer[{{},{1}}]:copy(self.anon_outer)
+
+		-- greedy search/build 
+		local sent.free = torch.ones(self.n_words)
+		sent.free[1] = 0
+		sent.last_done_word_position = 0
+
+	else
+		-- compute inner
+		local input = (self.Wh * self.L[{{},{tree.word[node]}}])
+						:add(self.Lpos[{{},{tree.pos[node]}}])
+						:add(self.Lcap[{{},{tree.cap[node]}}])
+						:add(self.bh)
+		tree.inner[col]:copy(self.func(input))
+
+		-- compute outer
+		local parent = tree.parent[node]
+		local input_parent = 	(self.Woh * tree.inner[{{},{parent}}])
+								:addmm(self.Wop, tree.outer[{{},{parent}}])
+								:add(self.bo)
+		if tree.n_children[parent] == 1 then
+			tree.outer[col] = self.func(input_parent:add(self.anon_inner))
+		else
+			local input = torch.zeros(self.dim, 1)
+			for j = 1, tree.n_children[parent] do
+				local sister = tree.children[{j,parent}]
+				if sister ~= i then
+					input:addmm(self.Wo[tree.deprel[sister]], tree.inner[{{},{sister}}])
+				end
+			end
+			tree.outer[col] = self.func(input_parent:add(input:div(tree.n_children[parent]-1)))
 		end
 	end
+
+	tree.wnode[word_position] = node
+	sent.free[word_position] = 0
+
+	-- generate first child
+	local input_head = (self.Woh * tree.inner[col])
+						:addmm(self.Wop, tree.outer[col])
+						:add(self.bo)
+	local input = torch.zeros(self.dim, 1)
+
+	while true do
+		-- compute constructed outer
+		local cstr_outer = nil
+		if tree.n_children[node] > 0 then 
+			local left_sister = tree.n_nodes
+			input:addmm(self.Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+			cstr_outer = self.func(torch.div(input, tree.n_children[node]):add(input_head))
+		else 
+			tree.cstr_outer = self.func(input_head + self.anon_inner)
+		end
+		
+		-- compute Pr(deprel | cstr_outer)
+		deprel_score = (self.Wdr * cstr_outer):add(self.bdr)
+		if sent.last_done_word_position < word_position - 1 then -- if there is a free word before this word, don't "close" it
+			deprel_score[self.deprel_dic.size+1] = 0
+		end
+		deprel_prob	 = safe_compute_softmax(deprel_score)[{{},1}]
+
+		local dr_prob, dr = deprel_prob:max(1)
+		dr_prob = dr_prob[1]; dr = dr[1]
+		if dr == self.deprel_dic.size + 1 then break end -- EOC 
+
+		-- find free words
+		for dir = 1,2 do
+			if dir == 1 and 
+			local candidates = {}
+			
+			-- Pr(pos | deprel, outer)
+			pos_score	= 	(self.Wpos * cstr_outer)
+							:add(self.Ldrpos[{{},{dr}}])
+							:add(self.bpos)
+			pos_prob	= safe_compute_softmax(pos_score)
+
+			-- Pr(word | pos, deprel, outer)
+			word_score	= 	(self.Wword * cstr_outer)
+								:add(self.Ldrword:index(2, tree.deprel))
+								:add(self.Lposword:index(2, tree.pos))
+							:add(torch.repeatTensor(self.bword, 1, tree.n_nodes))
+	tree.word_prob	= safe_compute_softmax(tree.word_score)
+
+
+	end
 end
 
-function IORNN:compute_log_prob(dsbank)
-	local forest = Depstruct:to_torch_matrix_forest(dsbank)
-	self:forward_inside(forest)
-	return self:forward_outside(forest)
+function IORNN:compute_log_prob(treebank)
+	local ret = {}
+	for i, ds in ipairs(treebank) do
+		local tree = ds:to_torch_matrix_tree()
+		self:forward_inside(tree)
+		ret[i] = -self:forward_outside(tree)
+	end
+	collectgarbage()
+	return ret
 end
 
-function IORNN:computeCostAndGrad(dsbank, config, grad)
+function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 	local parse = config.parse or false
 
 	p:start('compute cost and grad')	
@@ -568,22 +626,21 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 	local nSample = 0
 	local tword = {}
 
-	-- process dsbank
-	p:start('process dsbank')
-	local forest = Depstruct:to_torch_matrix_forest(dsbank)
-	self:forward_inside(forest)
-	local tree_err = self:forward_outside(forest)
-	self:backpropagate_outside(forest, grad)
-	self:backpropagate_inside(forest, grad)
+	p:start('process treebank')
+	for i, ds in ipairs(treebank) do
+		local tree = ds:to_torch_matrix_tree()
+		self:forward_inside(tree)
+		cost = cost + self:forward_outside(tree)
+		self:backpropagate_outside(tree, grad)
+		self:backpropagate_inside(tree, grad)
 
-	cost = cost + tree_err:sum()
-	nSample = nSample + (forest.n_nodes-1)*3 + 1
-	for i=2,forest.wnode:numel() do -- do not take the root into account
-		tword[forest.word[forest.wnode[i]]] = 1
+		nSample = nSample + tree.n_nodes
+		for i=2,tree.wnode:numel() do -- do not take the root into account
+			tword[tree.word[tree.wnode[i]]] = 1
+		end
 	end
-	p:lap('process dsbank') 
+	p:lap('process treebank') 
 
-	-- compute grad
 	p:start('compute grad')
 	local wparams = self.params[{{1,-1-self.wdim*self.voca_dic.size}}]
 	local grad_wparams = grad.params[{{1,-1-self.wdim*self.voca_dic.size}}]
@@ -597,12 +654,13 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 	p:lap('compute grad')
 
 	p:lap('compute cost and grad') 
+	--p:printAll()
 
-	return cost, grad, tword
+	return cost, grad, treebank, tword
 end
 
 -- check gradient
-function IORNN:checkGradient(dsbank, config)
+function IORNN:checkGradient(treebank, parser, config)
 	local epsilon = 1e-4
 
 	local dim = self.dim
@@ -611,7 +669,7 @@ function IORNN:checkGradient(dsbank, config)
 
 	local Theta = self.params
 	local grad = self:create_grad()
-	local _, gradTheta = self:computeCostAndGrad(dsbank, config, grad)
+	local _, gradTheta = self:computeCostAndGrad(treebank, config, grad, parser)
 	gradTheta = gradTheta.params
 	
 	local n = Theta:nElement()
@@ -621,10 +679,10 @@ function IORNN:checkGradient(dsbank, config)
 		local index = {{i}}
 		Theta[index]:add(epsilon)
 		local grad = self:create_grad()
-		local costPlus,_ = self:computeCostAndGrad(dsbank, config, grad, parser)
+		local costPlus,_ = self:computeCostAndGrad(treebank, config, grad, parser)
 		
 		Theta[index]:add(-2*epsilon)
-		local costMinus,_ = self:computeCostAndGrad(dsbank, config, grad, parser)
+		local costMinus,_ = self:computeCostAndGrad(treebank, config, grad, parser)
 		Theta[index]:add(epsilon)
 
 		numGradTheta[i] = (costPlus - costMinus) / (2*epsilon) 
@@ -658,7 +716,7 @@ function IORNN:adagrad(func, config, state)
 	local nevals = state.evalCounter
 
 	-- (1) evaluate f(x) and df/dx
-	local cost, grad, tword = func()
+	local cost, grad, _, tword = func()
 
 	-- (3) learning rate decay (annealing)
 	local weight_clr	= weight_lr / (1 + nevals*lrd)
@@ -688,16 +746,16 @@ function IORNN:adagrad(func, config, state)
 	state.evalCounter = state.evalCounter + 1
 end
 
-function IORNN:train_with_adagrad(traindsbank, batchSize, 
+function IORNN:train_with_adagrad(traintreebank, batchSize, 
 									maxepoch, lambda, prefix,
 									adagrad_config, adagrad_state, 
-									devdsbank_path, kbestdevdsbank_path)
-	local nSample = #traindsbank
+									parser, devtreebank_path, kbestdevtreebank_path)
+	local nSample = #traintreebank
 	local grad = self:create_grad()
 	
 	local epoch = 0
 	local j = 0
-	--os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path)
+	--os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devtreebank_path..' '..kbestdevtreebank_path)
 
 
 	epoch = epoch + 1
@@ -707,7 +765,7 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 		j = j + 1
 		if j > nSample/batchSize then 
 			self:save(prefix .. '_' .. epoch)
-			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path)
+			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devtreebank_path..' '..kbestdevtreebank_path)
 
 			j = 1 
 			epoch = epoch + 1
@@ -715,17 +773,17 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 			print('===== epoch ' .. epoch .. '=====')
 		end
 
-		local subdsbank = {}
+		local subtreebank = {}
 		for k = 1,batchSize do
-			subdsbank[k] = traindsbank[k+(j-1)*batchSize]
+			subtreebank[k] = traintreebank[k+(j-1)*batchSize]
 		end
 	
 		local function func()
-			cost, grad, tword  = self:computeCostAndGrad(subdsbank, 
-							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad)
+			cost, grad, subtreebank, tword  = self:computeCostAndGrad(subtreebank, 
+							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad, parser)
 
 			print('iter ' .. j .. ': ' .. cost) io.flush()		
-			return cost, grad, tword
+			return cost, grad, subtreebank, tword
 		end
 
 		p:start("optim")
@@ -742,7 +800,7 @@ end
 
 
 --[[********************************** test ******************************--
-require 'depparser_rerank'
+require 'depparser_trans'
 torch.setnumthreads(1)
 
 local voca_dic = Dict:new()
@@ -761,15 +819,9 @@ local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, depre
 						lookup = L, func = tanh, funcPrime = tanhPrime })
 
 local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
-local dsbank,_ = parser:load_dsbank('../data/wsj-dep/toy/data/train.conll')
-
-local forest = Depstruct:to_torch_matrix_forest(dsbank)
-for k,v in pairs(forest) do
-	print(k)
-	print(v)
-end
+local treebank,_ = parser:load_treebank('../data/wsj-dep/toy/data/train.conll')
 
 config = {lambda = 1e-4, lambda_L = 1e-7}
 net.update_L = true
---net:checkGradient(dsbank, config)
+net:checkGradient(treebank, parser, config)
 ]]
