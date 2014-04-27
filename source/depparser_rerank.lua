@@ -111,7 +111,10 @@ function Depparser:compute_scores(test_ds, gold_ds)
 	return { unlabel = unlabel , label = label }
 end
 
-function Depparser:rerank_oracle(kbesttreebank, goldtreebank)
+function Depparser:rerank_oracle(kbesttreebank, goldtreebank, typ, K)
+	local typ = typ or 'best'
+	local K = K or 10
+
 	if #kbesttreebank ~= #goldtreebank then 
 		error('size not match')
 	end
@@ -119,35 +122,45 @@ function Depparser:rerank_oracle(kbesttreebank, goldtreebank)
 	local ret = {}
 
 	for i,parses in ipairs(kbesttreebank) do
-		local gold = goldtreebank[i]
-		local best_parse = nil
-		local best_score = -100000000
+		if typ == 'first' then ret[i] = parses[1] 
+		else
+			local gold = goldtreebank[i]
+			local best_parse = nil
+			local best_score = nil
 
-		for _,parse in ipairs(parses) do
-			local score = self:compute_scores(parse, gold)
-			if score.unlabel > best_score then
-				best_parse = parse
-				best_score = score.unlabel
+			for k,parse in ipairs(parses) do
+				if k > K then break end
+				local score = self:compute_scores(parse, gold)
+				if typ == 'worst' then score.unlabel = -score.unlabel end
+				if best_score == nil or score.unlabel > best_score then
+					best_parse = parse
+					best_score = score.unlabel
+				end
 			end
+			ret[i] = best_parse
 		end
-		ret[i] = best_parse
 	end
 
 	return ret
 end
 
-function Depparser:rerank(net, kbesttreebank)
+function Depparser:rerank(net, kbesttreebank, K)
+	local K = K or 10
 	local ret = {}
 
-	for i,parses in ipairs(kbesttreebank) do
+	for i,org_parses in ipairs(kbesttreebank) do
 		if math.mod(i, 100) == 0 then print(i) end
+		local parses = {}
+		for k = 1, math.min(K, #org_parses) do
+			parses[k] = org_parses[k]
+		end
 
 		local best_parse = nil
-		local best_score = -100000000
+		local best_score = nil
 		local log_probs = net:compute_log_prob(parses)
 
 		for j,parse in ipairs(parses) do
-			if log_probs[j] > best_score then
+			if best_score == nil or log_probs[j] > best_score then
 				best_parse = parse
 				best_score = log_probs[j]
 			end
@@ -160,14 +173,19 @@ end
 
 
 -- should not call it directly when training, there's a mem-leak problem!!!
-function Depparser:eval(net, kbestpath, goldpath, output)
+function Depparser:eval(typ, kbestpath, goldpath, output, K)
 	print('load data')
 	local goldtreebank, raw = self:load_treebank(goldpath)
 	local kbesttreebank, _  = self:load_kbesttreebank(kbestpath)
 
 	print('parsing...')
-	--local parses = self:rerank_oracle(kbesttreebank, goldtreebank)
-	local parses = self:rerank(net, kbesttreebank)
+	local parses = nil
+	if type(typ) == 'string' then 
+		parses = self:rerank_oracle(kbesttreebank, goldtreebank, typ, K)
+	else 
+		local net = typ
+		parses = self:rerank(net, kbesttreebank, K)
+	end
 	
 	if output then
 		print('print to '..output)
@@ -215,12 +233,12 @@ local data_path = '../data/wsj-dep/universal/'
 local voca_dic = Dict:new()
 voca_dic:load(data_path .. '/dic/collobert/words.lst')
 local pos_dic = Dict:new()
-pos_dic:load(data_path .. '/dic/pos.lst')
+pos_dic:load(data_path .. '/dic/cpos.lst')
 local deprel_dic = Dict:new()
 deprel_dic:load(data_path .. '/dic/deprel.lst')
 
 local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
 
 print('eval...')
-parser:eval(nil, data_path..'/data/dev-10best-mst.conll', data_path..'/data/dev.conll', '/tmp/parsed.conll')
+parser:eval(nil, data_path..'/data/dev-small-10best-mst.conll', data_path..'/data/dev-small.conll')
 ]]

@@ -59,7 +59,7 @@ if #arg == 5 then
 	end
 
 	local pos_dic = Dict:new()
-	pos_dic:load(dic_dir_path.."/pos.lst")
+	pos_dic:load(dic_dir_path.."/cpos.lst")
 
 	local deprel_dic = Dict:new()
 	deprel_dic:load(dic_dir_path..'/deprel.lst')
@@ -69,9 +69,9 @@ if #arg == 5 then
 -------------------------- train depparser ------------------
 
 	print('training...')
-	traintreebank_path = data_path .. 'train-small.conll'
-	devtreebank_path = data_path .. 'dev.conll'
-	kbestdevtreebank_path = data_path .. 'dev-10best-mst.conll'
+	traintreebank_path = data_path .. 'train.conll'
+	devtreebank_path = data_path .. 'dev-small.conll'
+	kbestdevtreebank_path = data_path .. 'dev-small-10best-mst.conll'
 
 	model_dir = arg[4]
 	dim = tonumber(arg[5])

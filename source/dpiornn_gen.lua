@@ -507,8 +507,9 @@ function IORNN:compute_log_prob(treebank)
 	for i, ds in ipairs(treebank) do
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
-		ret[i] = self:forward_outside(tree)
+		ret[i] = -self:forward_outside(tree)
 	end
+	collectgarbage()
 	return ret
 end
 
@@ -531,7 +532,7 @@ function IORNN:computeCostAndGrad(treebank, config, grad, parser)
 		self:backpropagate_outside(tree, grad)
 		self:backpropagate_inside(tree, grad)
 
-		nSample = nSample + tree.n_nodes-1
+		nSample = nSample + tree.n_nodes
 		for i=2,tree.wnode:numel() do -- do not take the root into account
 			tword[tree.word[tree.wnode[i]]] = 1
 		end
@@ -652,7 +653,7 @@ function IORNN:train_with_adagrad(traintreebank, batchSize,
 	
 	local epoch = 0
 	local j = 0
-	os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devtreebank_path..' '..kbestdevtreebank_path)
+	--os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devtreebank_path..' '..kbestdevtreebank_path)
 
 
 	epoch = epoch + 1
