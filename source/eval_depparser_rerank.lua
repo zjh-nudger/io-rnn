@@ -24,6 +24,7 @@ if #arg >= 3 then
 	print(parser.mail_subject)
 
 	print('eval')
+--[[
 	print('oracle-best')
 	parser:eval('best', kbesttreebank_path, treebank_path, nil, K)
 
@@ -32,7 +33,7 @@ if #arg >= 3 then
 
 	print('first')
 	parser:eval('first', kbesttreebank_path, treebank_path, nil, K)
-
+]]
 	print('IORNN')
 	parser:eval(net, kbesttreebank_path, treebank_path, nil, K)
 
