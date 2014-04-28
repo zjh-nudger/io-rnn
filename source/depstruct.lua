@@ -105,44 +105,6 @@ function Depstruct:to_torch_matrix_tree(id, node, tree)
 	return tree, node
 end
 
--- store treebank in a compact structure, named forest
-function Depstruct:to_torch_matrix_forest(dsbank)
-	local n_words = 0
-	for _,ds in ipairs(dsbank) do
-		n_words = n_words + ds.n_words
-	end
-
-	local forest = self:create_empty_tree(n_words, n_words)
-	forest.n_trees = #dsbank
-	forest.tree_index = torch.LongTensor(2, #dsbank)
-
-	local index = 1
-	for i,ds in ipairs(dsbank) do
-		forest.tree_index[{1,i}] = index
-		forest.tree_index[{2,i}] = index + ds.n_words - 1
-
-		local tree = {	n_nodes		= ds.n_words,
-						word		= forest.word		[{{index,index+ds.n_words-1}}],
-						pos			= forest.pos		[{{index,index+ds.n_words-1}}],
-						cap			= forest.cap		[{{index,index+ds.n_words-1}}],
-						parent		= forest.parent		[{{index,index+ds.n_words-1}}],
-						n_children	= forest.n_children	[{{index,index+ds.n_words-1}}],
-						children	= forest.children	[{{},{index,index+ds.n_words-1}}],
-						wnode		= forest.wnode		[{{index,index+ds.n_words-1}}],
-						deprel		= forest.deprel		[{{index,index+ds.n_words-1}}] }
-		tree,_ = ds:to_torch_matrix_tree(1, 1, tree)
-
-		-- add offset = index - 1
-		tree.parent		:add(index-1)
-		tree.children	:add(index-1)
-		tree.wnode		:add(index-1)
-
-		index = index + ds.n_words
-	end
-
-	return forest
-end
-
 --[[ test
 require 'dict'
 

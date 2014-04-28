@@ -5,7 +5,7 @@ NUM_THREADS	= 1
 IORNN_CONTEXT_SIZE	= 3
 
 -- depstruct settings
-DEPSTRUCT_N_DEPS = 20
+DEPSTRUCT_N_DEPS = 200
 
 -- for training
 MIN_OCCURS_THRESHOLD	= 3
