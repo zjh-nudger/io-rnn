@@ -15,8 +15,8 @@ function Depparser:new(voca_dic, pos_dic, deprel_dic)
 	return parser
 end
 
-function Depparser:load_treebank(path)
-	local treebank = {}
+function Depparser:load_dsbank(path)
+	local dsbank = {}
 	local raw = {}
 
 	tokens = {}
@@ -29,7 +29,7 @@ function Depparser:load_treebank(path)
 						self.voca_dic, self.pos_dic, self.deprel_dic) 
 				end ) 
 			then
-				treebank[#treebank+1] = ds
+				dsbank[#dsbank+1] = ds
 				raw[#raw+1] = sent
 			else 
 				print('error')
@@ -41,40 +41,40 @@ function Depparser:load_treebank(path)
 		end
 	end
 
-	return treebank, raw
+	return dsbank, raw
 end
 
-function Depparser:load_kbesttreebank(path)
-	local treebank = self:load_treebank(path)
-	local kbesttreebank = {}
+function Depparser:load_kbestdsbank(path)
+	local dsbank = self:load_dsbank(path)
+	local kbestdsbank = {}
 	local group = nil
 	
-	for _,ds in ipairs(treebank) do
+	for _,ds in ipairs(dsbank) do
 		if group == nil or group[1].n_words ~= ds.n_words or (group[1].word - ds.word):abs():sum() > 0 then
 			group = { ds }
-			kbesttreebank[#kbesttreebank+1] = group
+			kbestdsbank[#kbestdsbank+1] = group
 		else
 			group[#group+1] = ds		
 		end
 	end
 	
-	return kbesttreebank
+	return kbestdsbank
 end
 
-function Depparser:train(net, traintrebank_path, devtreebank_path, kbestdevtreebank_path, model_dir)
-	print('load train treebank')
-	local traintreebank,_ = self:load_treebank(traintrebank_path)
+function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
+	print('load train dsbank')
+	local traindsbank,_ = self:load_dsbank(traintrebank_path)
 	
 	net.update_L = TRAIN_UPDATE_L
 
-	-- shuf the traintreebank
-	print('shufing train treebank')
-	local new_i = torch.randperm(#traintreebank)
+	-- shuf the traindsbank
+	print('shufing train dsbank')
+	local new_i = torch.randperm(#traindsbank)
 	temp = {}
-	for i = 1,#traintreebank do
-		temp[i] = traintreebank[new_i[i]]
+	for i = 1,#traindsbank do
+		temp[i] = traindsbank[new_i[i]]
 	end
-	traintreebank = temp
+	traindsbank = temp
 
 	-- train
 	local adagrad_config = {	weight_learningRate	= TRAIN_WEIGHT_LEARNING_RATE,
@@ -85,10 +85,10 @@ function Depparser:train(net, traintrebank_path, devtreebank_path, kbestdevtreeb
 	local prefix = model_dir..'/model'
 
 	print('train net')
-	adagrad_config, adagrad_state = net:train_with_adagrad(traintreebank, TRAIN_BATCHSIZE,
+	adagrad_config, adagrad_state = net:train_with_adagrad(traindsbank, TRAIN_BATCHSIZE,
 										TRAIN_MAX_N_EPOCHS, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
 										prefix, adagrad_config, adagrad_state, 
-										self, devtreebank_path, kbestdevtreebank_path)
+										devdsbank_path, kbestdevdsbank_path)
 	return net
 end
 
@@ -111,20 +111,20 @@ function Depparser:compute_scores(test_ds, gold_ds)
 	return { unlabel = unlabel , label = label }
 end
 
-function Depparser:rerank_oracle(kbesttreebank, goldtreebank, typ, K)
+function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
 	local typ = typ or 'best'
 	local K = K or 10
 
-	if #kbesttreebank ~= #goldtreebank then 
+	if #kbestdsbank ~= #golddsbank then 
 		error('size not match')
 	end
 
 	local ret = {}
 
-	for i,parses in ipairs(kbesttreebank) do
+	for i,parses in ipairs(kbestdsbank) do
 		if typ == 'first' then ret[i] = parses[1] 
 		else
-			local gold = goldtreebank[i]
+			local gold = golddsbank[i]
 			local best_parse = nil
 			local best_score = nil
 
@@ -144,11 +144,11 @@ function Depparser:rerank_oracle(kbesttreebank, goldtreebank, typ, K)
 	return ret
 end
 
-function Depparser:rerank(net, kbesttreebank, K)
+function Depparser:rerank(net, kbestdsbank, K)
 	local K = K or 10
 	local ret = {}
 
-	for i,org_parses in ipairs(kbesttreebank) do
+	for i,org_parses in ipairs(kbestdsbank) do
 		if math.mod(i, 100) == 0 then print(i) end
 		local parses = {}
 		for k = 1, math.min(K, #org_parses) do
@@ -175,16 +175,16 @@ end
 -- should not call it directly when training, there's a mem-leak problem!!!
 function Depparser:eval(typ, kbestpath, goldpath, output, K)
 	print('load data')
-	local goldtreebank, raw = self:load_treebank(goldpath)
-	local kbesttreebank, _  = self:load_kbesttreebank(kbestpath)
+	local golddsbank, raw = self:load_dsbank(goldpath)
+	local kbestdsbank, _  = self:load_kbestdsbank(kbestpath)
 
 	print('parsing...')
 	local parses = nil
 	if type(typ) == 'string' then 
-		parses = self:rerank_oracle(kbesttreebank, goldtreebank, typ, K)
+		parses = self:rerank_oracle(kbestdsbank, golddsbank, typ, K)
 	else 
 		local net = typ
-		parses = self:rerank(net, kbesttreebank, K)
+		parses = self:rerank(net, kbestdsbank, K)
 	end
 	
 	if output then
@@ -206,7 +206,7 @@ function Depparser:eval(typ, kbestpath, goldpath, output, K)
 	local unlabel = 0
 
 	for i,parse in ipairs(parses) do
-		local gold = goldtreebank[i]
+		local gold = golddsbank[i]
 		local ret = self:compute_scores(parse, gold)
 		total 	= total + parse.n_words - 1
 		label 	= label + ret.label

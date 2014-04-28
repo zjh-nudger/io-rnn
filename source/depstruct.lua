@@ -4,8 +4,6 @@ require 'dp_spec'
 Depstruct = {}
 Depstruct_mt = { __index=Depstruct }
 
-DEPSTRUCT_N_DEPS = 200
-
 -- ROOT is indexed 1, with word = 0, pos = 0, deprel = 0
 
 function Depstruct:new( input )
@@ -60,15 +58,21 @@ function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 	return Depstruct:new(input), sent
 end
 
-function Depstruct:create_empty_tree(n_nodes, n_words)
+-- note that number of words == number of nodes 
+-- because the first word is ROOT
+function Depstruct:create_empty_tree(n_nodes)
 	return {	n_nodes		= n_nodes,
 				word		= torch.zeros(n_nodes):long(),
 				pos			= torch.zeros(n_nodes):long(),
 				cap			= torch.zeros(n_nodes):long(),
 				parent		= torch.zeros(n_nodes):long(),
-				n_children	= torch.zeros(n_nodes):long(),
-				children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):long(),
-				wnode		= torch.zeros(n_words):long(),
+				dist	= torch.zeros(n_nodes):long(),	-- distance to parent
+				dir	= torch.zeros(n_nodes):long(),	-- which parent side the node is on
+				[DIR_L]	= {	n_children	= torch.zeros(n_nodes):long(),	-- 1: left, 2: right
+								children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):long() },
+				[DIR_R]	= {	n_children	= torch.zeros(n_nodes):long(),
+								children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):long() },
+				wnode		= torch.zeros(n_nodes):long(),
 				deprel		= torch.zeros(n_nodes):long() }
 end
 
@@ -76,7 +80,7 @@ function Depstruct:to_torch_matrix_tree(id, node, tree)
 	local id = id or 1
 	local node = node or 1
 	local n_nodes = self.n_words 
-	local tree = tree or self:create_empty_tree(n_nodes, self.n_words)
+	local tree = tree or self:create_empty_tree(n_nodes)
 
 	local dep = self.dep[{{},id}]
 	local n_deps = self.n_deps[id]
@@ -88,15 +92,31 @@ function Depstruct:to_torch_matrix_tree(id, node, tree)
 	tree.deprel[node]	= self.deprel[id]
 
 	if n_deps == 0 then
-		tree.n_children[node] = 0
 		node = node + 1
 
 	else
-		tree.n_children[node] = n_deps
 		local cur_node = node + 1
 		for i = 1,n_deps do
-			tree.children[{i,node}] = cur_node
+			if dep[i] < id then
+				tree[DIR_L].n_children[node] = tree[DIR_L].n_children[node] + 1
+				tree[DIR_L].children[{i,node}] = cur_node
+			else
+				tree[DIR_R].n_children[node] = tree[DIR_R].n_children[node] + 1
+				tree[DIR_R].children[{i-tree[DIR_L].n_children[node],node}] = cur_node
+			end
 			tree.parent[cur_node] = node
+
+			if dep[i] < id then tree.dir[cur_node] = DIR_L
+			else				tree.dir[cur_node] = DIR_R
+			end
+
+			local d = math.abs(id - dep[i])
+			if 		d == 1 then tree.dist[cur_node] = DIST_1
+			elseif	d == 2 then tree.dist[cur_node] = DIST_2
+			elseif	d <= 6 then tree.dist[cur_node] = DIST_3_6
+			else				tree.dist[cur_node] = DIST_7_INF
+			end
+
 			tree,cur_node = self:to_torch_matrix_tree(dep[i], cur_node, tree)
 		end
 		node = cur_node
@@ -114,7 +134,7 @@ local voca_dic = Dict:new(collobert_template)
 voca_dic:load('../data/wsj-dep/universal/dic/collobert/words.lst')
  
 local pos_dic = Dict:new(cfg_template)
-pos_dic:load("../data/wsj-dep/universal/dic/pos.lst")
+pos_dic:load("../data/wsj-dep/universal/dic/cpos.lst")
 
 local deprel_dic = Dict:new()
 deprel_dic:load('../data/wsj-dep/universal/dic/deprel.lst')
@@ -128,6 +148,11 @@ for line in io.lines('../data/wsj-dep/universal/data/test.conll') do
 		tree,_ = ds:to_torch_matrix_tree()
 		for k,v in pairs(tree) do
 			print(k)
+			if type(v) == 'table' then 
+				for k1,v1 in pairs(v) do
+					print(k1); print(v1)
+				end
+			end
 			print(v)
 		end
 		tokens = {}

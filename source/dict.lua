@@ -1,3 +1,4 @@
+require 'dp_spec'
 
 Dict = {}
 Dict_mt = {__index=Dict}
@@ -134,12 +135,6 @@ function turian_template(word)
 		return word
 	end
 end
-
-ALL_LOWER = 1
-ALL_UPPER = 2
-FIRST_UPPER = 3
-NOT_FIRST_UPPER = 4
-N_CAP_FEAT = 4
 
 function Dict:get_cap_feature(str)
 	local str_l = str:lower()

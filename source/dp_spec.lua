@@ -1,11 +1,30 @@
 ROOT_LABEL	= 'ROOT'
 NUM_THREADS	= 1
 
+-- capital feature
+ALL_LOWER = 1
+ALL_UPPER = 2
+FIRST_UPPER = 3
+NOT_FIRST_UPPER = 4
+N_CAP_FEAT = 4
+
+-- direction
+DIR_L 	= 1
+DIR_R 	= 2
+
+-- distance feature
+DIST_1		= 1
+DIST_2		= 2
+DIST_3_6	= 3
+DIST_7_INF	= 4
+N_DIST_FEAT	= 4
+
+
 -- dpiornn settings
 IORNN_CONTEXT_SIZE	= 3
 
 -- depstruct settings
-DEPSTRUCT_N_DEPS = 200
+DEPSTRUCT_N_DEPS = 30
 
 -- for training
 MIN_OCCURS_THRESHOLD	= 3
