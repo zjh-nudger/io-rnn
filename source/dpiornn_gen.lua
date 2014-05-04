@@ -783,7 +783,7 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 		j = j + 1
 		if j > nSample/batchSize then 
 			self:save(prefix .. '_' .. epoch)
-			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path)
+			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
 
 			j = 1 
 			epoch = epoch + 1

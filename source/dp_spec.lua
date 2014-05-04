@@ -24,7 +24,7 @@ N_DIST_FEAT	= 4
 IORNN_CONTEXT_SIZE	= 3
 
 -- depstruct settings
-DEPSTRUCT_N_DEPS = 30
+DEPSTRUCT_N_DEPS = 100
 
 -- for training
 MIN_OCCURS_THRESHOLD	= 3

@@ -70,8 +70,8 @@ if #arg == 5 then
 
 	print('training...')
 	traindsbank_path = data_path .. 'train.conll'
-	devdsbank_path = data_path .. 'dev-small.conll'
-	kbestdevdsbank_path = data_path .. 'dev-small-10best-mst.conll'
+	devdsbank_path = data_path .. 'dev.conll'
+	kbestdevdsbank_path = data_path .. 'dev-10best-mst2ndorder.conll'
 
 	model_dir = arg[4]
 	dim = tonumber(arg[5])
