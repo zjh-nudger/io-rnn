@@ -86,7 +86,7 @@ function IORNN:init_params(input)
 						pos_dic.size 	* (dim + deprel_dic.size + 1) + 
 						voca_dic.size 	* (dim + deprel_dic.size + pos_dic.size + 1) + 
 						N_CAP_FEAT 		* (dim + deprel_dic.size + pos_dic.size + voca_dic.size + 1) + 
-						N_DIST_FEAT 	* (dim + deprel_dic.size + pos_dic.size + voca_dic.size + N_CAP_FEAT + 1) + 
+						--N_DIST_FEAT 	* (dim + deprel_dic.size + pos_dic.size + voca_dic.size + N_CAP_FEAT + 1) + 
 						pos_dic.size * dim + 
 						N_CAP_FEAT * dim + 
 						voca_dic.size * wdim
@@ -146,14 +146,14 @@ function IORNN:init_params(input)
 	self.Lwordcap, index 	= self:create_weight_matrix(self.params, index, N_CAP_FEAT, voca_dic.size, r)
 	self.bcap, index		= self:create_weight_matrix(self.params, index, N_CAP_FEAT, 1)
 
-	-- Pr(dist_to_head | cap, word, POS, ...)
+	--[[ Pr(dist_to_head | cap, word, POS, ...)
 	self.Wdist, index	 	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, dim, r)
 	self.Ldrdist, index	 	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, deprel_dic.size, r)
 	self.Lposdist, index	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, pos_dic.size, r)
 	self.Lworddist, index 	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, voca_dic.size, r)
 	self.Lcapdist, index	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, N_CAP_FEAT, r)
 	self.bdist, index	 	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, 1)
-
+]]
 	-- POS tag 
 	self.Lpos, index = self:create_weight_matrix(self.params, index, dim, pos_dic.size, r)
 
@@ -229,14 +229,14 @@ function IORNN:create_grad()
 	grad.Lwordcap, index 	= self:create_weight_matrix(grad.params, index, N_CAP_FEAT, voca_dic.size)
 	grad.bcap, index		= self:create_weight_matrix(grad.params, index, N_CAP_FEAT, 1)
 
-	-- Pr(dist_to_head | cap, word, POS, ...)
+	--[[ Pr(dist_to_head | cap, word, POS, ...)
 	grad.Wdist, index	 	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, dim)
 	grad.Ldrdist, index	 	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, deprel_dic.size)
 	grad.Lposdist, index	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, pos_dic.size)
 	grad.Lworddist, index 	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, voca_dic.size)
 	grad.Lcapdist, index	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, N_CAP_FEAT)
 	grad.bdist, index	 	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, 1)
-
+]]
 	-- POS tag 
 	grad.Lpos, index = self:create_weight_matrix(grad.params, index, dim, pos_dic.size)
 
@@ -403,7 +403,7 @@ function IORNN:forward_outside(tree)
 						:add(torch.repeatTensor(self.bcap, 1, tree.n_nodes))
 	tree.cap_prob	= safe_compute_softmax(tree.cap_score)
 
-	-- Pr(word | pos, deprel, outer)
+	--[[ Pr(word | pos, deprel, outer)
 	tree.dist_score	= 	(self.Wdist * tree.cstr_outer)
 						:add(self.Ldrdist:index(2, tree.deprel))
 						:add(self.Lposdist:index(2, tree.pos))
@@ -411,7 +411,7 @@ function IORNN:forward_outside(tree)
 						:add(self.Lcapdist:index(2, tree.cap))
 						:add(torch.repeatTensor(self.bdist, 1, tree.n_nodes))
 	tree.dist_prob	= safe_compute_softmax(tree.dist_score)
-
+]]
 	-- compute error
 	tree.total_err = 0
 	for i = 2, tree.n_nodes do
@@ -419,7 +419,7 @@ function IORNN:forward_outside(tree)
 										- math.log(tree.pos_prob[{tree.pos[i],i}])
 										- math.log(tree.word_prob[{tree.word[i],i}])
 										- math.log(tree.cap_prob[{tree.cap[i],i}])
-										- math.log(tree.dist_prob[{tree.dist[i],i}])
+										-- - math.log(tree.dist_prob[{tree.dist[i],i}])
 	end
 	tree.total_err = tree.total_err - torch.log(tree[DIR_L].EOC_prob[{self.deprel_dic.size+1,{}}]):sum()
 									- torch.log(tree[DIR_R].EOC_prob[{self.deprel_dic.size+1,{}}]):sum()
@@ -446,7 +446,7 @@ function IORNN:backpropagate_outside(tree, grad)
 	local gZpos		= tree.pos_prob		:clone()
 	local gZword	= tree.word_prob	:clone()
 	local gZcap		= tree.cap_prob		:clone()
-	local gZdist	= tree.dist_prob	:clone()
+	--local gZdist	= tree.dist_prob	:clone()
 	local gZEOC		= {	[DIR_L] = tree[DIR_L].EOC_prob	:clone(),
 						[DIR_R]= tree[DIR_R].EOC_prob	:clone() }
 
@@ -455,13 +455,13 @@ function IORNN:backpropagate_outside(tree, grad)
 		gZpos[{tree.pos[i],i}]		= gZpos[{tree.pos[i],i}]		- 1
 		gZword[{tree.word[i],i}]	= gZword[{tree.word[i],i}]	- 1
 		gZcap[{tree.cap[i],i}]		= gZcap[{tree.cap[i],i}]	- 1
-		gZdist[{tree.dist[i],i}]	= gZdist[{tree.dist[i],i}]	- 1
+		--gZdist[{tree.dist[i],i}]	= gZdist[{tree.dist[i],i}]	- 1
 	end
 	gZdr[{{},{1}}]	:fill(0) -- don't take ROOT into account
 	gZpos[{{},{1}}]	:fill(0)
 	gZword[{{},{1}}]:fill(0)
 	gZcap[{{},{1}}]	:fill(0)
-	gZdist[{{},{1}}]:fill(0)
+	--gZdist[{{},{1}}]:fill(0)
 
 	gZEOC[DIR_L][{self.deprel_dic.size+1,{}}]:add(-1)
 	gZEOC[DIR_R][{self.deprel_dic.size+1,{}}]:add(-1)
@@ -489,9 +489,9 @@ function IORNN:backpropagate_outside(tree, grad)
 	grad.bcap		:add(gZcap:sum(2))
 	tree.gradcstro	:addmm(self.Wcap:t(), gZcap)
 
-	grad.Wdist		:addmm(gZdist, tree.cstr_outer:t())
-	grad.bdist		:add(gZdist:sum(2))
-	tree.gradcstro	:addmm(self.Wdist:t(), gZdist)
+	--grad.Wdist		:addmm(gZdist, tree.cstr_outer:t())
+	--grad.bdist		:add(gZdist:sum(2))
+	--tree.gradcstro	:addmm(self.Wdist:t(), gZdist)
 
 	for i = 2,tree.n_nodes do
 		grad.Ldrpos[{{},{tree.deprel[i]}}]	:add(gZpos[{{},{i}}])
@@ -503,10 +503,10 @@ function IORNN:backpropagate_outside(tree, grad)
 		grad.Lposcap[{{},{tree.pos[i]}}]	:add(gZcap[{{},{i}}])
 		grad.Lwordcap[{{},{tree.word[i]}}]	:add(gZcap[{{},{i}}])
 
-		grad.Ldrdist[{{},{tree.deprel[i]}}]	:add(gZdist[{{},{i}}])
-		grad.Lposdist[{{},{tree.pos[i]}}]	:add(gZdist[{{},{i}}])
-		grad.Lworddist[{{},{tree.word[i]}}]	:add(gZdist[{{},{i}}])
-		grad.Lcapdist[{{},{tree.cap[i]}}]	:add(gZdist[{{},{i}}])
+		--grad.Ldrdist[{{},{tree.deprel[i]}}]	:add(gZdist[{{},{i}}])
+		--grad.Lposdist[{{},{tree.pos[i]}}]	:add(gZdist[{{},{i}}])
+		--grad.Lworddist[{{},{tree.word[i]}}]	:add(gZdist[{{},{i}}])
+		--grad.Lcapdist[{{},{tree.cap[i]}}]	:add(gZdist[{{},{i}}])
 	end
 
 	-- backward 
@@ -773,7 +773,7 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 	
 	local epoch = 0
 	local j = 0
-	--os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path)
+	os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
 
 
 	epoch = epoch + 1
@@ -824,7 +824,7 @@ torch.setnumthreads(1)
 local voca_dic = Dict:new()
 voca_dic:load('../data/wsj-dep/toy/dic/words.lst')
 local pos_dic = Dict:new()
-pos_dic:load('../data/wsj-dep/toy/dic/cpos.lst')
+pos_dic:load('../data/wsj-dep/toy/dic/pos.lst')
 local deprel_dic = Dict:new()
 deprel_dic:load('../data/wsj-dep/toy/dic/deprel.lst')
 local lookup = torch.rand(2, voca_dic.size)

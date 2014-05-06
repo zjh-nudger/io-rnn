@@ -59,7 +59,7 @@ if #arg == 5 then
 	end
 
 	local pos_dic = Dict:new()
-	pos_dic:load(dic_dir_path.."/cpos.lst")
+	pos_dic:load(dic_dir_path.."/pos.lst")
 
 	local deprel_dic = Dict:new()
 	deprel_dic:load(dic_dir_path..'/deprel.lst')

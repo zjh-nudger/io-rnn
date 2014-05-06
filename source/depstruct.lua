@@ -46,7 +46,7 @@ function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 	for i,row in ipairs(rows) do
 		local comps = split_string(row)
 		row = { voca_dic:get_id(comps[2]),
-				pos_dic:get_id(comps[4]),
+				pos_dic:get_id(comps[5]),
 				tonumber(comps[7]) + 1,
 				deprel_dic:get_id(comps[8]),
 				Dict:get_cap_feature(comps[2])

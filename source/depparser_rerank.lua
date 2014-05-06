@@ -171,14 +171,33 @@ function Depparser:rerank(net, kbestdsbank, K)
 	return ret
 end
 
+function Depparser:perplexity(net, dsbank)
+	local log_probs = net:compute_log_prob(dsbank)
+	local sum = 0
+	local nwords = 0
+	for i,log_p in ipairs(log_probs) do
+		sum = sum + log_p / math.log(2)
+		nwords = nwords + dsbank[i].n_words - 1
+	end
+	return math.pow(2, -sum / nwords)
+end
 
 -- should not call it directly when training, there's a mem-leak problem!!!
 function Depparser:eval(typ, kbestpath, goldpath, output, K)
+	local str = ''
+
 	print('load data')
 	local golddsbank, raw = self:load_dsbank(goldpath)
 	local kbestdsbank, _  = self:load_kbestdsbank(kbestpath)
 
 	print('parsing...')
+
+	-- compute perplexity
+	if type(typ) ~= 'string' then
+		str = str .. 'perplexity ' .. self:perplexity(typ, golddsbank) .. '\n'
+	end
+
+	-- reranking
 	local parses = nil
 	if type(typ) == 'string' then 
 		parses = self:rerank_oracle(kbestdsbank, golddsbank, typ, K)
@@ -193,7 +212,7 @@ function Depparser:eval(typ, kbestpath, goldpath, output, K)
 		for i, parse in ipairs(parses) do
 			local sent = raw[i]
 			for j = 2,#sent do
-				f:write((j-1)..'\t'..sent[j]..'\t_\t_\t_\t_\t'..(parse.head[j]-1)..'\t'..self.deprel_dic.id2word[parse.deprel[j]]..'\t_\t_\n')
+				f:write((j-1)..'\t'..sent[j]..'\t_\t_\t_\t_\t'..(parse.head[j]-1)..'\t'..self.deprel_dic.id2word[parse.deprel[j] ]..'\t_\t_\n')
 			end
 			f:write('\n')	
 		end
@@ -215,13 +234,15 @@ function Depparser:eval(typ, kbestpath, goldpath, output, K)
 
 	local LAS = label / total
 	local UAS = unlabel / total
-	local str = 'LAS = ' .. string.format("%.2f",LAS*100)..'\nUAS = ' ..string.format("%.2f",UAS*100)
+	str = str .. 'LAS = ' .. string.format("%.2f",LAS*100)..'\nUAS = ' ..string.format("%.2f",UAS*100)
+
 	print(str)
 
 	-- mail
 	if EVAL_EMAIL_ADDR and self.mail_subject then
 		os.execute('echo "'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
 	end
+
 end
 
 --[[ for testing
