@@ -36,6 +36,7 @@ function Depstruct:new( input )
 			ds.dep[{ds.n_deps[hid],hid}] = i
 		end
 	end
+	ds:get_cover()
 
 	return ds
 end
@@ -56,6 +57,26 @@ function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 	end
 
 	return Depstruct:new(input), sent
+end
+
+function Depstruct:get_cover(id)
+	if id == nil then
+		id = 1
+		self.cover = torch.zeros(2, self.n_words)
+	end
+	local n_deps = self.n_deps[id]
+	
+	if n_deps == 0 then 
+		self.cover[{1,id}] = id
+		self.cover[{2,id}] = id
+	else
+		for i = 1,n_deps do
+			self:get_cover(self.dep[{i,id}])
+		end
+		self.cover[{1,id}] = math.min(id, self.cover[{1,self.dep[{1,id}]}])
+		self.cover[{2,id}] = 
+			math.max(id, self.cover[{2,self.dep[{n_deps,id}]}])
+	end
 end
 
 -- note that number of words == number of nodes 

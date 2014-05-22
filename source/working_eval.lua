@@ -25,24 +25,22 @@ if #arg >= 3 then
 	print(parser.mail_subject)
 
 	print('eval')
---[[
+--
 	print('oracle-best')
-	parser:eval('best', kbesttreebank_path, treebank_path, nil, K)
+--	parser:eval('best', kbesttreebank_path, treebank_path, nil, K)
 
 	print('oracle-worst')
-	parser:eval('worst', kbesttreebank_path, treebank_path, nil, K)
+--	parser:eval('worst', kbesttreebank_path, treebank_path, nil, K)
 
 	print('first')
 	parser:eval('first', kbesttreebank_path, treebank_path, nil, K)
-
+--
 	print(kbesttreebank_path..'.iornnscores')
 	print('scorefile')
-	for K = 6,10 do
-		parser:eval(kbesttreebank_path..'.iornnscores', kbesttreebank_path, treebank_path, nil, K)
-	end
-]]
+--	parser:eval(kbesttreebank_path..'.iornnscores.fix', kbesttreebank_path, treebank_path, nil, K)
+
 	print('IORNN')
-	parser:eval(net, kbesttreebank_path, treebank_path, nil, K)
+--	parser:eval(net, kbesttreebank_path, treebank_path, nil, K)
 
 else
 	print("[net path] [gold]  [kbest] [K] ")

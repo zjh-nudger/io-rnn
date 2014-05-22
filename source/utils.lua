@@ -28,4 +28,9 @@ function safe_compute_softmax(A)
 	return (A - maxA - B):exp()
 end
 
-
+function log_sum_of_exp(xs) 
+	max,_ = xs:max(1)
+	max = max[1]
+	local sum = xs:add(-max):exp():sum()
+	return max + math.log(sum)
+end

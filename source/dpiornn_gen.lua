@@ -628,8 +628,9 @@ function IORNN:compute_log_prob(dsbank)
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
 		ret[i] = -self:forward_outside(tree)
+		tree = nil
+		if math.mod(i,10) == 0 then	collectgarbage() end
 	end
-	collectgarbage()
 	return ret
 end
 
@@ -773,7 +774,7 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 	
 	local epoch = 0
 	local j = 0
-	os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
+	--os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
 
 
 	epoch = epoch + 1
