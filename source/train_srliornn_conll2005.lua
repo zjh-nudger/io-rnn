@@ -61,23 +61,18 @@ function load_treebank(path, vocaDic, ruleDic, classDic)
 	return treebank
 end
 
-if #arg == 7 then
+if #arg == 6 then
 	torch.setnumthreads(1)
 
 	dic_dir_path = arg[1]
 	data_path = arg[2]
 
 	-- check if randomly initial word embeddings
-	init_wemb_type = nil
-	dim = tonumber(arg[3])
-	if dim == nil then
-		init_wemb_type = arg[3]
-	end
+	init_wemb_type = arg[3]
+	dim = tonumber(arg[4])
 
-	rule_type = arg[4]
-	weight_learn_rate = tonumber(arg[5])
-	voca_learn_rate = tonumber(arg[6])
-	local model_dir = arg[7]
+	rule_type = arg[5]
+	local model_dir = arg[6]
  
 	-- load voca and embeddings
 	print('load vocabulary and word embeddings')
@@ -138,7 +133,7 @@ if #arg == 7 then
 -- create net
 	print('create iornn...')
 
-	local input = {	lookup = L, voca = vocaDic, class = classDic, 
+	local input = {	dim = dim, lookup = L, voca = vocaDic, class = classDic, 
 					func = tanh, funcPrime = tanhPrime,
 					rules = rules }
 	local net = IORNN:new(input)
@@ -146,14 +141,14 @@ if #arg == 7 then
 	net.update_L = true
 	lambda = 1e-4
 	lambda_L = 1e-10
-	batchsize = 100
+	batchsize = 32
 
 	maxnepoch = 100
 
 -- load data	
 	print('load treebanks')
 	local devtreebank	= load_treebank(data_path .. '/dev-set', vocaDic, ruleDic, classDic)
-	local traintreebank	= load_treebank(data_path .. '/train-set', vocaDic, ruleDic, classDic)
+	local traintreebank	= load_treebank(data_path .. '/train-set.small', vocaDic, ruleDic, classDic)
 	print(#traintreebank .. ' training trees')
 
 	-- shuf the traintreebank
@@ -165,8 +160,8 @@ if #arg == 7 then
 	traintreebank = temp
 
 -- train
-	local adagrad_config = {weight_learningRate = weight_learn_rate,
-							voca_learningRate = voca_learn_rate}
+	local adagrad_config = {weight_learningRate = 0.1,
+							voca_learningRate = 0.1}
 	local adagrad_state = {}
 
 	net:save(model_dir .. '/model_0')
@@ -176,5 +171,5 @@ if #arg == 7 then
 															prefix, adagrad_config, adagrad_state)
 
 else
-	print("[dic dir path] [treebank] [dim/emb_model] [weight & voca learning rate] [model dir]")
+	print("[dic dir path] [treebank] [emb_model] [dim] [rule type][model dir]")
 end
