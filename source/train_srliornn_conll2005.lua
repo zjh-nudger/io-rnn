@@ -105,7 +105,7 @@ if #arg == 6 then
 		local embdim = info[2]	
 		L = torch.Tensor(f:readDouble(nword*embdim))
 					:resize(nword, embdim):t()
-		dim = embdim
+		wdim = embdim
 		f:close()
 		if nword ~= vocaDic:size() then
 			error("not match embs")
@@ -132,11 +132,13 @@ if #arg == 6 then
 
 -- create net
 	print('create iornn...')
+	print(dim)
 
 	local input = {	dim = dim, lookup = L, voca = vocaDic, class = classDic, 
 					func = tanh, funcPrime = tanhPrime,
 					rules = rules }
 	local net = IORNN:new(input)
+	net.mail_sbj = model_dir
 
 	net.update_L = true
 	lambda = 1e-4
@@ -148,7 +150,7 @@ if #arg == 6 then
 -- load data	
 	print('load treebanks')
 	local devtreebank	= load_treebank(data_path .. '/dev-set', vocaDic, ruleDic, classDic)
-	local traintreebank	= load_treebank(data_path .. '/train-set.small', vocaDic, ruleDic, classDic)
+	local traintreebank	= load_treebank(data_path .. '/train-set', vocaDic, ruleDic, classDic)
 	print(#traintreebank .. ' training trees')
 
 	-- shuf the traintreebank

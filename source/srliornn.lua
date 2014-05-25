@@ -480,6 +480,16 @@ function IORNN:backpropagate_inside(tree, grad)
 	end
 end
 
+function IORNN:clean(tree)
+	tree.inner = nil
+	tree.outer = nil
+	tree.class_predict = nil
+	tree.class_score = nil
+	tree.gradZo = nil
+	tree.gradZi = nil
+	tree.gradi = nil
+end
+
 function IORNN:computeCostAndGrad(treebank, config, grad)
 	local parse = config.parse or false
 
@@ -514,6 +524,7 @@ else
 					tword_id[tree.word_id[i]] = 1
 				end
 			end
+			self:clean(tree)
 		end
 	end
 	p:lap('process treebank') 
@@ -852,6 +863,8 @@ function IORNN:eval(treebank, gold_path, eval_prog_path)
 	os.execute('cat ' .. gold_path .. " | awk '{print $1}' > /tmp/verbs.txt")
 	os.execute('paste /tmp/verbs.txt /tmp/predicts.txt > predicts.txt')
 	os.execute(eval_prog_path .. ' ' .. gold_path .. ' ' .. 'predicts.txt')
+	os.execute(eval_prog_path .. ' ' .. gold_path .. ' ' .. 'predicts.txt > /tmp/srl.txt')
+	os.execute('mail -s '..self.mail_sbj..' lephong.xyz@gmail.com < /tmp/srl.txt') 	
 end
 
 --[[********************************** test ******************************--
