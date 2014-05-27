@@ -99,6 +99,9 @@ function IORNN:init_params(input)
 
 	-- project word embs on to a higher-dim vector space
 	self.Wh, index = self:create_weight_matrix(self.params, index, dim, wdim, 1e-3)	
+	if dim == wdim then
+		self.Wh:copy(torch.eye(dim))
+	end
 	self.bh, index = self:create_weight_matrix(self.params, index, dim, 1)
 	
 	-- anonymous outer/inner
@@ -670,6 +673,9 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 		cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
 		grad.L[{{},{wid}}]:div(nSample):add(config.lambda_L, self.L[{{},{wid}}])
 	end 
+	if self.dim == self.wdim then -- don't project the wemb onto new space  
+		grad.Wh:fill(0)
+	end
 	p:lap('compute grad')
 
 	p:lap('compute cost and grad') 
@@ -752,6 +758,9 @@ function IORNN:adagrad(func, config, state)
 	state.paramVariance.params[wparamindex]:addcmul(1,grad.params[wparamindex],grad.params[wparamindex])
 	torch.sqrt(state.paramStd.params[wparamindex],state.paramVariance.params[wparamindex])
 	self.params[wparamindex]:addcdiv(-weight_clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
+	if self.dim == self.wdim then -- reset Wh if wembs are not projected
+		self.Wh:copy(torch.eye(self.dim))
+	end
 
 	-- for word embeddings
 	for wid,_ in pairs(tword) do
@@ -808,6 +817,12 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 		p:start("optim")
 		self:adagrad(func, adagrad_config, adagrad_state)
 		
+--[[		if self.dim == self.wdim then
+			if self.Wh:ne(torch.eye(self.dim)):sum() > 0 then
+				error('have to reset Wh')
+			end
+		end
+]]
 		p:lap("optim")
 		p:printAll()
 
@@ -830,7 +845,7 @@ local deprel_dic = Dict:new()
 deprel_dic:load('../data/wsj-dep/toy/dic/deprel.lst')
 local lookup = torch.rand(2, voca_dic.size)
 
-dim = 3
+dim = 2
 L = torch.rand(2, voca_dic.size)
 
 print('training...')

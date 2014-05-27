@@ -11,6 +11,7 @@ Depparser_mt = { __index = Depparser }
 
 function Depparser:new(voca_dic, pos_dic, deprel_dic)
 	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic}
+	pcall( function() 
 	parser.punc_list = {
 		--[voca_dic.word2id['=']] = 1,
 		[voca_dic.word2id['-']] = 1,
@@ -37,7 +38,8 @@ function Depparser:new(voca_dic, pos_dic, deprel_dic)
 		[voca_dic.word2id['#']] = 1,
 		[voca_dic.word2id['%']] = 1,
 	}
-	
+	end)
+
 	setmetatable(parser, Depparser_mt)
 	return parser
 end
@@ -374,11 +376,11 @@ function Depparser:eval(typ, kbestpath, goldpath, output, K)
 			print(str)
 		else 
 			self.mail_subject = nil
-			for K = 17,17 do
+			for K = 12,12 do
 				best_alpha = 0
 				best_UAS = 0
 				best_LAS = 0
-				for alpha = 0.69,0.69 do --0,1,0.005 do
+				for alpha = 0.695,0.695 do --0,1,0.005 do
 					parses = self:rerank_scorefile(typ, kbestpath..'.mstscores', kbestdsbank, kbestdsscore, alpha, K)
 					LAS, UAS = self:computeAScores(parses, golddsbank, punc, '/tmp/YM-test-result.conll')
 					if UAS > best_UAS then 

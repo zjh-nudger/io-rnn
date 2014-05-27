@@ -13,8 +13,8 @@ if #arg == 5 then
 
 ------------------ load dics and wemb ----------------
 	init_wemb_type = nil
-	dim = tonumber(arg[3])
-	if dim == nil then
+	wdim = tonumber(arg[3])
+	if wdim == nil then
 		init_wemb_type = arg[3]
 	end
  
@@ -23,9 +23,10 @@ if #arg == 5 then
 	local L = nil
 
 	if init_wemb_type == nil then
+		print('randomly create wordembeddings')
 		voca_dic = Dict:new(collobert_template)
 		voca_dic:load(dic_dir_path .. '/words.lst')
-		L = uniform(dim, voca_dic:size(), -0.1, 0.1)
+		L = uniform(wdim, voca_dic.size, -0.001, 0.001)
 
 	else
 		local dic_func = nil
@@ -51,7 +52,7 @@ if #arg == 5 then
 		local embdim = info[2]	
 		L = torch.Tensor(f:readDouble(nword*embdim))
 						:resize(nword, embdim):t()
-		dim = embdim
+		wdim = embdim
 		f:close()
 		if nword ~= voca_dic.size then
 			error("not match embs")
