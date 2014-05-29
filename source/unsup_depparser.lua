@@ -6,47 +6,17 @@ require 'dp_spec'
 
 p = xlua.Profiler()
 
-Depparser = {}
-Depparser_mt = { __index = Depparser }
+UDepparser = {}
+UDepparser_mt = { __index = UDepparser }
 
-function Depparser:new(voca_dic, pos_dic, deprel_dic)
+function UDepparser:new(voca_dic, pos_dic, deprel_dic)
 	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic}
-	pcall( function() 
-	parser.punc_list = {
-		--[voca_dic.word2id['=']] = 1,
-		[voca_dic.word2id['-']] = 1,
-		[voca_dic.word2id['--']] = 1,
-		[voca_dic.word2id[',']] = 1,
-		[voca_dic.word2id[';']] = 1,
-		[voca_dic.word2id[':']] = 1,
-		[voca_dic.word2id['!']] = 1,
-		[voca_dic.word2id['?']] = 1,
-		--[voca_dic.word2id['/']] = 1,
-		[voca_dic.word2id['.']] = 1,
-		[voca_dic.word2id['...']] = 1,
-		[voca_dic.word2id["'"]] = 1,
-		[voca_dic.word2id["''"]] = 1,
-		[voca_dic.word2id['(']] = 1,
-		[voca_dic.word2id[')']] = 1,
-		[voca_dic.word2id['{']] = 1,
-		[voca_dic.word2id['}']] = 1,
-		--[voca_dic.word2id['@']] = 1,
-		[voca_dic.word2id['*']] = 1,
-		--[voca_dic.word2id['\\*']] = 1,
-		--[voca_dic.word2id['\\*\\*']] = 1,
-		[voca_dic.word2id['&']] = 1,
-		[voca_dic.word2id['#']] = 1,
-		[voca_dic.word2id['%']] = 1,
-	}
-	end)
-
-	setmetatable(parser, Depparser_mt)
+	setmetatable(parser, UDepparser_mt)
 	return parser
 end
 
-function Depparser:load_dsbank(path)
+function UDepparser:load_dsbank(path)
 	local dsbank = {}
-	local raw = {}
 
 	tokens = {}
 	local i = 1
@@ -60,7 +30,7 @@ function Depparser:load_dsbank(path)
 				end ) 
 			if status then
 				dsbank[#dsbank+1] = ds
-				raw[#raw+1] = sent
+				ds.raw = sent
 			else 
 				print(err)
 			end
@@ -72,24 +42,31 @@ function Depparser:load_dsbank(path)
 			tokens[#tokens+1] = line
 		end
 	end
-	dsbank.raw = raw
 
-	return dsbank, raw
+	return dsbank
 end
 
-function Depparser:load_kbestdsbank(path, golddsbank)
-	local dsbank, raw = self:load_dsbank(path)
+function UDepparser:load_kbestdsbank(path, golddsbank)
+	local dsbank = self:load_dsbank(path)
 	local kbestdsbank = {}
 
-	local group = nil
-	for i,ds in ipairs(dsbank) do
-		if group == nil or group[1].n_words ~= ds.n_words or (group[1].word - ds.word):abs():sum() > 0 then
-			group = { ds , raw = {raw[i]} }
-			kbestdsbank[#kbestdsbank+1] = group
-		else
-			group[#group+1] = ds
-			group.raw[#group] = raw[i]
+	-- load kbest-scores given by the MSTParser
+	local id = 1
+	for line in io.lines(path..'.mstscores') do
+		local comps = split_string(line)
+		local scores = torch.zeros(#comps)
+		for i,c in ipairs(comps) do
+			scores[i] = tonumber(c)
 		end
+		scores = torch.exp(scores - log_sum_of_exp(scores))
+		
+		local group = {}
+		for i = 1, scores:numel() do
+			group[i] = dsbank[id]; id = id + 1
+			group[i].mstscore = scores[i]
+			group[i].weight = 1
+		end
+		kbestdsbank[#kbestdsbank+1] = group
 	end
 
 	for i,group in ipairs(kbestdsbank) do
@@ -110,14 +87,38 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 	return kbestdsbank
 end
 
-function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
-	print('load train dsbank')
-	local traindsbank,_ = self:load_dsbank(traintrebank_path)
-	
-	net.update_L = TRAIN_UPDATE_L
+function UDepparser:compute_weights(net, kbestdsbank)
+	for i,parses in ipairs(kbestdsbank) do
+		local log_probs = net:compute_log_prob(parses)
+		local scores = torch.exp(log_probs - log_sum_of_exp(log_probs)) -- apprx P_theta'(d|s)
 
+		for j,ds in ipairs(parses) do
+			ds.iornnscore = scores[j]
+			ds.weight = ds.iornnscore / ds.mstscore
+		end
+
+		if math.mod(i,10) then print(i) end
+	end
+
+	return kbestdsbank
+end
+
+function UDepparser:one_step_train(net, traindsbank_path, trainkbestdsbank_path, golddevdsbank_path, kbestdevdsbank_path, model_dir)
+	print('load train dsbank ' .. traindsbank_path .. ' ' .. trainkbestdsbank_path)
+	local temp = self:load_dsbank(traindsbank_path)
+	local trainkbestdsbank = self:load_kbestdsbank(trainkbestdsbank_path, temp)
+	
+	print('compute weights')
+	self:compute_weights(net, trainkbestdsbank)
+	
 	-- shuf the traindsbank
 	print('shufing train dsbank')
+	local traindsbank = {}
+	for _,dss in ipairs(trainkbestdsbank) do
+		for _,ds in ipairs(dss) do
+			traindsbank[#traindsbank+1] = ds
+		end
+	end
 	local new_i = torch.randperm(#traindsbank)
 	temp = {}
 	for i = 1,#traindsbank do
@@ -135,17 +136,26 @@ function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_
 
 	print('train net')
 	adagrad_config, adagrad_state = net:train_with_adagrad(traindsbank, TRAIN_BATCHSIZE,
-										TRAIN_MAX_N_EPOCHS, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
+										TRAIN_1STEP_MAX_N_EPOCHS, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
 										prefix, adagrad_config, adagrad_state, 
-										devdsbank_path, kbestdevdsbank_path)
+										golddevdsbank_path, kbestdevdsbank_path)
 	return net
 end
 
-function Depparser:compute_scores(test_ds, gold_ds, punc)
+function UDepparser:train(net, traindsbank_path, trainkbestdsbank_path, golddevdsbank_path, kbestdevdsbank_path, model_dir)
+	os.execute('mkdir ' .. model_dir)
+
+	for it = 1, TRAIN_MAX_N_EPOCHS do
+		local submodel_dir = model_dir..'/'..it..'/'
+		os.execute('mkdir ' .. submodel_dir)
+		net = self:one_step_train(net, traindsbank_path, trainkbestdsbank_path, golddevdsbank_path, kbestdevdsbank_path, submodel_dir)
+	end
+end
+
+function UDepparser:compute_scores(test_ds, gold_ds, punc)
 	local unlabel = 0
 	local label = 0
 	local n = 0
-
 
 	if test_ds.n_words ~= gold_ds.n_words then
 		error('not match')
@@ -153,13 +163,9 @@ function Depparser:compute_scores(test_ds, gold_ds, punc)
 		for j = 2,test_ds.n_words do -- ignore ROOT
 			local count = true
 			--local w = self.voca_dic.id2word[gold_ds.word[j]]:gsub("%p",'')
-			
-			if punc == false and self.punc_list[gold_ds.word[j]] == 1 then --string.len(w) == 0 then
-				count = false
-			end
-			
+						
 			if count then
-				n = n + 1	 
+				n = n + 1
 				if test_ds.head[j] == gold_ds.head[j] then
 					unlabel = unlabel + 1
 					if test_ds.deprel[j] == gold_ds.deprel[j] then
@@ -172,7 +178,7 @@ function Depparser:compute_scores(test_ds, gold_ds, punc)
 	return { unlabel = unlabel , label = label , n = n }
 end
 
-function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
+function UDepparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
 	local typ = typ or 'best'
 	local K = K or 10
 
@@ -208,59 +214,7 @@ function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
 	return ret
 end
 
-function Depparser:rerank_scorefile(netscorefile, mstscorefile, kbestdsbank, kbestdsscore, alpha, K)
-	local K = K or 10
-	local ret = { raw = {} }
-	local sum_sen_log_p = 0
-	local sum_n_words = 0
-
-	local f = torch.DiskFile(netscorefile, 'r')
-	if f:readInt() ~= #kbestdsbank then 
-		error('not match')
-	end
-
-	local i = 1
-	for line in io.lines(mstscorefile) do
-		local org_parses = kbestdsbank[i]
-		local parses = { raw = {} }
-
-		local best_parse = nil
-		local best_score = nil
-		local best_raw = nil
-		local log_probs = f:readObject()
-
-		local mstscores = split_string(line)
-
-		for k = 1, math.min(#log_probs, math.min(K, #org_parses)) do
-			parses[k] = org_parses[k]
-			parses.raw[k] = org_parses.raw[k]
-		end
-
-		for j,parse in ipairs(parses) do
-			local score = tonumber(mstscores[j]) * alpha + (1-alpha)*log_probs[j]
-			if best_score == nil or score > best_score then
-				best_parse = parse
-				best_score = score
-				best_raw = parses.raw[j]
-			end
-		end
-		ret[i] = best_parse
-		ret.raw[i] = best_raw
-
-		sum_sen_log_p = sum_sen_log_p + log_sum_of_exp(torch.Tensor(log_probs))
-		sum_n_words = sum_n_words + parses[1].n_words - 1
-
-		i = i + 1
-	end
-	local ppl = math.pow(2, -sum_sen_log_p / math.log(2) / sum_n_words)
-
-	f:close()
-	
-	return ret, ppl
-
-end
-
-function Depparser:rerank(net, kbestdsbank, output)
+function UDepparser:rerank(net, kbestdsbank, output)
 	local K = K or 10000
 	local ret = {}
 	local sum_sen_log_p = 0
@@ -302,7 +256,7 @@ function Depparser:rerank(net, kbestdsbank, output)
 	return ret, ppl
 end
 
-function Depparser:perplexity(net, dsbank)
+function UDepparser:perplexity(net, dsbank)
 	local log_probs = net:compute_log_prob(dsbank)
 	local sum = 0
 	local nwords = 0
@@ -313,7 +267,7 @@ function Depparser:perplexity(net, dsbank)
 	return math.pow(2, -sum / nwords)
 end
 
-function Depparser:computeAScores(parses, golddsbank, punc, output)
+function UDepparser:computeAScores(parses, golddsbank, punc, output)
 	if output then
 		--print('print to '..output)
 		local f = io.open(output, 'w')
@@ -349,7 +303,7 @@ end
 punc = false
 
 -- should not call it directly when training, there's a mem-leak problem!!!
-function Depparser:eval(typ, kbestpath, goldpath, output, K)
+function UDepparser:eval(typ, kbestpath, goldpath, output, K)
 	local str = ''
 
 	print('load ' .. goldpath)
@@ -374,28 +328,10 @@ function Depparser:eval(typ, kbestpath, goldpath, output, K)
 			LAS, UAS = self:computeAScores(parses, golddsbank, punc) --'/tmp/univ-test-result.conll.'..typ)
 			str = 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
 			print(str)
-		else 
-			self.mail_subject = nil
-			for K = 12,12 do
-				best_alpha = 0
-				best_UAS = 0
-				best_LAS = 0
-				for alpha = 0.695,0.695 do --0,1,0.005 do
-					parses = self:rerank_scorefile(typ, kbestpath..'.mstscores', kbestdsbank, kbestdsscore, alpha, K)
-					LAS, UAS = self:computeAScores(parses, golddsbank, punc, '/tmp/YM-test-result.conll')
-					if UAS > best_UAS then 
-						best_UAS = UAS
-						best_alpha = alpha
-						best_LAS = LAS
-					end
-					--print(K .. '\t' .. alpha .. '\t' .. UAS .. '\t' .. LAS)
-				end
-				print(K .. '\t' .. best_alpha .. '\t' .. best_UAS .. '\t' .. best_LAS)
-			end
 		end
 	else 
 		local net = typ
-		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores.fix')
+		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores')
 		LAS, UAS = self:computeAScores(parses, golddsbank, punc)
 		str = 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
 		print(str)
@@ -421,7 +357,7 @@ pos_dic:load(data_path .. '/dic/cpos.lst')
 local deprel_dic = Dict:new()
 deprel_dic:load(data_path .. '/dic/deprel.lst')
 
-local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
+local parser = UDepparser:new(voca_dic, pos_dic, deprel_dic)
 
 print('eval...')
 parser:eval(nil, data_path..'/data/dev-small-10best-mst.conll', data_path..'/data/dev-small.conll')

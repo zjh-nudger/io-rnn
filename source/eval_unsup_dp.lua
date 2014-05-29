@@ -1,4 +1,4 @@
-require 'depparser_rerank'
+require 'unsup_depparser'
 require 'utils'
 require 'dict'
 require 'xlua'
@@ -16,7 +16,7 @@ if #arg >= 3 then
 	print(net.Wh:size())
 
 	print('create parser')
-	local parser = Depparser:new(net.voca_dic, net.pos_dic, net.deprel_dic)
+	local parser = UDepparser:new(net.voca_dic, net.pos_dic, net.deprel_dic)
 
 	local u = arg[1]:find('/model')
 	if u == nil then parser.mail_subject = path
