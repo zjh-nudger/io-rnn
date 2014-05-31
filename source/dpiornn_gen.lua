@@ -784,7 +784,7 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 	
 	local epoch = 0
 	local j = 0
-	os.execute('th eval_unsup_dp.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
+	--os.execute('th eval_unsup_dp.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
 
 
 	epoch = epoch + 1

@@ -42,8 +42,10 @@ function Depstruct:new( input )
 end
 
 function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
-	local sent = { 'ROOT' }
+	local word = { 'ROOT' }
+	local pos = { 'ROOT' }
 	local input = { { 1, 1, 0, 1, 1 } } -- set mocking value for ROOT
+
 	for i,row in ipairs(rows) do
 		local comps = split_string(row)
 		row = { voca_dic:get_id(comps[2]),
@@ -53,10 +55,14 @@ function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 				Dict:get_cap_feature(comps[2])
 			}
 		input[i+1] = row
-		sent[i+1] = comps[2]
+		word[i+1] = comps[2]
+		pos[i+1] = comps[5]
 	end
 
-	return Depstruct:new(input), sent
+	local ds = Depstruct:new(input)
+	ds.sent = { word = word, pos = pos }
+
+	return ds
 end
 
 function Depstruct:get_cover(id)

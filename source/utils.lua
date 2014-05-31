@@ -31,6 +31,24 @@ end
 function log_sum_of_exp(xs) 
 	max,_ = xs:max(1)
 	max = max[1]
-	local sum = xs:add(-max):exp():sum()
+	local sum = (xs-max):exp():sum()
 	return max + math.log(sum)
 end
+
+function roulette_wheel_selection(w, n)
+	local x = torch.div(w,w:sum()):cumsum(1)
+	local ret = torch.zeros(n)
+	local p = torch.rand(n)
+	local m = x:numel()
+	for i = 1,n do 
+		for j = 1,m do
+			if p[i] < x[j] then 
+				ret[i] = j
+				break
+			end
+		end
+		if ret[i] == 0 then ret[i] = m end
+	end
+	return ret
+end
+

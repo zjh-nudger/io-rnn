@@ -69,10 +69,16 @@ if #arg == 5 then
 -------------------------- train depparser ------------------
 
 	print('training...')
-	traindsbank_path = data_path .. '/dev-small.gold.conll'
-	trainkbestdsbank_path = data_path .. '/dev-small-20-best-mst2ndorder.conll'
-	devdsbank_path = data_path .. '/dev-small.gold.conll'
-	kbestdevdsbank_path = data_path .. '/dev-small-20-best-mst2ndorder.conll'
+	traindsbank_path = data_path .. '/train.gold.conll'
+	trainkbestdsbank_path = data_path .. '/train-20-best-mst2ndorder.conll'
+	devdsbank_path = data_path .. '/dev.gold.conll'
+	kbestdevdsbank_path = data_path .. '/dev-20-best-mst2ndorder.conll'
+
+--	traindsbank_path = data_path .. '/dev-small.gold.conll'
+--	trainkbestdsbank_path = data_path .. '/dev-small-20-best-mst2ndorder.conll'
+--	devdsbank_path = data_path .. '/dev-small.gold.conll'
+--	kbestdevdsbank_path = data_path .. '/dev-small-20-best-mst2ndorder.conll'
+
 
 	model_dir = arg[4]
 	dim = tonumber(arg[5])

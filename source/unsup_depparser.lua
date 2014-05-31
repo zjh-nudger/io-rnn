@@ -25,18 +25,17 @@ function UDepparser:load_dsbank(path)
 		line = trim_string(line)
 		if line == '' then
 			local status, err =  pcall( function() 
-					ds,sent = Depstruct:create_from_strings(tokens, 
+					ds = Depstruct:create_from_strings(tokens, 
 						self.voca_dic, self.pos_dic, self.deprel_dic) 
 				end ) 
 			if status then
 				dsbank[#dsbank+1] = ds
-				ds.raw = sent
 			else 
 				print(err)
 			end
 			tokens = {}
 
-			if math.mod(i,1000) == 0 then print('.') end
+			if math.mod(i,1000) == 0 then io.write('.');io.flush() end
 			i = i + 1
 		else 
 			tokens[#tokens+1] = line
@@ -46,7 +45,7 @@ function UDepparser:load_dsbank(path)
 	return dsbank
 end
 
-function UDepparser:load_kbestdsbank(path, golddsbank)
+function UDepparser:load_kbestdsbank(path, golddsbank, K, do_sampling)
 	local dsbank = self:load_dsbank(path)
 	local kbestdsbank = {}
 
@@ -59,13 +58,25 @@ function UDepparser:load_kbestdsbank(path, golddsbank)
 			scores[i] = tonumber(c)
 		end
 		scores = torch.exp(scores - log_sum_of_exp(scores))
-		
-		local group = {}
+	
+		local temp = {}
 		for i = 1, scores:numel() do
-			group[i] = dsbank[id]; id = id + 1
-			group[i].mstscore = scores[i]
-			group[i].weight = 1
+			temp[i] = dsbank[id]; id = id + 1
+			temp[i].mstscore = scores[i]
+			temp[i].weight = 1
 		end
+		local group = {}
+		if do_sampling then
+			local newid = roulette_wheel_selection(scores, K)
+			for i = 1, K do
+				group[i] = temp[newid[i]]
+			end 
+		else
+			for i = 1, math.min(K,#temp) do
+				group[i] = temp[i]
+			end
+		end
+
 		kbestdsbank[#kbestdsbank+1] = group
 	end
 
@@ -81,6 +92,7 @@ function UDepparser:load_kbestdsbank(path, golddsbank)
 			end
 			ds.word = goldds.word:clone()
 			ds.cap = goldds.cap:clone()
+			ds.sent = goldds.sent 
 		end
 	end
 	
@@ -97,7 +109,7 @@ function UDepparser:compute_weights(net, kbestdsbank)
 			ds.weight = ds.iornnscore / ds.mstscore
 		end
 
-		if math.mod(i,10) then print(i) end
+		if math.mod(i,10) then io.write(i..' ');io.flush() end
 	end
 
 	return kbestdsbank
@@ -106,7 +118,7 @@ end
 function UDepparser:one_step_train(net, traindsbank_path, trainkbestdsbank_path, golddevdsbank_path, kbestdevdsbank_path, model_dir)
 	print('load train dsbank ' .. traindsbank_path .. ' ' .. trainkbestdsbank_path)
 	local temp = self:load_dsbank(traindsbank_path)
-	local trainkbestdsbank = self:load_kbestdsbank(trainkbestdsbank_path, temp)
+	local trainkbestdsbank = self:load_kbestdsbank(trainkbestdsbank_path, temp, TRAIN_SAMPLE_SIZE, true)
 	
 	print('compute weights')
 	self:compute_weights(net, trainkbestdsbank)
@@ -139,16 +151,39 @@ function UDepparser:one_step_train(net, traindsbank_path, trainkbestdsbank_path,
 										TRAIN_1STEP_MAX_N_EPOCHS, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
 										prefix, adagrad_config, adagrad_state, 
 										golddevdsbank_path, kbestdevdsbank_path)
-	return net
+	return net, trainkbestdsbank
 end
 
 function UDepparser:train(net, traindsbank_path, trainkbestdsbank_path, golddevdsbank_path, kbestdevdsbank_path, model_dir)
 	os.execute('mkdir ' .. model_dir)
 
 	for it = 1, TRAIN_MAX_N_EPOCHS do
+		-- training IORNN
 		local submodel_dir = model_dir..'/'..it..'/'
 		os.execute('mkdir ' .. submodel_dir)
 		net = self:one_step_train(net, traindsbank_path, trainkbestdsbank_path, golddevdsbank_path, kbestdevdsbank_path, submodel_dir)
+
+		-- training MSTParser
+		print('load train dsbank ' .. traindsbank_path .. ' ' .. trainkbestdsbank_path)
+		local temp = self:load_dsbank(traindsbank_path)
+		local trainkbestdsbank = self:load_kbestdsbank(trainkbestdsbank_path, temp, 10)
+
+		local mst_dir = model_dir .. '/MST-' .. (it+1) ..'/' 
+		os.execute('mkdir '..mst_dir)
+		traindsbank_path = mst_dir .. 'train.conll'
+		trainkbestdsbank_path = mst_dir .. 'train-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
+
+		local parses,_ = self:rerank(net, trainkbestdsbank)
+		self:print_parses(parses, traindsbank_path)
+
+		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..mst_dir..'model test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
+		os.execute('cp '..trainkbestdsbank_path..' /tmp/kbest.txt')
+		os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
+
+		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..kbestdevdsbank_path)
+		os.execute('cp '..kbestdevdsbank_path..' /tmp/kbest.txt')
+		os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
+
 	end
 end
 
@@ -186,7 +221,7 @@ function UDepparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
 		error('size not match')
 	end
 
-	local ret = {raw = {}}
+	local ret = {}
 
 	for i,parses in ipairs(kbestdsbank) do
 		if typ == 'first' then ret[i] = parses[1] 
@@ -194,7 +229,6 @@ function UDepparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
 			local gold = golddsbank[i]
 			local best_parse = nil
 			local best_score = nil
-			local best_raw = nil
 
 			for k,parse in ipairs(parses) do
 				if k > K then break end
@@ -203,11 +237,9 @@ function UDepparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
 				if best_score == nil or score.unlabel > best_score then
 					best_parse = parse
 					best_score = score.unlabel
-					best_raw = parses.raw[k]
 				end
 			end
 			ret[i] = best_parse
-			ret.raw[i] = best_raw
 		end
 	end
 
@@ -227,7 +259,7 @@ function UDepparser:rerank(net, kbestdsbank, output)
 	end
 
 	for i,org_parses in ipairs(kbestdsbank) do
-		if math.mod(i, 1) == 0 then print(i) end
+		if math.mod(i, 1) == 0 then io.write(i..' ');io.flush() end
 		local parses = {}
 		for k = 1, math.min(K, #org_parses) do
 			parses[k] = org_parses[k]
@@ -267,18 +299,21 @@ function UDepparser:perplexity(net, dsbank)
 	return math.pow(2, -sum / nwords)
 end
 
+function UDepparser:print_parses(parses, output)
+	local f = io.open(output, 'w')
+	for i, parse in ipairs(parses) do
+		local sent = parse.sent
+		for j = 2,#sent.word do
+			f:write((j-1)..'\t'..sent.word[j]..'\t_\t'..sent.pos[j]..'\t'..sent.pos[j]..'\t_\t'..(parse.head[j]-1)..'\t'..self.deprel_dic.id2word[parse.deprel[j] ]..'\t_\t_\n')
+		end
+		f:write('\n')	
+	end
+	f:close()
+end
+
 function UDepparser:computeAScores(parses, golddsbank, punc, output)
 	if output then
-		--print('print to '..output)
-		local f = io.open(output, 'w')
-		for i, parse in ipairs(parses) do
-			local sent = parses.raw[i]
-			for j = 2,#sent do
-				f:write((j-1)..'\t'..sent[j]..'\t_\t_\t_\t_\t'..(parse.head[j]-1)..'\t'..self.deprel_dic.id2word[parse.deprel[j] ]..'\t_\t_\n')
-			end
-			f:write('\n')	
-		end
-		f:close()
+		self:print_parses(parses, output)
 	end
 
 	-- compute scores
@@ -307,10 +342,10 @@ function UDepparser:eval(typ, kbestpath, goldpath, output, K)
 	local str = ''
 
 	print('load ' .. goldpath)
-	local golddsbank, raw = self:load_dsbank(goldpath)
+	local golddsbank = self:load_dsbank(goldpath)
 
 	print('load ' .. kbestpath)
-	local kbestdsbank, kbestdsscore  = self:load_kbestdsbank(kbestpath, golddsbank)
+	local kbestdsbank, kbestdsscore  = self:load_kbestdsbank(kbestpath, golddsbank, K)
 
 	print('parsing...')
 
