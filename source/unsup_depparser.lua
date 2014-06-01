@@ -172,6 +172,7 @@ function UDepparser:train(net, traindsbank_path, trainkbestdsbank_path, golddevd
 		os.execute('mkdir '..mst_dir)
 		traindsbank_path = mst_dir .. 'train.conll'
 		trainkbestdsbank_path = mst_dir .. 'train-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
+		kbestdevdsbank_path = mst_dir .. 'dev-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
 
 		local parses,_ = self:rerank(net, trainkbestdsbank)
 		self:print_parses(parses, traindsbank_path)
