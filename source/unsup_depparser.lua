@@ -154,8 +154,27 @@ function UDepparser:one_step_train(net, traindsbank_path, trainkbestdsbank_path,
 	return net, trainkbestdsbank
 end
 
-function UDepparser:train(net, traindsbank_path, trainkbestdsbank_path, golddevdsbank_path, kbestdevdsbank_path, model_dir)
+function UDepparser:train(net, traindsbank_path, golddevdsbank_path, model_dir)
 	os.execute('mkdir ' .. model_dir)
+	
+	-- train MSTparser with dsbank
+	local mst_dir = model_dir..'/MST-1/'
+	os.execute('mkdir ' .. mst_dir)
+	os.execute('cp ' .. traindsbank_path .. ' ' .. mst_dir ..'train.conll')
+	traindsbank_path = mst_dir..'train.conll'
+	trainkbestdsbank_path = mst_dir .. 'train-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
+	kbestdevdsbank_path = mst_dir .. 'dev-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
+
+	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..mst_dir..'model test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
+	os.execute('cp '..trainkbestdsbank_path..' /tmp/kbest.txt')
+	os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
+
+	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..kbestdevdsbank_path)
+	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:1 output-file:/tmp/x eval gold-file:'..golddevdsbank_path)
+
+	os.execute('cp '..kbestdevdsbank_path..' /tmp/kbest.txt')
+	os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
+
 
 	for it = 1, TRAIN_MAX_N_EPOCHS do
 		-- training IORNN
@@ -182,6 +201,8 @@ function UDepparser:train(net, traindsbank_path, trainkbestdsbank_path, golddevd
 		os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
 
 		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..kbestdevdsbank_path)
+		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:1 output-file:/tmp/x eval gold-file:'..golddevdsbank_path)
+
 		os.execute('cp '..kbestdevdsbank_path..' /tmp/kbest.txt')
 		os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
 
