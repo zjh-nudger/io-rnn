@@ -67,9 +67,13 @@ if #arg == 5 then
 
 
 -------------------------- train depparser ------------------
+	-- print dp_spec file
+	for line in io.lines('dp_spec.lua') do
+		print(line)
+	end
 
 	print('training...')
-	traindsbank_path = data_path .. '/train.dmv.conll'
+	traindsbank_path = data_path .. '/train.edmv.conll'
 	devdsbank_path = data_path .. '/dev.gold.conll'
 
 --	traindsbank_path = data_path .. '/dev.gold.conll'
@@ -78,12 +82,12 @@ if #arg == 5 then
 	model_dir = arg[4]
 	dim = tonumber(arg[5])
 
-	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
-							lookup = L, func = tanh, funcPrime = tanhPrime }) 
+	local net_struct = { dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
+							lookup = L, func = tanh, funcPrime = tanhPrime }
 
 	local parser = UDepparser:new(voca_dic, pos_dic, deprel_dic)
 	parser.mail_subject = model_dir
-	parser:train(net, traindsbank_path, devdsbank_path, model_dir)
+	parser:train(net_struct, traindsbank_path, devdsbank_path, model_dir)
 
 else
 	print("[dic dir path] [dsbank] [emb_model] [model dir] [dim]")

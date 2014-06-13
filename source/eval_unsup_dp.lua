@@ -9,7 +9,7 @@ torch.setnumthreads(1)
 if #arg >= 3 then
 	treebank_path = arg[2]
 	kbesttreebank_path = arg[3]
-	K = tonumber(arg[4]) or 100000
+	K = tonumber(arg[4]) or 10
 
 	print('load net')
 	local net = IORNN:load(arg[1])
@@ -34,6 +34,7 @@ if #arg >= 3 then
 
 	print('first')
 	parser:eval('first', kbesttreebank_path, treebank_path, nil, K)
+
 
 	print(kbesttreebank_path..'.iornnscores')
 	print('scorefile')
