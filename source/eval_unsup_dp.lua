@@ -43,6 +43,7 @@ if #arg >= 3 then
 	end
 ]]
 	print('IORNN')
+	parser.weight_mix=0.5
 	parser:eval(net, kbesttreebank_path, treebank_path, nil, K)
 
 else

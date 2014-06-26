@@ -25,11 +25,11 @@ function UDepparser:load_dsbank(path)
 		--print(line)
 		line = trim_string(line)
 		if line == '' then
-			local status, err =  pcall( function() 
+			--local status, err =  pcall( function() 
 					ds = Depstruct:create_from_strings(tokens, 
 						self.voca_dic, self.pos_dic, self.deprel_dic) 
-				end ) 
-			if status then
+			--	end ) 
+			if true then --status then
 				ds.weight = 1
 				dsbank[#dsbank+1] = ds
 			else 
@@ -50,6 +50,10 @@ end
 function UDepparser:load_kbestdsbank(path, golddsbank, K, do_sampling)
 	local dsbank = self:load_dsbank(path)
 	local kbestdsbank = {}
+
+	if do_sampling then 
+		print('do sampling')
+	end
 
 	-- load kbest-scores given by the MSTParser
 	local id = 1
@@ -190,6 +194,7 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 	os.execute('mkdir ' .. model_dir)
 	os.execute('mkdir ' .. model_dir..'/warm_up/')
 	local net = nil
+	local temp_file = model_dir .. '/temp'
 	
 	-- train MSTparser with dsbank
 	local mst_dir = model_dir..'/MST-1/'
@@ -200,14 +205,14 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 	kbestdevdsbank_path = mst_dir .. 'dev-'..TRAIN_MST_K_BEST_RERANK..'-best-mst2ndorder.conll'
 
 	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..mst_dir..'model test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
-	os.execute('cp '..trainkbestdsbank_path..' /tmp/kbest.txt')
-	os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
+	os.execute('cp '..trainkbestdsbank_path..' '..temp_file)
+	os.execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
 
 	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST_RERANK..' output-file:'..kbestdevdsbank_path)
 	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:1 output-file:/tmp/x eval gold-file:'..golddevdsbank_path)
 
-	os.execute('cp '..kbestdevdsbank_path..' /tmp/kbest.txt')
-	os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
+	os.execute('cp '..kbestdevdsbank_path..' '..temp_file)
+	os.execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
 
 
 	for it = 1, TRAIN_MAX_N_EPOCHS do
@@ -242,14 +247,14 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 		self:print_parses(parses, traindsbank_path)
 
 		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..mst_dir..'model test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
-		os.execute('cp '..trainkbestdsbank_path..' /tmp/kbest.txt')
-		os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
+		os.execute('cp '..trainkbestdsbank_path..' '..temp_file)
+		os.execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
 
 		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST_RERANK..' output-file:'..kbestdevdsbank_path)
 		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:1 output-file:/tmp/x eval gold-file:'..golddevdsbank_path)
 
-		os.execute('cp '..kbestdevdsbank_path..' /tmp/kbest.txt')
-		os.execute("cat /tmp/kbest.txt | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
+		os.execute('cp '..kbestdevdsbank_path..' '..temp_file)
+		os.execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
 
 	end
 end
@@ -319,6 +324,7 @@ function UDepparser:rerank(net, kbestdsbank, output)
 	local sum_sen_log_p = 0
 	local sum_n_words = 0
 	local alpha = TRAIN_WEIGHT_MIX
+	--local alpha = self.weight_mix
 
 	local f = nil
 	if output then

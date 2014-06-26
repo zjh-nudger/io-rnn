@@ -23,6 +23,7 @@ function Depstruct:new( input )
 
 	-- set data
 	for i,row in ipairs(input) do
+		--print(row)
 		ds.word[i]	 = row[1]
 		ds.pos[i]	 = row[2]
 		ds.cap[i]	 = row[5]
@@ -59,6 +60,7 @@ function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 		pos[i+1] = comps[5]
 	end
 
+	--print(rows)
 	local ds = Depstruct:new(input)
 	ds.sent = { word = word, pos = pos }
 

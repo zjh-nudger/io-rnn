@@ -632,7 +632,8 @@ function IORNN:compute_log_prob(dsbank)
 		self:forward_inside(tree)
 		ret[i] = -self:forward_outside(tree, ds.weight)
 		tree = nil
-		if math.mod(i,10) == 0 then	collectgarbage() end
+		if math.mod(i,10) == 0 then collectgarbage() end
+		if math.mod(i,100) == 0 then io.write('.');io.flush() end
 	end
 	return ret
 end
