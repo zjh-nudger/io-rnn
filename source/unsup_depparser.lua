@@ -4,6 +4,7 @@ require 'utils'
 require 'dict'
 require 'xlua'
 require 'dp_spec'
+require 'posix'
 
 p = xlua.Profiler()
 
@@ -50,6 +51,7 @@ end
 function UDepparser:load_kbestdsbank(path, golddsbank, K, do_sampling)
 	local dsbank = self:load_dsbank(path)
 	local kbestdsbank = {}
+	local K = K or 10000000
 
 	if do_sampling then 
 		print('do sampling')
@@ -188,75 +190,86 @@ function UDepparser:warm_up_train(net, traindsbank_path, golddevdsbank_path, kbe
 	return net
 end
 
+function execute(cmd)
+	print("\nEXECUTE: " .. cmd)
+	os.execute(cmd)
+end
 
 
 function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, model_dir)
-	os.execute('mkdir ' .. model_dir)
-	os.execute('mkdir ' .. model_dir..'/warm_up/')
+
+	local execMST = 'java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser ' 
+
+	execute('mkdir ' .. model_dir)
+	execute('mkdir ' .. model_dir..'/warm_up/')
 	local net = nil
 	local temp_file = model_dir .. '/temp'
 	
 	-- train MSTparser with dsbank
 	local mst_dir = model_dir..'/MST-1/'
-	os.execute('mkdir ' .. mst_dir)
-	os.execute('cp ' .. traindsbank_path .. ' ' .. mst_dir ..'train.conll')
+	execute('mkdir ' .. mst_dir)
+	execute('cp ' .. traindsbank_path .. ' ' .. mst_dir ..'train.conll')
 	traindsbank_path = mst_dir..'train.conll'
 	trainkbestdsbank_path = mst_dir .. 'train-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
-	kbestdevdsbank_path = mst_dir .. 'dev-'..TRAIN_MST_K_BEST_RERANK..'-best-mst2ndorder.conll'
+	kbestdevdsbank_path = mst_dir .. 'dev-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
 
-	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..mst_dir..'model test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
-	os.execute('cp '..trainkbestdsbank_path..' '..temp_file)
-	os.execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
+	execute(execMST .. 
+			'train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..mst_dir..'model '..
+			'test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
+	execute('cp '..trainkbestdsbank_path..' '..temp_file)
+	execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
 
-	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST_RERANK..' output-file:'..kbestdevdsbank_path)
-	os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:1 output-file:/tmp/x eval gold-file:'..golddevdsbank_path)
+	execute(execMST .. 'test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..kbestdevdsbank_path)
+	execute(execMST .. 'test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:1 output-file:/tmp/x eval gold-file:'..golddevdsbank_path)
 
-	os.execute('cp '..kbestdevdsbank_path..' '..temp_file)
-	os.execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
+	execute('cp '..kbestdevdsbank_path..' '..temp_file)
+	execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
 
 
 	for it = 1, TRAIN_MAX_N_EPOCHS do
 		local submodel_dir = model_dir..'/'..it..'/'
-		os.execute('mkdir ' .. submodel_dir)
+		execute('mkdir ' .. submodel_dir)
 		
 		-- warm-up
-		if math.mod(it,TRAIN_RESET_NET_AFTER) == 1 or TRAIN_RESET_NET_AFTER == 1 then
-			local warm_up_dir = submodel_dir..'/warm_up/'
-			os.execute('mkdir '..warm_up_dir)
-			net = IORNN:new(net_struct)
-			self:warm_up_train(net, traindsbank_path, golddevdsbank_path, kbestdevdsbank_path, warm_up_dir)
-		end
-
-		-- training IORNN
-		if TRAIN_1STEP_MAX_N_EPOCHS > 0 then
-			net = self:one_step_train(net, traindsbank_path, trainkbestdsbank_path, golddevdsbank_path, kbestdevdsbank_path, submodel_dir)
-		end
+		local warm_up_dir = submodel_dir..'/warm_up/'
+		execute('mkdir '..warm_up_dir)
+		net = IORNN:new(net_struct)
+		self:warm_up_train(net, traindsbank_path, golddevdsbank_path, kbestdevdsbank_path, warm_up_dir)
 
 		-- training MSTParser
 		print('load train dsbank ' .. traindsbank_path .. ' ' .. trainkbestdsbank_path)
-		local temp = self:load_dsbank(traindsbank_path)
-		local trainkbestdsbank = self:load_kbestdsbank(trainkbestdsbank_path, temp, TRAIN_MST_K_BEST_RERANK)
 
 		local mst_dir = model_dir .. '/MST-' .. (it+1) ..'/' 
-		os.execute('mkdir '..mst_dir)
+		execute('mkdir '..mst_dir)
+		old_traindsbank_path = traindsbank_path
 		traindsbank_path = mst_dir .. 'train.conll'
+		old_trainkbestdsbank_path = trainkbestdsbank_path
 		trainkbestdsbank_path = mst_dir .. 'train-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
-		kbestdevdsbank_path = mst_dir .. 'dev-'..TRAIN_MST_K_BEST_RERANK..'-best-mst2ndorder.conll'
+		kbestdevdsbank_path = mst_dir .. 'dev-'..TRAIN_MST_K_BEST..'-best-mst2ndorder.conll'
 
-		local parses,_ = self:rerank(net, trainkbestdsbank)
-		self:print_parses(parses, traindsbank_path)
+		self:rerank_parallel(warm_up_dir..'/model_'..TRAIN_WARM_UP_N_EPOCHS, old_traindsbank_path, old_trainkbestdsbank_path, traindsbank_path, TRAIN_N_PROC or 10)
 
-		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..mst_dir..'model test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
-		os.execute('cp '..trainkbestdsbank_path..' '..temp_file)
-		os.execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
+		execute(execMST .. 
+				'train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..mst_dir..'model ' .. 
+				'test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
+		execute('cp '..trainkbestdsbank_path..' '..temp_file)
+		execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
 
-		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST_RERANK..' output-file:'..kbestdevdsbank_path)
-		os.execute('java -classpath "../tools/mstparser/:../tools/mstparser/lib/trove.jar" -Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:1 output-file:/tmp/x eval gold-file:'..golddevdsbank_path)
+		execute(execMST .. 'test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..kbestdevdsbank_path)
+		execute(execMST .. 'test order:2 model-name:'..mst_dir..'model test-file:'..golddevdsbank_path..' testing-k:1 output-file:/tmp/x eval gold-file:'..golddevdsbank_path)
 
-		os.execute('cp '..kbestdevdsbank_path..' '..temp_file)
-		os.execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
-
+		execute('cp '..kbestdevdsbank_path..' '..temp_file)
+		execute("cat "..temp_file.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
 	end
+end
+
+function UDepparser:train_only_net(net_struct, traindsbank_path, golddevdsbank_path, kbestdevdsbank_path, model_dir)
+	execute('mkdir '..model_dir)
+	local subdir = model_dir..'/only_net/'
+	execute('mkdir '..subdir)
+	net = IORNN:new(net_struct)
+	TRAIN_WARM_UP_N_EPOCHS = 20
+	self:warm_up_train(net, traindsbank_path, golddevdsbank_path, kbestdevdsbank_path, subdir)
 end
 
 function UDepparser:compute_scores(test_ds, gold_ds, punc)
@@ -363,6 +376,66 @@ function UDepparser:rerank(net, kbestdsbank, output)
 	return ret, ppl
 end
 
+function UDepparser:rerank_parallel(net_path, dsbank_path, kbestdsbank_path, output, n_procs)
+	local dir = 'tmp'..math.floor(math.random()*1000)..'/'
+	execute('mkdir ' .. dir)
+
+	local dsbank = self:load_dsbank(dsbank_path)
+	local kbestbank = self:load_kbestdsbank(kbestdsbank_path, dsbank)
+	local subn = math.ceil(#dsbank / n_procs)
+
+	execute('split -l '..subn..' -d -a 1 '..kbestdsbank_path..'.mstscores '..dir..'/mstscores')
+
+	for i = 1,n_procs do
+		local subkbestbank = {}
+		local subbank = {}
+		for j = (i-1)*subn+1,math.min(i*subn,#dsbank) do
+			local id = j - (i-1)*subn
+			subbank[id] = dsbank[j]
+			for _,ds in ipairs(kbestbank[j]) do
+				subkbestbank[#subkbestbank+1] = ds
+			end
+		end
+
+		-- write subbank
+		local subbank_path = dir..'/'..i..'-sub'
+		local subkbestbank_path = dir..'/'..i..'-sub-best'
+		local result_path = dir..'/'..i..'-results'
+		self:print_parses(subbank, subbank_path)
+		self:print_parses(subkbestbank, subkbestbank_path)
+		execute('mv '..dir..'/mstscores'..(i-1)..' '..subkbestbank_path..'.mstscores')
+
+		-- parse
+		execute("th eval_unsup_dp.lua "..net_path..' '..subbank_path..' '.. subkbestbank_path..' 1000000 '..result_path..' &')
+	end
+
+	while true do
+		local done = true
+		for i = 1,n_procs do
+			local f = io.open(dir..'/'..i..'-results', 'r')
+			if f == nil then 
+				done = false 
+				break
+			else 
+				f:close() 
+			end
+		end
+		if done then break 
+		else posix.sleep(1) end 
+	end
+
+	-- combine
+	local ret = {}
+	for i = 1,n_procs do
+		local ret_path = dir..'/'..i..'-results'
+		local subbank = self:load_dsbank(ret_path)
+		for _,ds in ipairs(subbank) do
+			ret[#ret+1] = ds
+		end
+	end
+	self:print_parses(ret, output)
+end
+
 function UDepparser:perplexity(net, dsbank)
 	local log_probs = net:compute_log_prob(dsbank)
 	local sum = 0
@@ -445,6 +518,12 @@ function UDepparser:eval(typ, kbestpath, goldpath, output, K)
 		LAS, UAS = self:computeAScores(parses, golddsbank, punc)
 		str = 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
 		print(str)
+
+		if output then
+			self:print_parses(parses, output)
+			local f = io.open(output..'.done', 'w') -- for notification only
+			f.close()
+		end
 
 		-- mail
 		if EVAL_EMAIL_ADDR and self.mail_subject then

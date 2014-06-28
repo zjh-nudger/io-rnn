@@ -10,6 +10,7 @@ if #arg >= 3 then
 	treebank_path = arg[2]
 	kbesttreebank_path = arg[3]
 	K = tonumber(arg[4]) or 10
+	output = arg[5]
 
 	print('load net')
 	local net = IORNN:load(arg[1])
@@ -43,9 +44,8 @@ if #arg >= 3 then
 	end
 ]]
 	print('IORNN')
-	parser.weight_mix=0.5
-	parser:eval(net, kbesttreebank_path, treebank_path, nil, K)
+	parser:eval(net, kbesttreebank_path, treebank_path, output, K)
 
 else
-	print("[net path] [gold]  [kbest] [K] ")
+	print("[net path] [gold]  [kbest] [K] [output] ")
 end

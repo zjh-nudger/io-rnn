@@ -73,11 +73,11 @@ if #arg == 5 then
 	end
 
 	print('training...')
-	traindsbank_path = data_path .. '/train15.dmvem.conll'
+	traindsbank_path = data_path .. '/train15.mst50iter.conll'
 	devdsbank_path = data_path .. '/dev10.gold.conll'
 
---	traindsbank_path = data_path .. '/dev.gold.conll'
---	devdsbank_path = data_path .. '/dev.gold.conll'
+--	traindsbank_path = data_path .. '/dev10.gold.conll'
+--	devdsbank_path = data_path .. '/dev10.gold.conll'
 
 	model_dir = arg[4]
 	dim = tonumber(arg[5])
@@ -87,7 +87,7 @@ if #arg == 5 then
 
 	local parser = UDepparser:new(voca_dic, pos_dic, deprel_dic)
 	parser.mail_subject = model_dir
-	--parser:load_dsbank('model_undep_h50_0_1_5_train15udpc/MST-1/train.conll')
+
 	parser:train(net_struct, traindsbank_path, devdsbank_path, model_dir)
 
 else
