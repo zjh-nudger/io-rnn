@@ -19,10 +19,6 @@ DIST_3_6	= 3
 DIST_7_INF	= 4
 N_DIST_FEAT	= 4
 
-
--- dpiornn settings
-IORNN_CONTEXT_SIZE	= 3
-
 -- depstruct settings
 DEPSTRUCT_N_DEPS = 100
 
@@ -31,18 +27,19 @@ MIN_OCCURS_THRESHOLD	 = 3
 TRAIN_LAMBDA			 = 1e-4
 TRAIN_LAMBDA_L			 = 1e-10
 TRAIN_BATCHSIZE			 = 32
-TRAIN_MAX_N_EPOCHS		 = 1000
-TRAIN_1STEP_MAX_N_EPOCHS = 0
-TRAIN_RESET_NET_AFTER	 = 1
-TRAIN_WARM_UP_N_EPOCHS	 = 5
+TRAIN_N_LEAPS			 = 100
+TRAIN_N_EPOCHS_IN_1_ITER = 5
+TRAIN_N_ITER_IN_1_LEAP	 = 5
 TRAIN_UPDATE_L			 = true
-TRAIN_SAMPLE_SIZE		 = 10
 TRAIN_MST_K_BEST		 = 10
 TRAIN_WEIGHT_MIX		 = 1
 TRAIN_N_PROC			 = 10
 
 TRAIN_WEIGHT_LEARNING_RATE	= 0.1
 TRAIN_VOCA_LEARNING_RATE	= 0.1
+
+MST_PATH	= "/datastore/phong/data/io-rnn/tools/mstparser/"
+CLEAR_PATH	= "/datastore/phong/data/io-rnn/tools/clearnlp/"
 
 -- for eval
 EVAL_TOOL_PATH	= '../tools/eval-dep.pl'

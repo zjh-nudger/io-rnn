@@ -52,3 +52,18 @@ function roulette_wheel_selection(w, n)
 	return ret
 end
 
+function execute(input)
+	local cmd = input
+	if type(input) == "table" then
+		cmd = ''
+		for _,arg in ipairs(input) do
+			cmd = cmd .. arg .. ' '
+		end
+	end
+
+	print("\nEXECUTE: " .. cmd)
+	os.execute(cmd)
+end
+
+
+

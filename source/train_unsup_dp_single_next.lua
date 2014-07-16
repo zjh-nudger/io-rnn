@@ -1,4 +1,4 @@
-require 'unsup_depparser'
+require 'unsup_depparser_next'
 require 'utils'
 require 'dict'
 require 'xlua'
@@ -7,15 +7,21 @@ require 'dp_spec'
 
 torch.setnumthreads(NUM_THREADS)
 
-if #arg == 5 then
-	dic_dir_path = arg[1]
-	data_path = arg[2]
+if #arg == 7 then
 
+	dic_dir_path = arg[1]
+	train_file = arg[2]
+	dev_file = arg[3]
+
+	model_dir = arg[5]
+	dim = tonumber(arg[6])
+	kbestparser = arg[7]
+	
 ------------------ load dics and wemb ----------------
 	init_wemb_type = nil
-	wdim = tonumber(arg[3])
+	wdim = tonumber(arg[4])
 	if wdim == nil then
-		init_wemb_type = arg[3]
+		init_wemb_type = arg[4]
 	end
  
 	-- load voca and embeddings
@@ -72,15 +78,12 @@ if #arg == 5 then
 		print(line)
 	end
 
-	print('training...')
-	traindsbank_path = data_path .. '/train10.dmvem.conll'
-	devdsbank_path = data_path .. '/dev10.gold.conll'
+	print('================ training... ================')
 
---	traindsbank_path = data_path .. '/dev10.gold.conll'
---	devdsbank_path = data_path .. '/dev10.gold.conll'
+	traindsbank_path = train_file
+	devdsbank_path = dev_file
 
-	model_dir = arg[4]
-	dim = tonumber(arg[5])
+
 
 	local net_struct = { dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
 							lookup = L, func = tanh, funcPrime = tanhPrime }
@@ -88,8 +91,12 @@ if #arg == 5 then
 	local parser = UDepparser:new(voca_dic, pos_dic, deprel_dic)
 	parser.mail_subject = model_dir
 
-	parser:train(net_struct, traindsbank_path, devdsbank_path, model_dir)
+	parser:train(net_struct, traindsbank_path, devdsbank_path, model_dir, kbestparser)
+
+	print('DONE!!!')	
+	local f = io.open(model_dir..'/done', 'w')
+	f:close()
 
 else
-	print("[dic dir path] [dsbank] [emb_model] [model dir] [dim]")
+	print("[dic-dir] [train-file] [dev-file] [wemb] [model-dir] [dim] [kbestparser]")
 end
