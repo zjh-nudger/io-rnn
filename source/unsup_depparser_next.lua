@@ -193,25 +193,26 @@ function UDepparser:train_net_in_1iter(net, traindsbank_path, golddevdsbank_path
 	return net
 end
 
+execMST = 'java '..
+				'-classpath "'..
+					MST_PATH..':'..
+					MST_PATH..'/lib/trove.jar" '..
+				'-Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser ' 
+
+execCLEAR = 'java '..
+				'-classpath "'..
+					CLEAR_PATH..'/args4j-2.0.23.jar:'..
+					CLEAR_PATH..'/guava-14.0.1.jar:'..
+					CLEAR_PATH..'/hppc-0.5.2.jar:'..
+					CLEAR_PATH..'/jregex1.2_01.jar:'..
+					CLEAR_PATH..'/log4j-1.2.17.jar:'..
+					CLEAR_PATH..'/clearnlp-2.0.2.jar:'..
+					CLEAR_PATH..'/model/dictionary.jar:'..
+					CLEAR_PATH..'/multiparse/'
+
+
 function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, model_dir, kbestparser)
 	self.kbestparser = kbestparser:lower()
-
-	local execMST = 'java '..
-						'-classpath "'..
-							MST_PATH..':'..
-							MST_PATH..'/lib/trove.jar" '..
-						'-Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser ' 
-
-	local execCLEAR = 'java '..
-						'-classpath "'..
-							CLEAR_PATH..'/args4j-2.0.23.jar:'..
-							CLEAR_PATH..'/guava-14.0.1.jar:'..
-							CLEAR_PATH..'/hppc-0.5.2.jar:'..
-							CLEAR_PATH..'/jregex1.2_01.jar:'..
-							CLEAR_PATH..'/log4j-1.2.17.jar:'..
-							CLEAR_PATH..'/clearnlp-2.0.2.jar:'..
-							CLEAR_PATH..'/model/dictionary.jar:'..
-							CLEAR_PATH..'/multiparse/'
 
 	execute('mkdir ' .. model_dir)
 	local net = nil
@@ -226,9 +227,12 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 	trainkbestdsbank_path = parser_dir .. '/train-kbest.conll'
 	kbestdevdsbank_path = parser_dir .. '/dev-kbest.conll'
 
+	local mst_iters = 1
+
 	if self.kbestparser == 'mst' then
 		execute(execMST .. 
-				'train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..parser_dir..'/model '..
+				'train train-file:'..traindsbank_path..' training-k:1 order:2 iters:'..mst_iters..
+				' loss-type:nopunc model-name:'..parser_dir..'/model '..
 				'test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
 		execute('cp '..trainkbestdsbank_path..' '..tempf)
 		execute("cat "..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
@@ -249,7 +253,7 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 		execute('mkdir '..parser_dir..'/general-en')
 
 		execute(execCLEAR..'" com.clearnlp.nlp.engine.NLPDecode -z morph -c '..CLEAR_PATH..'/config_morph.xml -i '..traindsbank_path)
-		execute('paste '..traindsbank_path..' '..traindsbank_path..'.cnlp > '..traindsbank_path..'_dir/train.conll')
+		execute('paste '..traindsbank_path..'.cnlp '..traindsbank_path..' > '..traindsbank_path..'_dir/train.conll')
 		execute(execCLEAR..'" com.clearnlp.nlp.engine.NLPTrain -z dep '..
 					'-c '..CLEAR_PATH..'/config_train.xml -f '..CLEAR_PATH..'/feature_en_dep.xml -i '..traindsbank_path..'_dir -m '..parser_dir..'/general-en')
 		execute('cd '..parser_dir.. ' && jar cvf model.jar general-en')
@@ -266,6 +270,7 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 		error('noexist parser')
 	end
 
+	TRAIN_N_ITER_IN_1_LEAP = 1000
 
 	for it = 1, TRAIN_N_ITER_IN_1_LEAP do
 		-- train IORNN
@@ -290,8 +295,10 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 		if it == TRAIN_N_ITER_IN_1_LEAP then break end
 
 		if self.kbestparser == 'mst' then
+			mst_iters = math.min(10, math.floor(it/10)+1)
 			execute(execMST .. 
-					'train train-file:'..traindsbank_path..' training-k:5 order:2 loss-type:nopunc model-name:'..parser_dir..'/model ' .. 
+					'train train-file:'..traindsbank_path..' training-k:1 order:2 iters:'..mst_iters..
+					' loss-type:nopunc model-name:'..parser_dir..'/model ' .. 
 					'test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
 			execute('cp '..trainkbestdsbank_path..' '..tempf)
 			execute('cat '..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
@@ -312,7 +319,7 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 			execute('mkdir '..parser_dir..'/general-en')
 
 			execute(execCLEAR..'" com.clearnlp.nlp.engine.NLPDecode -z morph -c '..CLEAR_PATH..'/config_morph.xml -i '..traindsbank_path)
-			execute('paste '..traindsbank_path..' '..traindsbank_path..'.cnlp > '..traindsbank_path..'_dir/train.conll')
+			execute('paste '..traindsbank_path..'.cnlp '..traindsbank_path..' > '..traindsbank_path..'_dir/train.conll')
 			execute(execCLEAR..'" com.clearnlp.nlp.engine.NLPTrain -z dep '..
 						'-c '..CLEAR_PATH..'/config_train.xml -f '..CLEAR_PATH..'/feature_en_dep.xml -i '..traindsbank_path..'_dir -m '..parser_dir..'/general-en')
 			execute('cd '..parser_dir.. ' && jar cvf model.jar general-en')
@@ -601,6 +608,30 @@ function UDepparser:eval(typ, kbestpath, goldpath, output, K)
 		end
 		print('sen-ppl ' .. ppl ..'\n')
 	end	
+end
+
+
+function UDepparser:parse(netmodel, kbestparser, kbestmodel, input, output, K)
+	self.kbestparser = kbestparser:lower()
+	local tempf = os.tmpname()
+
+	if self.kbestparser == 'mst' then
+		execute(execMST .. 
+				'test order:2 model-name:'..kbestmodel..' '..
+				'test test-file:'..input..' testing-k:'..K..' output-file:'..tempf)
+		execute('cp '..tempf..' '..tempf..'.temp')
+		execute("cat "..tempf..".temp | sed 's/<no-type>/NOLABEL/g' > "..tempf)
+	
+
+	elseif self.kbestparser == 'clear' then
+	
+	else
+		error('noexist parser')
+	end
+
+	self:rerank_parallel(netmodel, input, tempf, output, TRAIN_N_PROC or 10)
+
+	execute('rm '..tempf)
 end
 
 --[[ for testing
