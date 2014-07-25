@@ -1,4 +1,4 @@
-require 'unsup_depparser_next'
+require 'unsup_depparser'
 require 'utils'
 require 'dict'
 require 'xlua'
@@ -7,21 +7,24 @@ require 'dp_spec'
 
 torch.setnumthreads(NUM_THREADS)
 
-if #arg == 7 then
+if #arg == 8 then
+
+	print(arg)
 
 	dic_dir_path = arg[1]
-	train_file = arg[2]
-	dev_file = arg[3]
+	fulltrain_file = arg[2]
+	train_file = arg[3]
+	dev_file = arg[4]
 
-	model_dir = arg[5]
-	dim = tonumber(arg[6])
-	kbestparser = arg[7]
+	model_dir = arg[6]
+	dim = tonumber(arg[7])
+	kbestparser = arg[8]
 	
 ------------------ load dics and wemb ----------------
 	init_wemb_type = nil
-	wdim = tonumber(arg[4])
+	wdim = tonumber(arg[5])
 	if wdim == nil then
-		init_wemb_type = arg[4]
+		init_wemb_type = arg[5]
 	end
  
 	-- load voca and embeddings
@@ -91,12 +94,12 @@ if #arg == 7 then
 	local parser = UDepparser:new(voca_dic, pos_dic, deprel_dic)
 	parser.mail_subject = model_dir
 
-	parser:train(net_struct, traindsbank_path, devdsbank_path, model_dir, kbestparser)
+	parser:train(net_struct, fulltrain_file, traindsbank_path, devdsbank_path, model_dir, kbestparser)
 
 	print('DONE!!!')	
 	local f = io.open(model_dir..'/done', 'w')
 	f:close()
 
 else
-	print("[dic-dir] [train-file] [dev-file] [wemb] [model-dir] [dim] [kbestparser]")
+	print("[dic-dir] [fulltrain-raw-file] [train-file] [dev-file] [wemb] [model-dir] [dim] [kbestparser]")
 end

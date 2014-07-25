@@ -15,7 +15,7 @@ math.randomseed(os.time())
 posix.sleep(5)
 
 function UDepparser:new(voca_dic, pos_dic, deprel_dic)
-	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, kbestparser = ''}
+	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, kbestparser = 'mst'}
 	setmetatable(parser, UDepparser_mt)
 	return parser
 end
@@ -199,19 +199,7 @@ execMST = 'java '..
 					MST_PATH..'/lib/trove.jar" '..
 				'-Xmx32g -Djava.io.tmpdir=./ mstparser.DependencyParser ' 
 
-execCLEAR = 'java '..
-				'-classpath "'..
-					CLEAR_PATH..'/args4j-2.0.23.jar:'..
-					CLEAR_PATH..'/guava-14.0.1.jar:'..
-					CLEAR_PATH..'/hppc-0.5.2.jar:'..
-					CLEAR_PATH..'/jregex1.2_01.jar:'..
-					CLEAR_PATH..'/log4j-1.2.17.jar:'..
-					CLEAR_PATH..'/clearnlp-2.0.2.jar:'..
-					CLEAR_PATH..'/model/dictionary.jar:'..
-					CLEAR_PATH..'/multiparse/'
-
-
-function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, model_dir, kbestparser)
+function UDepparser:train(net_struct, fulltraindsbank_path, traindsbank_path, golddevdsbank_path, model_dir, kbestparser)
 	self.kbestparser = kbestparser:lower()
 
 	execute('mkdir ' .. model_dir)
@@ -219,122 +207,105 @@ function UDepparser:train(net_struct, traindsbank_path, golddevdsbank_path, mode
 	
 	local tempf = os.tmpname()
 
-	-- train parser with dsbank
-	local parser_dir = model_dir..'/'..kbestparser..'-1/'
-	execute('mkdir ' .. parser_dir)
-	execute('cp ' .. traindsbank_path .. ' ' .. parser_dir ..'/train.conll')
-	traindsbank_path = parser_dir..'/train.conll'
-	trainkbestdsbank_path = parser_dir .. '/train-kbest.conll'
-	kbestdevdsbank_path = parser_dir .. '/dev-kbest.conll'
 
-	local mst_iters = 1
+	local mst_iters = TRAIN_MST_ITERS
+	local n_phases = #TRAIN_MPIR_N_ITER
 
-	if self.kbestparser == 'mst' then
-		execute(execMST .. 
-				'train train-file:'..traindsbank_path..' training-k:1 order:2 iters:'..mst_iters..
-				' loss-type:nopunc model-name:'..parser_dir..'/model '..
-				'test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
-		execute('cp '..trainkbestdsbank_path..' '..tempf)
-		execute("cat "..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
+	-- prepare 
+	phase_dirs = {}
+	local dsbank = self:load_dsbank(fulltraindsbank_path)
 
-		execute(execMST .. 
-					'test order:2 model-name:'..parser_dir..'model test-file:'..golddevdsbank_path..
-					' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..kbestdevdsbank_path)
-		execute(execMST .. 
-					'test order:2 model-name:'..parser_dir..'model test-file:'..golddevdsbank_path..
-					' testing-k:1 output-file:'..tempf..' eval gold-file:'..golddevdsbank_path)
+	for phase = 1, n_phases do
+		phase_dirs[phase] = model_dir..'/phase-'..phase..'/'
+		execute('mkdir '..phase_dirs[phase])
 
-		execute('cp '..kbestdevdsbank_path..' '..tempf)
-		execute('cat '..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
-		execute('rm '..tempf)
-
-	elseif self.kbestparser == 'clear' then
-		execute('mkdir '..traindsbank_path..'_dir')
-		execute('mkdir '..parser_dir..'/general-en')
-
-		execute(execCLEAR..'" com.clearnlp.nlp.engine.NLPDecode -z morph -c '..CLEAR_PATH..'/config_morph.xml -i '..traindsbank_path)
-		execute('paste '..traindsbank_path..'.cnlp '..traindsbank_path..' > '..traindsbank_path..'_dir/train.conll')
-		execute(execCLEAR..'" com.clearnlp.nlp.engine.NLPTrain -z dep '..
-					'-c '..CLEAR_PATH..'/config_train.xml -f '..CLEAR_PATH..'/feature_en_dep.xml -i '..traindsbank_path..'_dir -m '..parser_dir..'/general-en')
-		execute('cd '..parser_dir.. ' && jar cvf model.jar general-en')
-		
-		execute(execCLEAR..':'..parser_dir..'/model.jar" MultiParse '..traindsbank_path..' '..trainkbestdsbank_path)
-		execute('cp '..trainkbestdsbank_path..' '..tempf)
-		execute('sh '..CLEAR_PATH..'/to_conll.sh '..tempf..' '..trainkbestdsbank_path)
-
-		execute('rm '..golddevdsbank_path..'.cnlp')
-		execute(execCLEAR..':'..parser_dir..'/model.jar" com.clearnlp.nlp.engine.NLPDecode -z dep -c '..CLEAR_PATH..'/config_dep.xml -i '..golddevdsbank_path)
-		execute(execCLEAR..'" com.clearnlp.run.DEPEvaluate -g '..golddevdsbank_path..' -gd 8 -gh 7 -s '..golddevdsbank_path..'.cnlp -sd 7 -sh 6')
-		execute('rm '..tempf)	
-	else
-		error('noexist parser')
+		local sent_len = TRAIN_MPIR_SENT_LEN[phase]
+		local phase_dsbank = {}
+		for _,ds in ipairs(dsbank) do
+			if ds.n_words-1 <= sent_len then
+				phase_dsbank[#phase_dsbank+1] = ds
+			end
+		end
+		self:print_parses(phase_dsbank, phase_dirs[phase]..'/train-raw.conll')
 	end
 
-	TRAIN_N_ITER_IN_1_LEAP = 1000
 
-	for it = 1, TRAIN_N_ITER_IN_1_LEAP do
-		-- train IORNN
-		local submodel_dir = model_dir..'/'..it..'/'
-		execute('mkdir ' .. submodel_dir)
-		net = IORNN:new(net_struct)
-		self:train_net_in_1iter(net, traindsbank_path, golddevdsbank_path, kbestdevdsbank_path, submodel_dir)
-
-		-- training parser
-		print('load train dsbank ' .. traindsbank_path .. ' ' .. trainkbestdsbank_path)
-
-		local parser_dir = model_dir .. '/'..kbestparser..'-' .. (it+1) ..'/' 
-		execute('mkdir '..parser_dir)
-		old_traindsbank_path = traindsbank_path
-		traindsbank_path = parser_dir .. '/train.conll'
-		old_trainkbestdsbank_path = trainkbestdsbank_path
-		trainkbestdsbank_path = parser_dir .. '/train-kbest.conll'
-		kbestdevdsbank_path = parser_dir .. '/dev-kbest.conll'
-
-		self:rerank_parallel(submodel_dir..'/model_'..TRAIN_N_EPOCHS_IN_1_ITER, old_traindsbank_path, old_trainkbestdsbank_path, traindsbank_path, TRAIN_N_PROC or 10)
-
-		if it == TRAIN_N_ITER_IN_1_LEAP then break end
-
-		if self.kbestparser == 'mst' then
-			mst_iters = math.min(10, math.floor(it/10)+1)
-			execute(execMST .. 
-					'train train-file:'..traindsbank_path..' training-k:1 order:2 iters:'..mst_iters..
-					' loss-type:nopunc model-name:'..parser_dir..'/model ' .. 
-					'test test-file:'..traindsbank_path..' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
-			execute('cp '..trainkbestdsbank_path..' '..tempf)
-			execute('cat '..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
-
-			execute(execMST .. 
-						'test order:2 model-name:'..parser_dir..'model test-file:'..golddevdsbank_path..
-						' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..kbestdevdsbank_path)
-			execute(execMST .. 
-						'test order:2 model-name:'..parser_dir..'model test-file:'..golddevdsbank_path..
-						' testing-k:1 output-file:'..tempf..' eval gold-file:'..golddevdsbank_path)
-
-			execute('cp '..kbestdevdsbank_path..' '..tempf)
-			execute('cat '..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
-			execute('rm '..tempf)
+	for phase = 1,#TRAIN_MPIR_SENT_LEN-1 do
+		local sent_len = TRAIN_MPIR_SENT_LEN[phase]
+		local n_iter = TRAIN_MPIR_N_ITER[phase]
+		local phase_dir = phase_dirs[phase]
+	
+		-- starting point for phase 1
+		if phase == 1 then
+			execute('cp '..traindsbank_path..' '..phase_dir..'/train.conll')
+		end
+		traindsbank_path = phase_dir..'/train.conll'
 		
-		elseif self.kbestparser == 'clear' then
-			execute('mkdir '..traindsbank_path..'_dir')
-			execute('mkdir '..parser_dir..'/general-en')
+		for it = 1,n_iter do
 
-			execute(execCLEAR..'" com.clearnlp.nlp.engine.NLPDecode -z morph -c '..CLEAR_PATH..'/config_morph.xml -i '..traindsbank_path)
-			execute('paste '..traindsbank_path..'.cnlp '..traindsbank_path..' > '..traindsbank_path..'_dir/train.conll')
-			execute(execCLEAR..'" com.clearnlp.nlp.engine.NLPTrain -z dep '..
-						'-c '..CLEAR_PATH..'/config_train.xml -f '..CLEAR_PATH..'/feature_en_dep.xml -i '..traindsbank_path..'_dir -m '..parser_dir..'/general-en')
-			execute('cd '..parser_dir.. ' && jar cvf model.jar general-en')
-		
-			execute(execCLEAR..':'..parser_dir..'/model.jar" MultiParse '..traindsbank_path..' '..trainkbestdsbank_path)
-			execute('cp '..trainkbestdsbank_path..' '..tempf)
-			execute('sh '..CLEAR_PATH..'/to_conll.sh '..tempf..' '..trainkbestdsbank_path)
+			-- train kbest parser
+			local parser_dir = phase_dir..'/'..kbestparser..'-'..it..'/'
+			execute('mkdir ' .. parser_dir)
 
-			execute('rm '..golddevdsbank_path..'.cnlp')
-			execute(execCLEAR..':'..parser_dir..'/model.jar" com.clearnlp.nlp.engine.NLPDecode -z dep -c '..CLEAR_PATH..'/config_dep.xml -i '..golddevdsbank_path)
-			execute(execCLEAR..'" com.clearnlp.run.DEPEvaluate -g '..golddevdsbank_path..' -gd 8 -gh 7 -s '..golddevdsbank_path..'.cnlp -sd 7 -sh 6')
-			execute('rm '..tempf)	
+			if it == 1 then
+				execute('cp ' .. traindsbank_path .. ' ' .. parser_dir ..'/train.conll')
+			else
+				execute('cp ' .. phase_dir..'/'..kbestparser..'-'..(it-1)..'/train-reranked.conll '..parser_dir..'/train.conll')
+			end
 
-		else 
-			error('noexist parser')
+			traindsbank_path = parser_dir..'/train.conll'
+			trainkbestdsbank_path = parser_dir .. '/train-kbest.conll'
+			kbestdevdsbank_path = parser_dir .. '/dev-kbest.conll'
+
+			if self.kbestparser == 'mst' then
+				execute(execMST .. 
+							'train train-file:'..traindsbank_path..' training-k:1 order:2 iters:'..mst_iters..
+							' loss-type:nopunc model-name:'..parser_dir..'/model')
+				
+				if it < n_iter then
+					execute(execMST .. 
+								'test order:2 test-file:'..traindsbank_path..' model-name:'..parser_dir..'/model '..
+								'testing-k:'..TRAIN_MST_K_BEST..' output-file:'..trainkbestdsbank_path)
+					execute('cp '..trainkbestdsbank_path..' '..tempf)
+					execute("cat "..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..trainkbestdsbank_path)
+				else -- generate k-best lists for the next phase
+					execute(execMST .. 
+								'test order:2 test-file:'..phase_dirs[phase+1]..'/train-raw.conll model-name:'..parser_dir..'/model '..
+								'testing-k:'..TRAIN_MST_K_BEST..' output-file:'..phase_dirs[phase+1]..'/train-kbest.conll')
+					execute('cp '..phase_dirs[phase+1]..'/train-kbest.conll '..tempf)
+					execute("cat "..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..phase_dirs[phase+1]..'/train-kbest.conll')			
+				end
+
+				execute(execMST .. 
+							'test order:2 model-name:'..parser_dir..'model test-file:'..golddevdsbank_path..
+							' testing-k:'..TRAIN_MST_K_BEST..' output-file:'..kbestdevdsbank_path)
+				execute(execMST .. 
+							'test order:2 model-name:'..parser_dir..'model test-file:'..golddevdsbank_path..
+							' testing-k:1 output-file:'..tempf..' eval gold-file:'..golddevdsbank_path)
+
+				execute('cp '..kbestdevdsbank_path..' '..tempf)
+				execute('cat '..tempf.." | sed 's/<no-type>/NOLABEL/g' > "..kbestdevdsbank_path)
+				execute('rm '..tempf)
+			else
+				error('noexist parser')
+			end
+
+
+			-- train IORNN
+			local submodel_dir = phase_dir..'/'..it..'/'
+			execute('mkdir ' .. submodel_dir)
+			net = IORNN:new(net_struct)
+			self:train_net_in_1iter(net, traindsbank_path, golddevdsbank_path, kbestdevdsbank_path, submodel_dir)
+
+			if it < n_iter then
+				local output_path = parser_dir..'/train-reranked.conll'
+				self:rerank_parallel(submodel_dir..'/model_'..TRAIN_N_EPOCHS_IN_1_ITER, traindsbank_path, trainkbestdsbank_path, output_path, TRAIN_N_PROC or 10)
+			else -- for the next phase
+				traindsbank_path = phase_dirs[phase+1]..'/train-raw.conll'
+				trainkbestdsbank_path = phase_dirs[phase+1]..'/train-kbest.conll'
+				local output_path = phase_dirs[phase+1]..'/train.conll'
+				self:rerank_parallel(submodel_dir..'/model_'..TRAIN_N_EPOCHS_IN_1_ITER, traindsbank_path, trainkbestdsbank_path, output_path, TRAIN_N_PROC or 10)
+			end
 		end
 	end
 end
@@ -479,10 +450,10 @@ function UDepparser:rerank_parallel(net_path, dsbank_path, kbestdsbank_path, out
 		local result_path = dir..'/'..i..'-results'
 		self:print_parses(subbank, subbank_path)
 		self:print_parses(subkbestbank, subkbestbank_path)
-		execute('mv '..dir..'/scores'..(i-1)..' '..subkbestbank_path..'.scores')
+		execute('mv '..dir..'/scores'..(i-1)..' '..subkbestbank_path..'.'..self.kbestparser..'scores')
 
 		-- parse
-		execute("th eval_unsup_dp_next.lua "..net_path..' '..subbank_path..' '.. subkbestbank_path..' '..TRAIN_MST_K_BEST..' '..result_path..' &')
+		execute("th eval_unsup_dp.lua "..net_path..' '..subbank_path..' '.. subkbestbank_path..' '..TRAIN_MST_K_BEST..' '..result_path..' &')
 	end
 
 	while true do

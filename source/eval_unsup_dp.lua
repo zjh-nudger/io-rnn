@@ -1,4 +1,4 @@
-require 'unsup_depparser_next'
+require 'unsup_depparser'
 require 'utils'
 require 'dict'
 require 'xlua'
