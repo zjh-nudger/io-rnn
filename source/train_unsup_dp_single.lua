@@ -49,6 +49,8 @@ if #arg == 8 then
 		elseif init_wemb_type == 'turian_25' then 
 			dic_func = turian_template
 			subdir = '/turian_25/'
+		else
+			error('unknown word-embeddings')
 		end
 		
 		-- load dics

@@ -172,7 +172,7 @@ function UDepparser:train_net_in_1iter(net, traindsbank_path, golddevdsbank_path
 	-- shuf the traindsbank
 	print('shufing train dsbank')
 	local new_i = torch.randperm(#dsbank)
-	traindsbank = {}
+	local traindsbank = {}
 	for i = 1,#dsbank do
 		traindsbank[i] = dsbank[new_i[i]]
 	end
@@ -228,12 +228,13 @@ function UDepparser:train(net_struct, fulltraindsbank_path, traindsbank_path, go
 		end
 		self:print_parses(phase_dsbank, phase_dirs[phase]..'/train-raw.conll')
 	end
-
+	dsbank = nil
 
 	for phase = 1,#TRAIN_MPIR_SENT_LEN-1 do
 		local sent_len = TRAIN_MPIR_SENT_LEN[phase]
 		local n_iter = TRAIN_MPIR_N_ITER[phase]
 		local phase_dir = phase_dirs[phase]
+		collectgarbage()
 	
 		-- starting point for phase 1
 		if phase == 1 then
