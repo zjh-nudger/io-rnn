@@ -64,7 +64,7 @@ function Depparser:load_dsbank(path)
 			end
 			tokens = {}
 
-			if math.mod(i,1000) == 0 then print('.') end
+			if math.mod(i,100) == 0 then io.write(i..' trees \r'); io.flush() end
 			i = i + 1
 		else 
 			tokens[#tokens+1] = line
@@ -100,7 +100,7 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 				print(goldds.n_words)
 				error("not match")
 			end
-			ds.word = goldds.word:clone()
+			ds.word = goldds.word:clone() 
 			ds.cap = goldds.cap:clone()
 		end
 	end
@@ -170,9 +170,9 @@ function Depparser:compute_scores(test_ds, gold_ds, punc)
 	return { unlabel = unlabel , label = label , n = n }
 end
 
-function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
+function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ)
 	local typ = typ or 'best'
-	local K = K or 10
+	local K = 100000
 
 	if #kbestdsbank ~= #golddsbank then 
 		error('size not match')
@@ -181,7 +181,7 @@ function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ, K)
 	local ret = {raw = {}}
 
 	for i,parses in ipairs(kbestdsbank) do
-		if typ == 'first' then ret[i] = parses[1] 
+		if typ == 'first' then ret[i] = parses[1]; ret.raw[i] = parses.raw[1] 
 		else
 			local gold = golddsbank[i]
 			local best_parse = nil
@@ -271,7 +271,7 @@ function Depparser:rerank(net, kbestdsbank, output)
 	end
 
 	for i,org_parses in ipairs(kbestdsbank) do
-		if math.mod(i, 1) == 0 then print(i) end
+		if math.mod(i, 10) == 0 then io.write(i..'\r'); io.flush() end
 		local parses = {}
 		for k = 1, math.min(K, #org_parses) do
 			parses[k] = org_parses[k]
@@ -337,6 +337,7 @@ function Depparser:computeAScores(parses, golddsbank, punc, output)
 		label 	= label + ret.label
 		unlabel = unlabel + ret.unlabel
 	end
+
 	--print(total)
 
 	local LAS = label / total * 100
@@ -344,10 +345,8 @@ function Depparser:computeAScores(parses, golddsbank, punc, output)
 	return LAS, UAS
 end
 
-punc = false
-
 -- should not call it directly when training, there's a mem-leak problem!!!
-function Depparser:eval(typ, kbestpath, goldpath, output, K)
+function Depparser:eval(typ, kbestpath, goldpath, output)
 	local str = ''
 
 	print('load ' .. goldpath)
@@ -356,7 +355,7 @@ function Depparser:eval(typ, kbestpath, goldpath, output, K)
 	print('load ' .. kbestpath)
 	local kbestdsbank, kbestdsscore  = self:load_kbestdsbank(kbestpath, golddsbank)
 
-	print('parsing...')
+	print('reranking...')
 
 	-- compute perplexity
 	if type(typ) ~= 'string' then
@@ -368,41 +367,47 @@ function Depparser:eval(typ, kbestpath, goldpath, output, K)
 	local ppl = nil
 	if type(typ) == 'string' then
 		if typ == 'best' or typ == 'worst' or typ == 'first' then 
-			parses = self:rerank_oracle(kbestdsbank, golddsbank, typ, K)
-			LAS, UAS = self:computeAScores(parses, golddsbank, punc) --'/tmp/univ-test-result.conll.'..typ)
+			parses = self:rerank_oracle(kbestdsbank, golddsbank, typ)
+			LAS, UAS = self:computeAScores(parses, golddsbank, punc, output) --'/tmp/univ-test-result.conll.'..typ)
 			str = 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
 			print(str)
 		else 
 			self.mail_subject = nil
-			for K = 17,17 do
+
+			if K_range == nil then K_range = {K,K} end
+			if alpha_range == nil then alpha_range = {alpha,alpha} end
+			print('k\talpha\tUAS\tLAS')
+
+			-- search for best K and alpha
+			for k = K_range[1],K_range[2] do
 				best_alpha = 0
 				best_UAS = 0
 				best_LAS = 0
-				for alpha = 0.69,0.69 do --0,1,0.005 do
-					parses = self:rerank_scorefile(typ, kbestpath..'.mstscores', kbestdsbank, kbestdsscore, alpha, K)
-					LAS, UAS = self:computeAScores(parses, golddsbank, punc, '/tmp/YM-test-result.conll')
+				for a = alpha_range[1],alpha_range[2],0.005 do
+					parses = self:rerank_scorefile(typ, kbestpath..'.mstscores', kbestdsbank, kbestdsscore, a, k)
+					LAS, UAS = self:computeAScores(parses, golddsbank, punc, output) 
 					if UAS > best_UAS then 
 						best_UAS = UAS
-						best_alpha = alpha
+						best_alpha = a
 						best_LAS = LAS
 					end
-					--print(K .. '\t' .. alpha .. '\t' .. UAS .. '\t' .. LAS)
 				end
-				print(K .. '\t' .. best_alpha .. '\t' .. best_UAS .. '\t' .. best_LAS)
+				print(k .. '\t' .. best_alpha .. '\t' .. string.format('%.2f',best_UAS) .. '\t' .. string.format('%.2f',best_LAS))
 			end
 		end
 	else 
 		local net = typ
-		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores.fix')
+		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores')
 		LAS, UAS = self:computeAScores(parses, golddsbank, punc)
 		str = 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
 		print(str)
 
-		-- mail
+		--[[ mail
 		if EVAL_EMAIL_ADDR and self.mail_subject then
 			os.execute('echo "'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
-		end
+		end 
 		print('sen-ppl ' .. ppl ..'\n')
+		]]
 	end	
 end
 

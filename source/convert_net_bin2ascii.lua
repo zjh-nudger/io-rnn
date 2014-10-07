@@ -1,4 +1,4 @@
-require 'iornn'
+require 'dpiornn_gen'
 
 if #arg == 2 then
 	local net = IORNN:load(arg[1])

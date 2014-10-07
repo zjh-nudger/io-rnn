@@ -97,6 +97,14 @@ function Depstruct:create_empty_tree(n_nodes)
 				deprel		= torch.zeros(n_nodes):long() }
 end
 
+function Depstruct:delete_tree(tree)
+	for k,_ in pairs(tree) do
+		tree[k] = nil
+	end
+	tree = nil
+	return nil
+end
+
 function Depstruct:to_torch_matrix_tree(id, node, tree)
 	local id = id or 1
 	local node = node or 1

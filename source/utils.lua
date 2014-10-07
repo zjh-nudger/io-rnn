@@ -34,3 +34,8 @@ function log_sum_of_exp(xs)
 	local sum = xs:add(-max):exp():sum()
 	return max + math.log(sum)
 end
+
+function get_current_time()
+	time = os.date("*t")
+	return time.day.."/"..time.month.."/"..time.year.." "..time.hour .. ":" .. time.min .. ":" .. time.sec
+end

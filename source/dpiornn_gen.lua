@@ -6,7 +6,7 @@ require 'dp_spec'
 require 'xlua'
 p = xlua.Profiler()
 
---**************** rerursive neural network class ******************--
+--**************** inside-outside rerursive neural network class ******************--
 IORNN = {}
 IORNN_mt = {__index = IORNN}
 
@@ -48,7 +48,7 @@ function identityPrime(X)
 end
 
 --************************* construction ********************--
--- create a new recursive autor encoder with a given structure
+
 function IORNN:new(input)
 	local net = {	dim = input.dim, wdim = input.lookup:size(1), 
 					voca_dic = input.voca_dic, pos_dic = input.pos_dic, deprel_dic = input.deprel_dic }
@@ -257,7 +257,9 @@ end
 -- save net into a file
 function IORNN:save( filename , binary )
 	local file = torch.DiskFile(filename, 'w')
-	if binary == nil or binary then file:binary() end
+	--if binary == nil or binary then file:binary() end
+	if binary == true then file:binary() end
+
 	file:writeObject(self)
 	file:close()
 end
@@ -265,7 +267,9 @@ end
 -- create net from file
 function IORNN:load( filename , binary, func, funcPrime )
 	local file = torch.DiskFile(filename, 'r')
-	if binary == nil or binary then file:binary() end
+	--if binary == nil or binary then file:binary() end
+	if binary == true then file:binary() end
+
 	local net = file:readObject()
 	file:close()
 
@@ -395,7 +399,7 @@ function IORNN:forward_outside(tree)
 						:add(torch.repeatTensor(self.bword, 1, tree.n_nodes))
 	tree.word_prob	= safe_compute_softmax(tree.word_score)
 
-	-- Pr(word | pos, deprel, outer)
+	-- Pr(cap | word, pos, deprel, outer)
 	tree.cap_score	= 	(self.Wcap * tree.cstr_outer)
 						:add(self.Ldrcap:index(2, tree.deprel))
 						:add(self.Lposcap:index(2, tree.pos))
@@ -403,7 +407,7 @@ function IORNN:forward_outside(tree)
 						:add(torch.repeatTensor(self.bcap, 1, tree.n_nodes))
 	tree.cap_prob	= safe_compute_softmax(tree.cap_score)
 
-	--[[ Pr(word | pos, deprel, outer)
+	--[[ Pr(dist | cap, word, pos, deprel, outer)
 	tree.dist_score	= 	(self.Wdist * tree.cstr_outer)
 						:add(self.Ldrdist:index(2, tree.deprel))
 						:add(self.Lposdist:index(2, tree.pos))
@@ -628,16 +632,18 @@ function IORNN:compute_log_prob(dsbank)
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
 		ret[i] = -self:forward_outside(tree)
-		tree = nil
-		if math.mod(i,10) == 0 then	collectgarbage() end
+		tree = ds:delete_tree(tree)
+		--if math.mod(i,10) == 0 then	collectgarbage()  end
 	end
+
+	collectgarbage()
 	return ret
 end
 
 function IORNN:computeCostAndGrad(dsbank, config, grad)
 	local parse = config.parse or false
 
-	p:start('compute cost and grad')	
+	--p:start('compute cost and grad')	
 
 	grad.params:fill(0)  -- always make sure that this grad is intialized with 0
 
@@ -645,7 +651,7 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 	local nSample = 0
 	local tword = {}
 
-	p:start('process dsbank')
+	--p:start('process dsbank')
 	for i, ds in ipairs(dsbank) do
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
@@ -658,9 +664,9 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 			tword[tree.word[tree.wnode[i]]] = 1
 		end
 	end
-	p:lap('process dsbank') 
+	--p:lap('process dsbank') 
 
-	p:start('compute grad')
+	--p:start('compute grad')
 	local wparams = self.params[{{1,-1-self.wdim*self.voca_dic.size}}]
 	local grad_wparams = grad.params[{{1,-1-self.wdim*self.voca_dic.size}}]
 	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
@@ -670,15 +676,15 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 		cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
 		grad.L[{{},{wid}}]:div(nSample):add(config.lambda_L, self.L[{{},{wid}}])
 	end 
-	p:lap('compute grad')
+	--p:lap('compute grad')
 
-	p:lap('compute cost and grad') 
+	--p:lap('compute cost and grad') 
 	--p:printAll()
 
 	return cost, grad, dsbank, tword
 end
 
--- check gradient
+-- make sure gradients are computed correctly
 function IORNN:checkGradient(dsbank, config)
 	local epsilon = 1e-4
 
@@ -774,22 +780,26 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 	
 	local epoch = 0
 	local j = 0
+	local percent = 0
+	local percent_stick = 0
 	--os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
 
 
 	epoch = epoch + 1
 	print('===== epoch ' .. epoch .. '=====')
+	print(get_current_time())
 
 	while true do
 		j = j + 1
 		if j > nSample/batchSize then 
 			self:save(prefix .. '_' .. epoch)
-			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
+			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..' /tmp/dev &')
 
 			j = 1 
 			epoch = epoch + 1
 			if epoch > maxepoch then break end
 			print('===== epoch ' .. epoch .. '=====')
+			print(get_current_time())
 		end
 
 		local subdsbank = {}
@@ -801,15 +811,21 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 			cost, grad, subdsbank, tword  = self:computeCostAndGrad(subdsbank, 
 							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad)
 
-			print('iter ' .. j .. ': ' .. cost) io.flush()		
+			print('batch ' .. j .. ': ' .. cost) io.flush()		
 			return cost, grad, subdsbank, tword
 		end
 
-		p:start("optim")
+		--p:start("optim")
 		self:adagrad(func, adagrad_config, adagrad_state)
 		
-		p:lap("optim")
-		p:printAll()
+		--p:lap("optim")
+		--p:printAll()
+
+		percent = math.min(j*batchSize * 100 / nSample,100)
+		if percent >= percent_stick then 
+			print(get_current_time() .. '      ' .. string.format('%.1f%%',percent))
+			percent_stick = percent_stick + 5
+		end 
 
 		collectgarbage()
 	end
