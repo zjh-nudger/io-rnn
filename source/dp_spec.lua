@@ -44,12 +44,12 @@ CLEAR_PATH	= "/datastore/phong/data/io-rnn/tools/clearnlp/"
 
 TRAIN_MPIR_SENT_LEN = {}
 TRAIN_MPIR_N_ITER = {}
-for len = 15, 15 do
+for len = 20, 20 do
 	TRAIN_MPIR_SENT_LEN[#TRAIN_MPIR_SENT_LEN+1] = len
-	if len == 15 then
+	if len == 10 then
 		TRAIN_MPIR_N_ITER[#TRAIN_MPIR_N_ITER+1] = 100
 	else
-		TRAIN_MPIR_N_ITER[#TRAIN_MPIR_N_ITER+1] = 1
+		TRAIN_MPIR_N_ITER[#TRAIN_MPIR_N_ITER+1] = 10
 	end
 end
 n_phase = #TRAIN_MPIR_SENT_LEN
