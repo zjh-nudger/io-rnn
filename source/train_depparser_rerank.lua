@@ -7,6 +7,37 @@ require 'dp_spec'
 
 torch.setnumthreads(NUM_THREADS)
 
+function load_huff_code(voca_dic, filename)
+	voca_dic.code_len = torch.IntTensor(voca_dic.size)
+	voca_dic.code = torch.Tensor(voca_dic.size, 50)
+	voca_dic.path = torch.LongTensor(voca_dic.size, 50)
+
+	for line in io.lines(filename) do
+		local comps = split_string(line)
+		local id = voca_dic:get_id(comps[1])
+		local code_str = split_string(comps[2],'[01]')
+		local path_str = split_string(comps[3], '[^-]+')
+		
+		voca_dic.code_len[id] = #code_str
+		for i = 1,#code_str do
+			voca_dic.code[{id,i}] = tonumber(code_str[i]) * 2 - 1 -- -1 or +1
+			voca_dic.path[{id,i}] = tonumber(path_str[i])
+		end
+	end
+
+	--[[ test 
+	for i = 1,10 do
+		local len = voca_dic.code_len[i]
+		print('----------------')
+		print(voca_dic.id2word[i])
+		print(len)
+		print(voca_dic.code[{{1,len},i}])
+		print(voca_dic.path[{{1,len},i}])
+	end
+]]
+	return voca_dic
+end
+
 if #arg == 5 then
 	dic_dir_path = arg[1]..'/'
 	data_path = arg[2]..'/'
@@ -50,6 +81,9 @@ if #arg == 5 then
 		if nword ~= voca_dic.size then
 			error("not match embs")
 		end
+
+		load_huff_code(voca_dic, dic_dir_path..subdir..WCODE_FILENAME)
+		
 	end
 
 	local pos_dic = Dict:new()
@@ -77,6 +111,12 @@ if #arg == 5 then
 	parser.mail_subject = model_dir
 	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
 
+--[[ for checking gradient
+	config = {lambda = 1e-4, lambda_L = 1e-7}
+	net.update_L = true
+	local traindsbank,_ = parser:load_dsbank(traindsbank_path)
+	net:checkGradient(traindsbank, config)
+]]
 else
 	print("[dictionary-dir] [treebank-dir] [emb-model] [model-dir] [dim]")
 end

@@ -20,7 +20,7 @@ end
 
 -- logistic function
 function logistic(X)
-	return torch.cdiv(torch.ones(X.size), (-X):exp():add(1))
+	return torch.cdiv(torch.ones(X:size()), (-X):exp():add(1))
 end
 
 -- derivative of logistic function
@@ -133,7 +133,7 @@ function IORNN:init_params(input)
 	self.Ldrpos, index	= self:create_weight_matrix(self.params, index, pos_dic.size, deprel_dic.size, r)
 	self.bpos, index	= self:create_weight_matrix(self.params, index, pos_dic.size, 1)
 
-	-- Pr(word | POS, deprel, outer, dir)
+	-- Pr(word | POS, deprel, outer, dir) -- note: #internal_nodes = #leaves - 1 = voca_dic.size - 1
 	self.Wword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, dim, r)
 	self.Ldrword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, deprel_dic.size, r)
 	self.Lposword, index	= self:create_weight_matrix(self.params, index, voca_dic.size, pos_dic.size, r)
@@ -393,11 +393,26 @@ function IORNN:forward_outside(tree)
 	tree.pos_prob	= safe_compute_softmax(tree.pos_score)
 
 	-- Pr(word | pos, deprel, outer)
+	--[[
 	tree.word_score	= 	(self.Wword * tree.cstr_outer)
 						:add(self.Ldrword:index(2, tree.deprel))
 						:add(self.Lposword:index(2, tree.pos))
 						:add(torch.repeatTensor(self.bword, 1, tree.n_nodes))
 	tree.word_prob	= safe_compute_softmax(tree.word_score)
+	]]
+	tree.word_score = {}
+	tree.word_prob	= {}
+	for i = 2,tree.n_nodes do
+		local word = tree.word[i]
+		local len = self.voca_dic.code_len[word]
+		local path = self.voca_dic.path[{word,{1,len}}]
+		tree.word_score[i] = (self.Wword:index(1,path) * tree.cstr_outer[{{},{i}}])
+								:add(self.Ldrword:index(1,path)[{{},{tree.deprel[i]}}])
+								:add(self.Lposword:index(1,path)[{{},{tree.pos[i]}}])
+								:add(self.bword:index(1,path))
+								:cmul(self.voca_dic.code[{{word},{1,len}}])
+		tree.word_prob[i] = logistic(tree.word_score[i])
+	end
 
 	-- Pr(cap | word, pos, deprel, outer)
 	tree.cap_score	= 	(self.Wcap * tree.cstr_outer)
@@ -421,7 +436,8 @@ function IORNN:forward_outside(tree)
 	for i = 2, tree.n_nodes do
 		tree.total_err = tree.total_err - math.log(tree.deprel_prob[{tree.deprel[i],i}])
 										- math.log(tree.pos_prob[{tree.pos[i],i}])
-										- math.log(tree.word_prob[{tree.word[i],i}])
+										--- math.log(tree.word_prob[{tree.word[i],i}])
+										- torch.log(tree.word_prob[i]):sum()
 										- math.log(tree.cap_prob[{tree.cap[i],i}])
 										-- - math.log(tree.dist_prob[{tree.dist[i],i}])
 	end
@@ -448,7 +464,7 @@ function IORNN:backpropagate_outside(tree, grad)
 
 	local gZdr		= tree.deprel_prob	:clone()
 	local gZpos		= tree.pos_prob		:clone()
-	local gZword	= tree.word_prob	:clone()
+	local gZword	= {} --tree.word_prob	:clone()
 	local gZcap		= tree.cap_prob		:clone()
 	--local gZdist	= tree.dist_prob	:clone()
 	local gZEOC		= {	[DIR_L] = tree[DIR_L].EOC_prob	:clone(),
@@ -457,13 +473,18 @@ function IORNN:backpropagate_outside(tree, grad)
 	for i = 2, tree.n_nodes do
 		gZdr[{tree.deprel[i],i}]	= gZdr[{tree.deprel[i],i}]	- 1
 		gZpos[{tree.pos[i],i}]		= gZpos[{tree.pos[i],i}]		- 1
-		gZword[{tree.word[i],i}]	= gZword[{tree.word[i],i}]	- 1
+
+		--gZword[{tree.word[i],i}]	= gZword[{tree.word[i],i}]	- 1
+		local word = tree.word[i]
+		local len = self.voca_dic.code_len[word]
+		gZword[i] = (tree.word_prob[i] - 1):cmul(self.voca_dic.code[{word,{1,len}}])
+
 		gZcap[{tree.cap[i],i}]		= gZcap[{tree.cap[i],i}]	- 1
 		--gZdist[{tree.dist[i],i}]	= gZdist[{tree.dist[i],i}]	- 1
 	end
 	gZdr[{{},{1}}]	:fill(0) -- don't take ROOT into account
 	gZpos[{{},{1}}]	:fill(0)
-	gZword[{{},{1}}]:fill(0)
+	--gZword[{{},{1}}]:fill(0)
 	gZcap[{{},{1}}]	:fill(0)
 	--gZdist[{{},{1}}]:fill(0)
 
@@ -485,9 +506,9 @@ function IORNN:backpropagate_outside(tree, grad)
 	grad.bpos		:add(gZpos:sum(2))
 	tree.gradcstro	:addmm(self.Wpos:t(), gZpos)
 
-	grad.Wword		:addmm(gZword, tree.cstr_outer:t())
-	grad.bword		:add(gZword:sum(2))
-	tree.gradcstro	:addmm(self.Wword:t(), gZword)
+--	grad.Wword		:addmm(gZword, tree.cstr_outer:t())
+--	grad.bword		:add(gZword:sum(2))
+--	tree.gradcstro	:addmm(self.Wword:t(), gZword)
 
 	grad.Wcap		:addmm(gZcap, tree.cstr_outer:t())
 	grad.bcap		:add(gZcap:sum(2))
@@ -500,8 +521,18 @@ function IORNN:backpropagate_outside(tree, grad)
 	for i = 2,tree.n_nodes do
 		grad.Ldrpos[{{},{tree.deprel[i]}}]	:add(gZpos[{{},{i}}])
 
-		grad.Ldrword[{{},{tree.deprel[i]}}]	:add(gZword[{{},{i}}])
-		grad.Lposword[{{},{tree.pos[i]}}]	:add(gZword[{{},{i}}])
+		-- for word
+		local word = tree.word[i]
+		local len = self.voca_dic.code_len[word]
+		local path = self.voca_dic.path[{word,{1,len}}]
+		tree.gradcstro[{{},{i}}]:addmm(self.Wword:index(1,path):t(), gZword[i])
+		grad.Wword:indexCopy(1, path, grad.Wword:index(1, path):addmm(gZword[i],tree.cstr_outer[{{},{i}}]:t()))
+		grad.bword:indexCopy(1, path, grad.bword:index(1, path):add(gZword[i]))
+
+		local graddr = grad.Ldrword[{{},{tree.deprel[i]}}]
+		graddr:indexCopy(1, path, graddr:index(1, path):add(gZword[i]))
+		local gradpos = grad.Lposword[{{},{tree.pos[i]}}]
+		gradpos:indexCopy(1, path, gradpos:index(1, path):add(gZword[i]))
 
 		grad.Ldrcap[{{},{tree.deprel[i]}}]	:add(gZcap[{{},{i}}])
 		grad.Lposcap[{{},{tree.pos[i]}}]	:add(gZcap[{{},{i}}])
@@ -514,7 +545,7 @@ function IORNN:backpropagate_outside(tree, grad)
 	end
 
 	-- backward 
-	tree.gradZcstro 			= tree.gradcstro:cmul(self.funcPrime(tree.cstr_outer))
+	tree.gradZcstro = tree.gradcstro:cmul(self.funcPrime(tree.cstr_outer))
 
 	for _,dir in ipairs({DIR_L, DIR_R}) do
 		tree[dir].gradZEOCo	= tree[dir].gradEOCo:cmul(self.funcPrime(tree[dir].EOC_outer))
