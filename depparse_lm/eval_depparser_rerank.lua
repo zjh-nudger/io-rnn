@@ -2,7 +2,7 @@ require 'depparser_rerank'
 require 'utils'
 require 'dict'
 require 'xlua'
-require 'dpiornn_gen'
+require 'dpiornn_lm'
 require 'dp_spec'
 
 torch.setnumthreads(1)
