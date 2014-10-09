@@ -5,7 +5,7 @@ KBEST_DEV_FILENAME = 'dev-10-best-mst2ndorder.conll'
 
 WORD_FILENAME = 'words.lst'
 WEMB_FILENAME = 'embeddings.txt'
-WCODE_FILENAME = 'word_code.lst'
+WCODE_FILENAME = 'word_code.lst.bh'
 POS_FILENAME = 'pos.lst'
 DEPREL_FILENAME = 'deprel.lst'
 

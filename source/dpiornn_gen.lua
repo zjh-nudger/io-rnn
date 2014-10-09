@@ -828,6 +828,7 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 
 			j = 1 
 			epoch = epoch + 1
+			percent_stick = 0
 			if epoch > maxepoch then break end
 			print('===== epoch ' .. epoch .. '=====')
 			print(get_current_time())
