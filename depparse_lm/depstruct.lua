@@ -139,12 +139,12 @@ function Depstruct:to_torch_matrix_tree(id, node, tree)
 			else				tree.dir[cur_node] = DIR_R
 			end
 
-			local d = math.abs(id - dep[i])
-			if 		d == 1 then tree.dist[cur_node] = DIST_1
-			elseif	d == 2 then tree.dist[cur_node] = DIST_2
-			elseif	d <= 6 then tree.dist[cur_node] = DIST_3_6
-			else				tree.dist[cur_node] = DIST_7_INF
-			end
+--			local d = math.abs(id - dep[i])
+--			if 		d == 1 then tree.dist[cur_node] = DIST_1
+--			elseif	d == 2 then tree.dist[cur_node] = DIST_2
+--			elseif	d <= 6 then tree.dist[cur_node] = DIST_3_6
+--			else				tree.dist[cur_node] = DIST_7_INF
+--			end
 
 			tree,cur_node = self:to_torch_matrix_tree(dep[i], cur_node, tree)
 		end

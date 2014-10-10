@@ -5,7 +5,7 @@ KBEST_DEV_FILENAME = 'dev-10-best-mst2ndorder.conll'
 
 WORD_FILENAME = 'words.lst'
 WEMB_FILENAME = 'embeddings.txt'
-WCODE_FILENAME = 'word_code.lst'
+WCODE_FILENAME = 'word_code.lst.bh'
 POS_FILENAME = 'pos.lst'
 DEPREL_FILENAME = 'deprel.lst'
 
@@ -21,14 +21,6 @@ N_CAP_FEAT = 1
 -- direction
 DIR_L 	= 1
 DIR_R 	= 2
-
--- distance feature
-DIST_1		= 1
-DIST_2		= 2
-DIST_3_6	= 3
-DIST_7_INF	= 4
-N_DIST_FEAT	= 4
-
 
 -- depstruct settings
 DEPSTRUCT_N_DEPS = 50

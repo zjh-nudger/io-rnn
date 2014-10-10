@@ -280,7 +280,7 @@ function Depparser:rerank(net, kbestdsbank, output)
 
 		local best_parse = nil
 		local best_score = nil
-		local log_probs = net:compute_log_prob(parses)
+		local log_probs,_ = net:compute_log_prob(parses)
 
 		if f then f:writeObject(log_probs) end
 
@@ -292,7 +292,7 @@ function Depparser:rerank(net, kbestdsbank, output)
 		end
 		ret[i] = best_parse
 		sum_sen_log_p = sum_sen_log_p + log_sum_of_exp(torch.Tensor(log_probs))
-		sum_n_words = sum_n_words + parses[1].n_words - 1
+		sum_n_words = sum_n_words + parses[1].n_words - 1 
 	end
 	local ppl = math.pow(2, -sum_sen_log_p / math.log(2) / sum_n_words)
 
@@ -406,9 +406,10 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 		--[[ mail
 		if EVAL_EMAIL_ADDR and self.mail_subject then
 			os.execute('echo "'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
-		end 
+		end
+		]] 
 		print('sen-ppl ' .. ppl ..'\n')
-		]]
+		
 	end	
 end
 

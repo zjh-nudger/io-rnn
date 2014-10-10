@@ -430,9 +430,16 @@ function IORNN:forward_outside(tree)
 
 	-- compute error
 	tree.total_err = 0
+	tree.word_err = 0
+	tree.deprel_err = 0
 	for i = 2, tree.n_nodes do
 		tree.total_err = tree.total_err - math.log(tree.deprel_prob[{tree.deprel[i],i}])
 										- torch.log(tree.word_prob[i]):sum()
+		tree.word_err = tree.word_err - torch.log(tree.word_prob[i]):sum()
+		tree.deprel_err = tree.deprel_err - math.log(tree.deprel_prob[{tree.deprel[i],i}])
+
+		--print(torch.log(tree.word_prob[i]):sum())
+
 		if self.pos_dic.size > 1 then 
 			tree.total_err = tree.total_err - math.log(tree.pos_prob[{tree.pos[i],i}])
 		end
@@ -442,6 +449,10 @@ function IORNN:forward_outside(tree)
 	end
 	tree.total_err = tree.total_err - torch.log(tree[DIR_L].EOC_prob[{self.deprel_dic.size+1,{}}]):sum()
 									- torch.log(tree[DIR_R].EOC_prob[{self.deprel_dic.size+1,{}}]):sum()
+	--print(tree.deprel_prob)
+	--print(tree[DIR_L].EOC_prob)
+	--print(tree.word_err)
+	--print(tree.total_err)
 	return tree.total_err
 end
 
@@ -667,16 +678,18 @@ end
 
 function IORNN:compute_log_prob(dsbank)
 	local ret = {}
+	local ret1 = {}
 	for i, ds in ipairs(dsbank) do
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
 		ret[i] = -self:forward_outside(tree)
+		ret1[i] = -tree.word_err
 		tree = ds:delete_tree(tree)
 		--if math.mod(i,10) == 0 then	collectgarbage()  end
 	end
 
 	collectgarbage()
-	return ret
+	return ret, ret1
 end
 
 function IORNN:computeCostAndGrad(dsbank, config, grad)
@@ -689,12 +702,17 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 	local cost = 0
 	local nSample = 0
 	local tword = {}
+	--local wcost = 0
+	--local dcost = 0
 
 	p:start('process dsbank')
 	for i, ds in ipairs(dsbank) do
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
 		cost = cost + self:forward_outside(tree)
+		--wcost = wcost + tree.word_err
+		--dcost = dcost + tree.deprel_err
+
 		self:backpropagate_outside(tree, grad)
 		self:backpropagate_inside(tree, grad)
 
@@ -704,6 +722,8 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 		end
 	end
 	p:lap('process dsbank') 
+	--print('word cost: '..wcost/nSample)
+	--print('deprel cost: '..dcost/nSample)
 
 	p:start('compute grad')
 	local wparams = self.params[{{1,-1-self.dim*self.voca_dic.size}}]
