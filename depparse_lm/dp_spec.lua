@@ -1,7 +1,7 @@
 --torch.setdefaulttensortype('torch.FloatTensor')
 
 N_THREADS = 4
-SUBBATCH_SIZE = 10
+SUBBATCH_SIZE = 8
 
 -- ********** filenames ********* --
 TRAIN_FILENAME = 'train'

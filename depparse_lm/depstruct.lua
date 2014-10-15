@@ -42,20 +42,20 @@ function Depstruct:new( input )
 end
 
 function Depstruct:clone_only_pointer( )
-	local len = ds.n_words
-	local newds = {
+	local len = self.n_words
+	local ds = {
 		n_words	= len,
-		word	= tonumber(torch.data(ds.word, true)),
-		pos		= tonumber(torch.data(ds.pos, true)),
-		cap		= tonumber(torch.data(ds.cap, true)),
-		head	= tonumber(torch.data(ds.head, true)),
-		deprel	= tonumber(torch.data(ds.deprel, true)),
-		n_deps	= tonumber(torch.data(ds.n_deps, true)),
-		dep		= tonumber(torch.data(ds.dep, true))
+		word	= tonumber(torch.data(self.word, true)),
+		pos		= tonumber(torch.data(self.pos, true)),
+		cap		= tonumber(torch.data(self.cap, true)),
+		head	= tonumber(torch.data(self.head, true)),
+		deprel	= tonumber(torch.data(self.deprel, true)),
+		n_deps	= tonumber(torch.data(self.n_deps, true)),
+		dep		= tonumber(torch.data(self.dep, true))
 	}
 
-	setmetatable(newds, Depstruct_mt)
-	return newds
+	setmetatable(ds, Depstruct_mt)
+	return ds
 end
 
 function Depstruct:construct_from_pointers( ds_p )

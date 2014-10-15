@@ -60,6 +60,30 @@ function IORNN:new(input)
 	return net
 end
 
+function IORNN:clone_only_pointers()
+	local net = {	dim = self.dim,  
+					voca_dic = self.voca_dic, pos_dic = self.pos_dic, deprel_dic = self.deprel_dic }
+	net.func = self.func
+	net.funcPrime = self.funcPrime
+	net.params_size = self.params:numel()
+	net.params = tonumber(torch.data(self.params, true))
+
+	return net
+end
+
+function IORNN:construct_from_pointers(net_p)
+	local net = {	dim = net_p.dim,  
+					voca_dic = net_p.voca_dic, pos_dic = net_p.pos_dic, deprel_dic = net_p.deprel_dic }
+	net.func = net_p.func
+	net.funcPrime = net_p.funcPrime
+	setmetatable(net, IORNN_mt)
+
+	net:init_params(nil, torch.Tensor(torch.Storage(net_p.params_size, net_p.params)))
+
+	return net
+
+end
+
 function IORNN:create_weight_matrix(params, index, size1, size2, r)
 	local W = nil
 	if r then 
@@ -945,8 +969,7 @@ function IORNN:train_with_adagrad_multithread(traindsbank, batchSize,
 	end
 
 -- prepare for threads
-	local ffi = require 'ffi'
-	local params_p = tonumber(ffi.cast('intptr_t', self.params:data()))
+	local net_p = self:clone_only_pointers()
 
 	local threads, tgradparams = Threads(N_THREADS,
 			function() 
@@ -954,15 +977,15 @@ function IORNN:train_with_adagrad_multithread(traindsbank, batchSize,
 				require 'dpiornn_lm'
 				require 'dp_spec'
 				require 'depstruct'
+				require 'xlua'
 			end,
 			function(idx)
 				print('start thread ' .. idx)
+				p = xlua.Profiler()
+				torch.setnumthreads(1)
 
-				tnet = self
-				setmetatable(tnet, IORNN_mt)
-				sharefloatstorage(tnet.params:storage(), params_p)
-				tnet:init_params(nil, tnet.params)
-
+				tnet = IORNN:construct_from_pointers(net_p)
+			
 				tgrad = tnet:create_grad() 
 				tlambda = lambda
 
@@ -975,27 +998,22 @@ function IORNN:train_with_adagrad_multithread(traindsbank, batchSize,
 					end
 				end
 
-				collectgarbage()
-
 				function compute_cost_grad(thread_id, batch_id)
 					tcost, _, _, tword, tpath, tcount = tnet:computeCostAndGrad(ttraindsbank[thread_id][batch_id], 
 							{lambda=tlambda.lambda, lambda_L=tlambda.lambda_L}, tgrad)
-					if math.mod(batch_id,10) == 0 then 
-						collectgarbage()
-					end
+--					if math.mod(batch_id,10) == 0 then 
+--						collectgarbage()
+--					end
 					return tcost, tword, tpath, tcount
 				end
 
-				local ffi = require 'ffi'
-				return tonumber(ffi.cast('intptr_t', tgrad.params:data()))
+				return tonumber(torch.data(tgrad.params, true))
 			end
 	) 
 
 	local grads = {}
 	for t = 1,N_THREADS do
-		local params = torch.Tensor(self.params:nElement())
-		sharefloatstorage(params:storage(), tgradparams[t][1])
-		grads[t] = self:create_grad(params)
+		grads[t] = self:create_grad(torch.Tensor(torch.Storage(self.params:numel(), tgradparams[t][1])))
 	end
 	
 	local epoch = 0
@@ -1026,11 +1044,13 @@ function IORNN:train_with_adagrad_multithread(traindsbank, batchSize,
 			count = 0
 			totalword = {}
 			totalpath = {}
-			
+		
+			p:start("threads")	
 			for t = 1,N_THREADS do
 				threads:addjob(
 						function(input)
 							local tcost, tword, tpath, tcount = compute_cost_grad(input.thread_id, input.batch_id)
+							p:printAll()
 							return tcost, tword, tpath, tcount
 						end,
 						function(tcost, tword, tpath, tcount)
@@ -1046,24 +1066,31 @@ function IORNN:train_with_adagrad_multithread(traindsbank, batchSize,
 						{thread_id = t, batch_id = j} )
 			end
 			threads:synchronize()
+			p:lap("threads")
 
-			grad.params:copy(grads[1].params)
-			for t = 2,N_THREADS do
-				grad.params:add(grads[t].params)
-			end
-			
-			local wparams = self.params[{{1,-1-2*self.dim*self.voca_dic.size}}]
+			p:start("get all")
+			grad.params:fill(0)
 			local grad_wparams = grad.params[{{1,-1-2*self.dim*self.voca_dic.size}}]
-			cost = cost / count --+ config.lambda/2 * torch.pow(wparams,2):sum()
-			grad_wparams:div(count)--:add(config.lambda, wparams)
-	
+			for t = 1,N_THREADS do
+				grad_wparams:add(grads[t].params[{{1,-1-2*self.dim*self.voca_dic.size}}])
+			end
+			grad_wparams:div(count)
+
 			for wid,_ in pairs(totalword) do
-				--cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
-				grad.L[{{},{wid}}]:div(count)--:add(config.lambda_L, self.L[{{},{wid}}])
+				for t = 1,N_THREADS do
+					grad.L[{{},{wid}}]:add(grads[t].L[{{},{wid}}])
+				end
+				grad.L[{{},{wid}}]:div(count)
 			end 
 			for wid,_ in pairs(totalpath) do
+				for t = 1,N_THREADS do
+					grad.Wword[{{wid},{}}]:add(grads[t].Wword[{{wid},{}}])
+				end
 				grad.Wword[{{wid},{}}]:div(count)
 			end
+
+			cost = cost / count 
+			p:lap("get all")
 
 			print('batch ' .. j .. ': ' .. cost) io.flush()		
 			return cost, grad, nil, totalword, totalpath
@@ -1073,7 +1100,7 @@ function IORNN:train_with_adagrad_multithread(traindsbank, batchSize,
 		self:adagrad(func, adagrad_config, adagrad_state)
 		
 		p:lap("optim")
-		--p:printAll()
+		p:printAll()
 
 		percent = math.min(j*SUBBATCH_SIZE*N_THREADS * 100 / nSample,100)
 		if percent >= percent_stick then 

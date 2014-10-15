@@ -5,7 +5,7 @@ require 'xlua'
 require 'dpiornn_lm'
 require 'dp_spec'
 
-torch.setnumthreads(N_THREADS)
+torch.setnumthreads(1)
 
 function load_huff_code(voca_dic, filename)
 	voca_dic.code_len = torch.IntTensor(voca_dic.size)

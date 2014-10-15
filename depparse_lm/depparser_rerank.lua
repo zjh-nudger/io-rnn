@@ -135,10 +135,18 @@ function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_
 
 		-- train
 		print('train net')
-		adagrad_config, adagrad_state = net:train_with_adagrad_multithread(traindsbank, TRAIN_BATCHSIZE,
-											sub_nepochs, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
-											prefix, adagrad_config, adagrad_state, 
-											devdsbank_path, kbestdevdsbank_path)
+
+		if N_THREADS == 1 then
+			adagrad_config, adagrad_state = net:train_with_adagrad(traindsbank, TRAIN_BATCHSIZE,
+												sub_nepochs, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
+												prefix, adagrad_config, adagrad_state, 
+												devdsbank_path, kbestdevdsbank_path)
+		else
+			adagrad_config, adagrad_state = net:train_with_adagrad_multithread(traindsbank, TRAIN_BATCHSIZE,
+												sub_nepochs, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
+												prefix, adagrad_config, adagrad_state, 
+												devdsbank_path, kbestdevdsbank_path)
+		end
 	end
 
 	if is_dir(traintrebank_path) == false then
