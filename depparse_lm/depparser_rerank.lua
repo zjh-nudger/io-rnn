@@ -67,6 +67,8 @@ function Depparser:load_dsbank(path)
 
 			if math.mod(i,100) == 0 then io.write(i..' trees \r'); io.flush() end
 			i = i + 1
+
+			--if (i > 1000) then break end
 		else 
 			tokens[#tokens+1] = line
 		end
@@ -110,33 +112,53 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 end
 
 function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
-	print('load train dsbank')
-	local traindsbank,_ = self:load_dsbank(traintrebank_path)
-	
-	net.update_L = TRAIN_UPDATE_L
-
-	-- shuf the traindsbank
-	print('shufing train dsbank')
-	local new_i = torch.randperm(#traindsbank)
-	temp = {}
-	for i = 1,#traindsbank do
-		temp[i] = traindsbank[new_i[i]]
-	end
-	traindsbank = temp
-
-	-- train
+	--net:save(model_dir .. '/model_0')
+	local prefix = model_dir..'/model'
 	local adagrad_config = {	weight_learningRate	= TRAIN_WEIGHT_LEARNING_RATE,
 								voca_learningRate	= TRAIN_VOCA_LEARNING_RATE	}
 	local adagrad_state = {}
+	local sub_nepochs = nil
+	local sub_traintbpath = nil
 
-	net:save(model_dir .. '/model_0')
-	local prefix = model_dir..'/model'
+	local function func()
+		print('load train dsbank ' .. sub_traintbpath)
+		local traindsbank,_ = self:load_dsbank(sub_traintbpath)
+	
+		-- shuf the traindsbank
+		print('shufing train dsbank')
+		local new_i = torch.randperm(#traindsbank)
+		temp = {}
+		for i = 1,#traindsbank do
+			temp[i] = traindsbank[new_i[i]]
+		end
+		traindsbank = temp
 
-	print('train net')
-	adagrad_config, adagrad_state = net:train_with_adagrad(traindsbank, TRAIN_BATCHSIZE,
-										TRAIN_MAX_N_EPOCHS, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
-										prefix, adagrad_config, adagrad_state, 
-										devdsbank_path, kbestdevdsbank_path)
+		-- train
+		print('train net')
+		adagrad_config, adagrad_state = net:train_with_adagrad_multithread(traindsbank, TRAIN_BATCHSIZE,
+											sub_nepochs, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
+											prefix, adagrad_config, adagrad_state, 
+											devdsbank_path, kbestdevdsbank_path)
+	end
+
+	if is_dir(traintrebank_path) == false then
+		sub_nepochs = TRAIN_MAX_N_EPOCHS
+		sub_traintbpath = traintrebank_path
+		func()
+
+	-- process each file in the folder
+	else
+		sub_nepochs = 1
+		filenames = get_all_filenames(traintrebank_path) 
+		for i = 1,TRAIN_MAX_N_EPOCHS do
+			prefix = prefix..i
+			for _,fname in ipairs(filenames) do
+				sub_traintbpath = traintrebank_path..'/'..fname
+				func()
+			end
+		end
+	end
+
 	return net
 end
 

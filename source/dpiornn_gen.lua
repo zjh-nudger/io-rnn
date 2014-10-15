@@ -667,7 +667,7 @@ function IORNN:compute_log_prob(dsbank)
 		--if math.mod(i,10) == 0 then	collectgarbage()  end
 	end
 
-	collectgarbage()
+	--collectgarbage()
 	return ret
 end
 

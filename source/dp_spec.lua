@@ -52,7 +52,7 @@ EVAL_TOOL_PATH	= '../tools/eval-dep.pl'
 --EVAL_EMAIL_ADDR	= 'lephong.xyz@gmail.com'
 
 K		= 10
-alpha	= 0
+alpha	= 0.86
 
 K_range	= nil -- to choose K [for development], set nil when testing
 alpha_range = nil -- to choose alpha (alpha * mstscore + (1-alpha) * iornnscore) [for development] set nil when testing

@@ -406,9 +406,9 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 		--[[ mail
 		if EVAL_EMAIL_ADDR and self.mail_subject then
 			os.execute('echo "'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
-		end 
+		end ]]
 		print('sen-ppl ' .. ppl ..'\n')
-		]]
+		
 	end	
 end
 

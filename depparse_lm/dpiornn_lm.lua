@@ -56,7 +56,7 @@ function IORNN:new(input)
 	net.funcPrime = input.funcPrime or tanhPrime
 	setmetatable(net, IORNN_mt)
 
-	net:init_params(input)
+	net:init_params(input.lookup)
 	return net
 end
 
@@ -72,7 +72,7 @@ end
 
 function IORNN:create_weight_vector(params, index, size, r)
 	local W = nil
-	if r then 
+	if r ~= nil then 
 		W = params[{{index,index+size-1}}]:resize(size):copy(uniform(size,1,-r,r))
 	else 
 		W = params[{{index,index+size-1}}]:resize(size)
@@ -80,12 +80,14 @@ function IORNN:create_weight_vector(params, index, size, r)
 	return W, index+size
 end
 
-
-function IORNN:init_params(input)
+function IORNN:init_params(lookup, params)
 	local dim	 = self.dim
 	local voca_dic	 = self.voca_dic
 	local deprel_dic = self.deprel_dic
 	local pos_dic	 = self.pos_dic
+
+	local r = nil
+	local r1 = nil
 
 	-- create params
 	local n_params = 	 
@@ -101,21 +103,31 @@ function IORNN:init_params(input)
 						N_CAP_FEAT * dim + 
 						voca_dic.size * dim
 			
-	self.params = torch.zeros(n_params)
+	if params == nil then
+		self.params = torch.zeros(n_params)
+		r = 0.1
+		r1 = 1e-3
+	else
+		if n_params ~= params:nElement() then
+			error('size not match')
+		end
+		self.params = params
+		r = nil
+		r1 = nil
+	end
 
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
-	local r = 0.1
 	local index = 1
 
 	-- anonymous outer/inner
-	self.root_inner, index = self:create_weight_vector(self.params, index, dim, 1e-3)
-	self.anon_outer, index = self:create_weight_vector(self.params, index, dim, 1e-3)
+	self.root_inner, index = self:create_weight_vector(self.params, index, dim, r1)
+	self.anon_outer, index = self:create_weight_vector(self.params, index, dim, r1)
 
 	for _,d in ipairs({DIR_L, DIR_R}) do
 		self[d] = {}
 		local dir = self[d]
 
-		dir.anon_inner, index = self:create_weight_vector(self.params, index, dim, 1e-3)
+		dir.anon_inner, index = self:create_weight_vector(self.params, index, dim, r1)
 
 		-- composition weight matrices
 		dir.Wi = {}
@@ -140,7 +152,7 @@ function IORNN:init_params(input)
 	self.bpos, index	= self:create_weight_vector(self.params, index, pos_dic.size)
 
 	-- Pr(word | POS, deprel, outer, dir) -- note: #internal_nodes = #leaves - 1 = voca_dic.size - 1
-	self.Wword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, dim, r)
+	-- move to [*]	self.Wword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, dim, r)
 	self.Ldrword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, deprel_dic.size, r)
 	self.Lposword, index	= self:create_weight_matrix(self.params, index, voca_dic.size, pos_dic.size, r)
 	self.bword, index		= self:create_weight_vector(self.params, index, voca_dic.size)
@@ -152,35 +164,38 @@ function IORNN:init_params(input)
 	self.Lwordcap, index 	= self:create_weight_matrix(self.params, index, N_CAP_FEAT, voca_dic.size, r)
 	self.bcap, index		= self:create_weight_vector(self.params, index, N_CAP_FEAT)
 
-	--[[ Pr(dist_to_head | cap, word, POS, ...)
-	self.Wdist, index	 	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, dim, r)
-	self.Ldrdist, index	 	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, deprel_dic.size, r)
-	self.Lposdist, index	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, pos_dic.size, r)
-	self.Lworddist, index 	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, voca_dic.size, r)
-	self.Lcapdist, index	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, N_CAP_FEAT, r)
-	self.bdist, index	 	= self:create_weight_matrix(self.params, index, N_DIST_FEAT, 1)
-]]
 	-- POS tag 
 	self.Lpos, index = self:create_weight_matrix(self.params, index, dim, pos_dic.size, r)
 
 	-- capital letter feature
 	self.Lcap, index = self:create_weight_matrix(self.params, index, dim, N_CAP_FEAT, r)
 
+	--[*]
+	self.Wword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, dim, r)
+
 	--  word embeddings (always always always at the end of the array of params)
-	self.L = self.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size):copy(input.lookup)	-- word embeddings 
+	if lookup ~= nil then
+		self.L = self.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size):copy(lookup)	-- word embeddings 
+	else
+		self.L = self.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size)	-- word embeddings 
+	end
 	index = index + voca_dic.size*dim
 
 	if index -1 ~= n_params then error('size not match') end
 end
 
-function IORNN:create_grad()
+function IORNN:create_grad(params)
 	local grad = {}
 	local dim = self.dim
 	local voca_dic = self.voca_dic
 	local deprel_dic = self.deprel_dic
 	local pos_dic = self.pos_dic
 
-	grad.params = torch.zeros(self.params:numel())
+	if params == nil then
+		grad.params = torch.zeros(self.params:numel())
+	else
+		grad.params = params
+	end
 
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
 	local index = 1
@@ -218,7 +233,7 @@ function IORNN:create_grad()
 	grad.bpos, index	= self:create_weight_vector(grad.params, index, pos_dic.size)
 
 	-- Pr(word | POS, deprel, outer)
-	grad.Wword, index		= self:create_weight_matrix(grad.params, index, voca_dic.size, dim)
+	-- move to [*] grad.Wword, index		= self:create_weight_matrix(grad.params, index, voca_dic.size, dim)
 	grad.Ldrword, index		= self:create_weight_matrix(grad.params, index, voca_dic.size, deprel_dic.size)
 	grad.Lposword, index	= self:create_weight_matrix(grad.params, index, voca_dic.size, pos_dic.size)
 	grad.bword, index		= self:create_weight_vector(grad.params, index, voca_dic.size)
@@ -230,19 +245,14 @@ function IORNN:create_grad()
 	grad.Lwordcap, index 	= self:create_weight_matrix(grad.params, index, N_CAP_FEAT, voca_dic.size)
 	grad.bcap, index		= self:create_weight_vector(grad.params, index, N_CAP_FEAT)
 
-	--[[ Pr(dist_to_head | cap, word, POS, ...)
-	grad.Wdist, index	 	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, dim)
-	grad.Ldrdist, index	 	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, deprel_dic.size)
-	grad.Lposdist, index	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, pos_dic.size)
-	grad.Lworddist, index 	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, voca_dic.size)
-	grad.Lcapdist, index	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, N_CAP_FEAT)
-	grad.bdist, index	 	= self:create_weight_matrix(grad.params, index, N_DIST_FEAT, 1)
-]]
 	-- POS tag 
 	grad.Lpos, index = self:create_weight_matrix(grad.params, index, dim, pos_dic.size)
 
 	-- capital letter feature
 	grad.Lcap, index = self:create_weight_matrix(grad.params, index, dim, N_CAP_FEAT)
+
+	-- [*]
+	grad.Wword, index		= self:create_weight_matrix(grad.params, index, voca_dic.size, dim)
 
 	--  word embeddings (always always always at the end of the array of params)
 	grad.L = grad.params[{{index,index+voca_dic.size*dim-1}}]:resize(dim,voca_dic.size)	-- word embeddings 
@@ -688,7 +698,7 @@ function IORNN:compute_log_prob(dsbank)
 		--if math.mod(i,10) == 0 then	collectgarbage()  end
 	end
 
-	collectgarbage()
+	--collectgarbage()
 	return ret, ret1
 end
 
@@ -702,46 +712,38 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 	local cost = 0
 	local nSample = 0
 	local tword = {}
-	--local wcost = 0
-	--local dcost = 0
+	local tpath = {}
 
 	p:start('process dsbank')
-	for i, ds in ipairs(dsbank) do
+	for _, ds in ipairs(dsbank) do
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
-		cost = cost + self:forward_outside(tree)
-		--wcost = wcost + tree.word_err
-		--dcost = dcost + tree.deprel_err
+		local c = self:forward_outside(tree)
+		cost = cost + c
 
 		self:backpropagate_outside(tree, grad)
 		self:backpropagate_inside(tree, grad)
 
 		nSample = nSample + tree.n_nodes
 		for i=2,tree.wnode:numel() do -- do not take the root into account
-			tword[tree.word[tree.wnode[i]]] = 1
+			local word = tree.word[tree.wnode[i]]
+			tword[word] = 1
+			for j=1,self.voca_dic.code_len[word] do
+				tpath[self.voca_dic.path[{word,j}]] = 1
+			end
 		end
 	end
 	p:lap('process dsbank') 
-	--print('word cost: '..wcost/nSample)
-	--print('deprel cost: '..dcost/nSample)
 
 	p:start('compute grad')
-	local wparams = self.params[{{1,-1-self.dim*self.voca_dic.size}}]
-	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca_dic.size}}]
-	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
-	grad_wparams:div(nSample):add(wparams * config.lambda)
-	
-	for wid,_ in pairs(tword) do
-		cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
-		grad.L[{{},{wid}}]:div(nSample):add(config.lambda_L, self.L[{{},{wid}}])
-	end 
 	p:lap('compute grad')
 
 	p:lap('compute cost and grad') 
 	--p:printAll()
 
-	return cost, grad, dsbank, tword
+	return cost, grad, dsbank, tword, tpath, nSample
 end
+
 
 -- make sure gradients are computed correctly
 function IORNN:checkGradient(dsbank, config)
@@ -800,11 +802,11 @@ function IORNN:adagrad(func, config, state)
 	local nevals = state.evalCounter
 
 	-- (1) evaluate f(x) and df/dx
-	local cost, grad, _, tword = func()
+	local cost, grad, _, tword, tpath = func()
 
 	-- (3) learning rate decay (annealing)
 	local weight_clr	= weight_lr / (1 + nevals*lrd)
-	local voca_dic_clr		= voca_dic_lr / (1 + nevals*lrd)
+	local voca_dic_clr	= voca_dic_lr --/ (1 + nevals*lrd)
 
 	-- (4) parameter update with single or individual learning rates
 	if not state.paramVariance then
@@ -813,10 +815,18 @@ function IORNN:adagrad(func, config, state)
 	end
 
 	-- for weights
-	local wparamindex = {{1,-1-self.dim*self.voca_dic.size}}
+	local wparamindex = {{1,-1-2*self.dim*self.voca_dic.size}}
 	state.paramVariance.params[wparamindex]:addcmul(1,grad.params[wparamindex],grad.params[wparamindex])
 	torch.sqrt(state.paramStd.params[wparamindex],state.paramVariance.params[wparamindex])
 	self.params[wparamindex]:addcdiv(-weight_clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
+
+	-- for path vectors
+	for wid,_ in pairs(tpath) do
+		local col_i = {{wid},{}}
+		state.paramVariance.Wword[col_i]:addcmul(1,grad.Wword[col_i],grad.Wword[col_i])
+		torch.sqrt(state.paramStd.Wword[col_i],state.paramVariance.Wword[col_i])
+		self.Wword[col_i]:addcdiv(-voca_dic_clr, grad.Wword[col_i],state.paramStd.Wword[col_i]:add(1e-10))
+	end
 
 	-- for word embeddings
 	for wid,_ in pairs(tword) do
@@ -826,7 +836,7 @@ function IORNN:adagrad(func, config, state)
 		self.L[col_i]:addcdiv(-voca_dic_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
 	end
 
-	-- (5) update evaluation counter
+		-- (5) update evaluation counter
 	state.evalCounter = state.evalCounter + 1
 end
 
@@ -868,18 +878,31 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 		end
 	
 		local function func()
-			cost, grad, subdsbank, tword  = self:computeCostAndGrad(subdsbank, 
+			cost, grad, subdsbank, tword, tpath, count  = self:computeCostAndGrad(subdsbank, 
 							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad)
 
+			local wparams = self.params[{{1,-1-2*self.dim*self.voca_dic.size}}]
+			local grad_wparams = grad.params[{{1,-1-2*self.dim*self.voca_dic.size}}]
+			cost = cost / count --+ config.lambda/2 * torch.pow(wparams,2):sum()
+			grad_wparams:div(count)--:add(config.lambda, wparams)
+	
+			for wid,_ in pairs(tword) do
+				--cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
+				grad.L[{{},{wid}}]:div(count)--:add(config.lambda_L, self.L[{{},{wid}}])
+			end 
+			for wid,_ in pairs(tpath) do
+				grad.Wword[{{wid},{}}]:div(count)
+			end
+
 			print('batch ' .. j .. ': ' .. cost) io.flush()		
-			return cost, grad, subdsbank, tword
+			return cost, grad, subdsbank, tword, tpath
 		end
 
 		p:start("optim")
 		self:adagrad(func, adagrad_config, adagrad_state)
 		
 		p:lap("optim")
-		--p:printAll()
+		p:printAll()
 
 		percent = math.min(j*batchSize * 100 / nSample,100)
 		if percent >= percent_stick then 
@@ -889,6 +912,179 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 
 		collectgarbage()
 	end
+
+	return adagrad_config, adagrad_state
+end
+
+
+function IORNN:train_with_adagrad_multithread(traindsbank, batchSize, 
+									maxepoch, lambda, prefix,
+									adagrad_config, adagrad_state, 
+									devdsbank_path, kbestdevdsbank_path)
+	local nSample = #traindsbank
+	local grad = self:create_grad()
+
+	local Threads = require 'threads'
+	local ffi = require 'ffi'
+
+-- split data 
+	local splitted_bank = {}
+	for b = 1, nSample/(SUBBATCH_SIZE * N_THREADS) do
+		local subdsbank = {}
+		for k = 1,SUBBATCH_SIZE * N_THREADS do
+			subdsbank[k] = traindsbank[k+(b-1)*SUBBATCH_SIZE*N_THREADS]
+		end
+			
+		for t = 1,N_THREADS do
+			if splitted_bank[t] == nil then splitted_bank[t] = {} end
+			splitted_bank[t][b] = {}
+			for j = 1, SUBBATCH_SIZE do
+				splitted_bank[t][b][j] = subdsbank[(t-1)*SUBBATCH_SIZE+j]:clone_only_pointer()
+			end
+		end
+	end
+
+-- prepare for threads
+	local ffi = require 'ffi'
+	local params_p = tonumber(ffi.cast('intptr_t', self.params:data()))
+
+	local threads, tgradparams = Threads(N_THREADS,
+			function() 
+				require 'utils'
+				require 'dpiornn_lm'
+				require 'dp_spec'
+				require 'depstruct'
+			end,
+			function(idx)
+				print('start thread ' .. idx)
+
+				tnet = self
+				setmetatable(tnet, IORNN_mt)
+				sharefloatstorage(tnet.params:storage(), params_p)
+				tnet:init_params(nil, tnet.params)
+
+				tgrad = tnet:create_grad() 
+				tlambda = lambda
+
+				ttraindsbank = splitted_bank
+				for t = 1,#splitted_bank do
+					for b = 1,#splitted_bank[t] do
+						for j = 1,#splitted_bank[t][b] do
+							ttraindsbank[t][b][j] = Depstruct:construct_from_pointers(splitted_bank[t][b][j])
+						end
+					end
+				end
+
+				collectgarbage()
+
+				function compute_cost_grad(thread_id, batch_id)
+					tcost, _, _, tword, tpath, tcount = tnet:computeCostAndGrad(ttraindsbank[thread_id][batch_id], 
+							{lambda=tlambda.lambda, lambda_L=tlambda.lambda_L}, tgrad)
+					if math.mod(batch_id,10) == 0 then 
+						collectgarbage()
+					end
+					return tcost, tword, tpath, tcount
+				end
+
+				local ffi = require 'ffi'
+				return tonumber(ffi.cast('intptr_t', tgrad.params:data()))
+			end
+	) 
+
+	local grads = {}
+	for t = 1,N_THREADS do
+		local params = torch.Tensor(self.params:nElement())
+		sharefloatstorage(params:storage(), tgradparams[t][1])
+		grads[t] = self:create_grad(params)
+	end
+	
+	local epoch = 0
+	local percent = 0
+	local percent_stick = 0
+	local j = 0
+
+	epoch = epoch + 1
+	print('===== epoch ' .. epoch .. '=====')
+	print(get_current_time())
+
+	while true do
+		j = j + 1
+		if j > #splitted_bank[1] then 
+			self:save(prefix .. '_' .. epoch)
+			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..' /tmp/dev &')
+
+			j = 1 
+			epoch = epoch + 1
+			percent_stick = 0
+			if epoch > maxepoch then break end
+			print('===== epoch ' .. epoch .. '=====')
+			print(get_current_time())
+		end
+	
+		local function func()
+			cost = 0
+			count = 0
+			totalword = {}
+			totalpath = {}
+			
+			for t = 1,N_THREADS do
+				threads:addjob(
+						function(input)
+							local tcost, tword, tpath, tcount = compute_cost_grad(input.thread_id, input.batch_id)
+							return tcost, tword, tpath, tcount
+						end,
+						function(tcost, tword, tpath, tcount)
+							cost = cost + tcost
+							count = count + tcount
+							for w,_ in pairs(tword) do
+								totalword[w] = 1
+							end
+							for w,_ in pairs(tpath) do
+								totalpath[w] = 1
+							end
+						end, 
+						{thread_id = t, batch_id = j} )
+			end
+			threads:synchronize()
+
+			grad.params:copy(grads[1].params)
+			for t = 2,N_THREADS do
+				grad.params:add(grads[t].params)
+			end
+			
+			local wparams = self.params[{{1,-1-2*self.dim*self.voca_dic.size}}]
+			local grad_wparams = grad.params[{{1,-1-2*self.dim*self.voca_dic.size}}]
+			cost = cost / count --+ config.lambda/2 * torch.pow(wparams,2):sum()
+			grad_wparams:div(count)--:add(config.lambda, wparams)
+	
+			for wid,_ in pairs(totalword) do
+				--cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
+				grad.L[{{},{wid}}]:div(count)--:add(config.lambda_L, self.L[{{},{wid}}])
+			end 
+			for wid,_ in pairs(totalpath) do
+				grad.Wword[{{wid},{}}]:div(count)
+			end
+
+			print('batch ' .. j .. ': ' .. cost) io.flush()		
+			return cost, grad, nil, totalword, totalpath
+		end
+
+		p:start("optim")
+		self:adagrad(func, adagrad_config, adagrad_state)
+		
+		p:lap("optim")
+		--p:printAll()
+
+		percent = math.min(j*SUBBATCH_SIZE*N_THREADS * 100 / nSample,100)
+		if percent >= percent_stick then 
+			print(get_current_time() .. '      ' .. string.format('%.1f%%',percent))
+			percent_stick = percent_stick + 5
+		end 
+
+		collectgarbage()
+	end
+
+	threads:terminate()
 
 	return adagrad_config, adagrad_state
 end

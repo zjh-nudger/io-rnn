@@ -41,6 +41,40 @@ function Depstruct:new( input )
 	return ds
 end
 
+function Depstruct:clone_only_pointer( )
+	local len = ds.n_words
+	local newds = {
+		n_words	= len,
+		word	= tonumber(torch.data(ds.word, true)),
+		pos		= tonumber(torch.data(ds.pos, true)),
+		cap		= tonumber(torch.data(ds.cap, true)),
+		head	= tonumber(torch.data(ds.head, true)),
+		deprel	= tonumber(torch.data(ds.deprel, true)),
+		n_deps	= tonumber(torch.data(ds.n_deps, true)),
+		dep		= tonumber(torch.data(ds.dep, true))
+	}
+
+	setmetatable(newds, Depstruct_mt)
+	return newds
+end
+
+function Depstruct:construct_from_pointers( ds_p )
+	local len = ds_p.n_words
+	local ds = {
+		n_words	= len,
+		word	= torch.Tensor(torch.Storage(len, ds_p.word)):resize(len),
+		pos		= torch.Tensor(torch.Storage(len, ds_p.pos)):resize(len),
+		cap		= torch.Tensor(torch.Storage(len, ds_p.cap)):resize(len),
+		head	= torch.Tensor(torch.Storage(len, ds_p.head)):resize(len),
+		deprel	= torch.Tensor(torch.Storage(len, ds_p.deprel)):resize(len),
+		n_deps	= torch.Tensor(torch.Storage(len, ds_p.n_deps)):resize(len),
+		dep		= torch.Tensor(torch.Storage(DEPSTRUCT_N_DEPS*len, ds_p.dep))
+							:resize(DEPSTRUCT_N_DEPS, len)
+	}
+	setmetatable(ds, Depstruct_mt)
+	return ds
+end
+
 function Depstruct:create_from_strings(rows, voca_dic, pos_dic, deprel_dic)
 	local sent = { 'ROOT' }
 	local input = { { 1, 1, 0, 1, 1 } } -- set mocking value for ROOT
