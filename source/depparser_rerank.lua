@@ -43,9 +43,21 @@ function Depparser:new(voca_dic, pos_dic, deprel_dic)
 	return parser
 end
 
-function Depparser:load_dsbank(path)
+function Depparser:load_dsbank(path, sentembs_path)
 	local dsbank = {}
 	local raw = {}
+
+	local L = nil
+
+	if sentembs_path ~= nil then
+		local f = torch.DiskFile(sentembs_path, 'r')
+		local info = f:readInt(2)
+		local nsent = info[1]	
+		local embdim = info[2]	
+		L = torch.Tensor(f:readDouble(nsent*embdim))
+						:resize(nsent, embdim):t()
+		f:close()
+	end
 
 	tokens = {}
 	local i = 1
@@ -58,6 +70,9 @@ function Depparser:load_dsbank(path)
 						self.voca_dic, self.pos_dic, self.deprel_dic) 
 				end ) 
 			if status then
+				if L then
+					ds.flat_emb = L[{{}, {#dsbank+1}}]
+				end
 				dsbank[#dsbank+1] = ds
 				raw[#raw+1] = sent
 			else 
@@ -103,6 +118,7 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 			end
 			ds.word = goldds.word:clone() 
 			ds.cap = goldds.cap:clone()
+			ds.flat_emb = goldds.flat_emb
 		end
 	end
 	
@@ -111,7 +127,7 @@ end
 
 function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
 	print('load train dsbank')
-	local traindsbank,_ = self:load_dsbank(traintrebank_path)
+	local traindsbank,_ = self:load_dsbank(traintrebank_path, traintrebank_path..'.sentembs')
 	
 	net.update_L = TRAIN_UPDATE_L
 
@@ -351,7 +367,7 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 	local str = ''
 
 	print('load ' .. goldpath)
-	local golddsbank, raw = self:load_dsbank(goldpath)
+	local golddsbank, raw = self:load_dsbank(goldpath, goldpath..'.sentembs')
 
 	print('load ' .. kbestpath)
 	local kbestdsbank, kbestdsscore  = self:load_kbestdsbank(kbestpath, golddsbank)
@@ -403,10 +419,10 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 		str = 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
 		print(str)
 
-		--[[ mail
+		-- mail
 		if EVAL_EMAIL_ADDR and self.mail_subject then
 			os.execute('echo "'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
-		end ]]
+		end 
 		print('sen-ppl ' .. ppl ..'\n')
 		
 	end	

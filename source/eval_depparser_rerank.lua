@@ -19,9 +19,9 @@ if #arg >= 3 then
 	print('create parser')
 	local parser = Depparser:new(net.voca_dic, net.pos_dic, net.deprel_dic)
 
---	local u = arg[1]:find('/model')
---	if u == nil then parser.mail_subject = path
---	else parser.mail_subject = arg[1]:sub(1,u-1) end
+	local u = arg[1]:find('/model')
+	if u == nil then parser.mail_subject = path
+	else parser.mail_subject = arg[1]:sub(1,u-1) end
 
 	--print(parser.mail_subject)
 --[[

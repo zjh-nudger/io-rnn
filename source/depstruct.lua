@@ -111,6 +111,10 @@ function Depstruct:to_torch_matrix_tree(id, node, tree)
 	local n_nodes = self.n_words 
 	local tree = tree or self:create_empty_tree(n_nodes)
 
+	if id == 1 then
+		tree.flat_emb = self.flat_emb
+	end
+
 	local dep = self.dep[{{},id}]
 	local n_deps = self.n_deps[id]
 

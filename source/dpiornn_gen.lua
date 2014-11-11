@@ -50,7 +50,7 @@ end
 --************************* construction ********************--
 
 function IORNN:new(input)
-	local net = {	dim = input.dim, wdim = input.lookup:size(1), 
+	local net = {	dim = input.dim, wdim = input.lookup:size(1), sdim = input.sdim,
 					voca_dic = input.voca_dic, pos_dic = input.pos_dic, deprel_dic = input.deprel_dic }
 	net.func = input.func or tanh
 	net.funcPrime = input.funcPrime or tanhPrime
@@ -73,6 +73,7 @@ end
 function IORNN:init_params(input)
 	local dim	 = self.dim
 	local wdim	 = self.wdim
+	local sdim	 = self.sdim
 	local voca_dic	 = self.voca_dic
 	local deprel_dic = self.deprel_dic
 	local pos_dic	 = self.pos_dic
@@ -80,9 +81,10 @@ function IORNN:init_params(input)
 	-- create params
 	local n_params = 	dim * (wdim + 1) + 
 						2 * dim +
-						dim * dim + dim + 
+						--dim * dim + dim + 
 						2 * ( 	dim + 
-								dim*dim * (2 + 2*deprel_dic.size) + dim ) + 
+								dim*dim * (2 + deprel_dic.size) + dim + 
+								2 * dim * sdim + deprel_dic.size * dim * sdim ) + 
 						(deprel_dic.size + 1) * (dim + 1)  +  
 						pos_dic.size 	* (dim + deprel_dic.size + 1) + 
 						voca_dic.size 	* (dim + deprel_dic.size + pos_dic.size + 1) + 
@@ -106,8 +108,8 @@ function IORNN:init_params(input)
 	self.root_inner, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
 	self.anon_outer, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
 
-	self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, r)
-	self.bi, index = self:create_weight_matrix(self.params, index, dim, 1)
+	--self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, r)
+	--self.bi, index = self:create_weight_matrix(self.params, index, dim, 1)
 
 	for _,d in ipairs({DIR_L, DIR_R}) do
 		self[d] = {}
@@ -116,15 +118,19 @@ function IORNN:init_params(input)
 		dir.anon_inner, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
 
 		-- composition weight matrices
-		dir.Wi = {}
+		dir.Wos = {}
 		dir.Wo = {}
 		for i = 1,deprel_dic.size do
-			dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, r)
+			--dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, r)
 			dir.Wo[i], index = self:create_weight_matrix(self.params, index, dim, dim, r)
+			dir.Wos[i], index = self:create_weight_matrix(self.params, index, dim, sdim)
 		end
 		dir.Woh, index = self:create_weight_matrix(self.params, index, dim, dim, r)
 		dir.Wop, index = self:create_weight_matrix(self.params, index, dim, dim, r)
 		dir.bo, index = self:create_weight_matrix(self.params, index, dim, 1)
+
+		dir.Wohs, index = self:create_weight_matrix(self.params, index, dim, sdim)
+		dir.Wops, index = self:create_weight_matrix(self.params, index, dim, sdim)
 	end
 
 	-- Pr(deprel | outer, dir)
@@ -137,7 +143,8 @@ function IORNN:init_params(input)
 	self.bpos, index	= self:create_weight_matrix(self.params, index, pos_dic.size, 1)
 
 	-- Pr(word | POS, deprel, outer, dir) -- note: #internal_nodes = #leaves - 1 = voca_dic.size - 1
-	self.Wword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, dim, r)
+	-- move this to before self.L
+		-- self.Wword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, dim, r)
 	self.Ldrword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, deprel_dic.size, r)
 	self.Lposword, index	= self:create_weight_matrix(self.params, index, voca_dic.size, pos_dic.size, r)
 	self.bword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, 1)
@@ -163,6 +170,9 @@ function IORNN:init_params(input)
 	-- capital letter feature
 	self.Lcap, index = self:create_weight_matrix(self.params, index, dim, N_CAP_FEAT, r)
 
+	-- for hierarchical softmax
+	self.Wword, index = self:create_weight_matrix(self.params, index, voca_dic.size, dim, r)
+
 	--  word embeddings (always always always at the end of the array of params)
 	self.L = self.params[{{index,index+voca_dic.size*wdim-1}}]:resize(wdim,voca_dic.size):copy(input.lookup)	-- word embeddings 
 	index = index + voca_dic.size*wdim
@@ -174,6 +184,7 @@ function IORNN:create_grad()
 	local grad = {}
 	local dim = self.dim
 	local wdim = self.wdim
+	local sdim = self.sdim
 	local voca_dic = self.voca_dic
 	local deprel_dic = self.deprel_dic
 	local pos_dic = self.pos_dic
@@ -191,8 +202,8 @@ function IORNN:create_grad()
 	grad.root_inner, index = self:create_weight_matrix(grad.params, index, dim, 1)
 	grad.anon_outer, index = self:create_weight_matrix(grad.params, index, dim, 1)
 
-	grad.Wih, index = self:create_weight_matrix(self.params, index, dim, dim)
-	grad.bi, index = self:create_weight_matrix(grad.params, index, dim, 1)
+	--grad.Wih, index = self:create_weight_matrix(self.params, index, dim, dim)
+	--grad.bi, index = self:create_weight_matrix(grad.params, index, dim, 1)
 
 	for _,d in ipairs({DIR_L, DIR_R}) do
 		grad[d] = {}
@@ -201,15 +212,19 @@ function IORNN:create_grad()
 		dir.anon_inner, index = self:create_weight_matrix(grad.params, index, dim, 1)
 
 		-- composition weight matrices
-		dir.Wi = {}
+		dir.Wos = {}
 		dir.Wo = {}
 		for i = 1,deprel_dic.size do
-			dir.Wi[i], index = self:create_weight_matrix(grad.params, index, dim, dim)
+			--dir.Wi[i], index = self:create_weight_matrix(grad.params, index, dim, dim)
 			dir.Wo[i], index = self:create_weight_matrix(grad.params, index, dim, dim)
+			dir.Wos[i], index = self:create_weight_matrix(grad.params, index, dim, sdim)
 		end
 		dir.Woh, index = self:create_weight_matrix(grad.params, index, dim, dim)
 		dir.Wop, index = self:create_weight_matrix(grad.params, index, dim, dim)
 		dir.bo, index = self:create_weight_matrix(grad.params, index, dim, 1)
+
+		dir.Wohs, index = self:create_weight_matrix(grad.params, index, dim, sdim)
+		dir.Wops, index = self:create_weight_matrix(grad.params, index, dim, sdim)
 	end
 
 	-- Pr(deprel | outer)
@@ -222,7 +237,8 @@ function IORNN:create_grad()
 	grad.bpos, index	= self:create_weight_matrix(grad.params, index, pos_dic.size, 1)
 
 	-- Pr(word | POS, deprel, outer)
-	grad.Wword, index		= self:create_weight_matrix(grad.params, index, voca_dic.size, dim)
+	-- move this down
+		-- grad.Wword, index		= self:create_weight_matrix(grad.params, index, voca_dic.size, dim)
 	grad.Ldrword, index		= self:create_weight_matrix(grad.params, index, voca_dic.size, deprel_dic.size)
 	grad.Lposword, index	= self:create_weight_matrix(grad.params, index, voca_dic.size, pos_dic.size)
 	grad.bword, index		= self:create_weight_matrix(grad.params, index, voca_dic.size, 1)
@@ -247,6 +263,9 @@ function IORNN:create_grad()
 
 	-- capital letter feature
 	grad.Lcap, index = self:create_weight_matrix(grad.params, index, dim, N_CAP_FEAT)
+
+	--
+	grad.Wword, index = self:create_weight_matrix(grad.params, index, voca_dic.size, dim)
 
 	--  word embeddings (always always always at the end of the array of params)
 	grad.L = grad.params[{{index,index+voca_dic.size*wdim-1}}]:resize(wdim,voca_dic.size)	-- word embeddings 
@@ -358,7 +377,9 @@ function IORNN:forward_outside(tree)
 			local parent = tree.parent[i]
 			local dir	 = tree.dir[i]
 			local input_parent = 	(self[dir].Woh * tree.inner[{{},{parent}}])
+									:addmm(self[dir].Wohs, tree.flat_emb)
 									:addmm(self[dir].Wop, tree.outer[{{},{parent}}])
+									:addmm(self[dir].Wops, tree.flat_emb)
 									:add(self[dir].bo)
 			local n_sister = tree[DIR_L].n_children[parent] + tree[DIR_R].n_children[parent] - 1
 			if n_sister == 0 then
@@ -370,6 +391,7 @@ function IORNN:forward_outside(tree)
 						local sister = tree[sis_dir].children[{j,parent}]
 						if sister ~= i then
 							input:addmm(self[sis_dir].Wo[tree.deprel[sister]], tree.inner[{{},{sister}}])
+								:addmm(self[sis_dir].Wos[tree.deprel[sister]], tree.flat_emb)
 						end
 					end
 				end
@@ -383,7 +405,9 @@ function IORNN:forward_outside(tree)
 
 			-- left
 			local input_head = 	(self[DIR_L].Woh * tree.inner[col_i])
+								:addmm(self[DIR_L].Wohs, tree.flat_emb)
 								:addmm(self[DIR_L].Wop, tree.outer[col_i])
+								:addmm(self[DIR_L].Wops, tree.flat_emb)
 								:add(self[DIR_L].bo)
 
 			if tree[DIR_L].n_children[i] == 0 then
@@ -401,6 +425,7 @@ function IORNN:forward_outside(tree)
 					-- compute constructed outer
 					if left_sister  then 
 						input:addmm(self[DIR_L].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+							:addmm(self[DIR_L].Wos[tree.deprel[left_sister]], tree.flat_emb)
 						tree.cstr_outer[col_c] = self.func(torch.div(input, j-1):add(input_head))
 					else 
 						tree.cstr_outer[col_c] = self.func(input_head + self[DIR_L].anon_inner)
@@ -411,6 +436,7 @@ function IORNN:forward_outside(tree)
 				-- compute outer rep. for EOC
 				n_left = tree[DIR_L].n_children[i]
 				input:addmm(self[DIR_L].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+					:addmm(self[DIR_L].Wos[tree.deprel[left_sister]], tree.flat_emb)
 				tree[DIR_L].EOC_outer[col_i] = self.func(torch.div(input,n_left):add(input_head))
 			end
 	
@@ -418,7 +444,9 @@ function IORNN:forward_outside(tree)
 
 		-- right
 			local input_head = 	(self[DIR_R].Woh * tree.inner[col_i])
+								:addmm(self[DIR_R].Wohs, tree.flat_emb)
 								:addmm(self[DIR_R].Wop, tree.outer[col_i])
+								:addmm(self[DIR_R].Wops, tree.flat_emb)
 								:add(self[DIR_R].bo)
 
 			if tree[DIR_R].n_children[i] == 0 then
@@ -434,6 +462,7 @@ function IORNN:forward_outside(tree)
 					-- compute constructed outer
 					if left_sister then 
 						input:addmm(self[DIR_R].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+							:addmm(self[DIR_R].Wos[tree.deprel[left_sister]], tree.flat_emb)
 						tree.cstr_outer[col_c] = self.func(torch.div(input, n_left + j-1):add(input_head))
 					else 
 						tree.cstr_outer[col_c] = self.func((self[DIR_R].anon_inner+input):div(n_left+1):add(input_head))
@@ -443,6 +472,7 @@ function IORNN:forward_outside(tree)
 
 				-- compute outer rep. for EOC
 				input:addmm(self[DIR_R].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+					:addmm(self[DIR_R].Wos[tree.deprel[left_sister]], tree.flat_emb)
 				tree[DIR_R].EOC_outer[col_i] = self.func(torch.div(input,n_left + tree[DIR_R].n_children[i]):add(input_head))
 			end
 
@@ -622,7 +652,9 @@ function IORNN:backpropagate_outside(tree, grad)
 	for _,dir in ipairs({DIR_L, DIR_R}) do
 		tree[dir].gradZEOCo	= tree[dir].gradEOCo:cmul(self.funcPrime(tree[dir].EOC_outer))
 		grad[dir].Woh	:addmm(tree[dir].gradZEOCo, tree.inner:t())
+		grad[dir].Wohs	:addmm(tree[dir].gradZEOCo, torch.repeatTensor(tree.flat_emb:t(), tree.n_nodes, 1))
 		grad[dir].Wop	:addmm(tree[dir].gradZEOCo, tree.outer:t())
+		grad[dir].Wops	:addmm(tree[dir].gradZEOCo, torch.repeatTensor(tree.flat_emb:t(), tree.n_nodes, 1))
 		grad[dir].bo	:add(tree[dir].gradZEOCo:sum(2))
 
 		tree.gradi	:addmm(self[dir].Woh:t(), tree[dir].gradZEOCo)
@@ -647,6 +679,7 @@ function IORNN:backpropagate_outside(tree, grad)
 					local child = tree[DIR_L].children[{j,i}]
 					local col_c = {{},{child}}
 					grad[DIR_L].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
+					grad[DIR_L].Wos[tree.deprel[child]]	:addmm(t, gz, tree.flat_emb:t())
 					tree.gradi[col_c]					:addmm(t, self[DIR_L].Wo[tree.deprel[child]]:t(), gz)
 				end
 			end
@@ -663,6 +696,7 @@ function IORNN:backpropagate_outside(tree, grad)
 					local child = tree[DIR_R].children[{j,i}]
 					local col_c = {{},{child}}
 					grad[DIR_R].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
+					grad[DIR_R].Wos[tree.deprel[child]]	:addmm(t, gz, tree.flat_emb:t())
 					tree.gradi[col_c]					:addmm(t, self[DIR_R].Wo[tree.deprel[child]]:t(), gz)
 				end
 			end
@@ -675,6 +709,7 @@ function IORNN:backpropagate_outside(tree, grad)
 					local child = tree[DIR_L].children[{j,i}]
 					local col_c = {{},{child}}
 					grad[DIR_L].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
+					grad[DIR_L].Wos[tree.deprel[child]]	:addmm(t, gz, tree.flat_emb:t())
 					tree.gradi[col_c]					:addmm(t, self[DIR_L].Wo[tree.deprel[child]]:t(), gz)
 				end
 			end
@@ -687,7 +722,9 @@ function IORNN:backpropagate_outside(tree, grad)
 				local gz = tree.gradZcstro[col_c]
 
 				grad[DIR_L].Woh:addmm(gz, tree.inner[col_i]:t())
+				grad[DIR_L].Wohs:addmm(gz, tree.flat_emb:t())
 				grad[DIR_L].Wop:addmm(gz, tree.outer[col_i]:t())
+				grad[DIR_L].Wops:addmm(gz, tree.flat_emb:t())
 				grad[DIR_L].bo :add(gz)
 
 				tree.gradi[col_i]:addmm(self[DIR_L].Woh:t(), gz)
@@ -701,6 +738,7 @@ function IORNN:backpropagate_outside(tree, grad)
 						local sister = tree[DIR_L].children[{k,i}]
 						local col_s = {{},{sister}}
 						grad[DIR_L].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+						grad[DIR_L].Wos[tree.deprel[sister]]:addmm(t, gz, tree.flat_emb:t())
 						tree.gradi[col_s]					:addmm(t, self[DIR_L].Wo[tree.deprel[sister]]:t(), gz)
 					end
 				end
@@ -712,7 +750,9 @@ function IORNN:backpropagate_outside(tree, grad)
 				local gz = tree.gradZcstro[col_c]
 
 				grad[DIR_R].Woh:addmm(gz, tree.inner[col_i]:t())
+				grad[DIR_R].Wohs:addmm(gz, tree.flat_emb:t())
 				grad[DIR_R].Wop:addmm(gz, tree.outer[col_i]:t())
+				grad[DIR_R].Wops:addmm(gz, tree.flat_emb:t())
 				grad[DIR_R].bo :add(gz)
 
 				tree.gradi[col_i]:addmm(self[DIR_R].Woh:t(), gz)
@@ -729,6 +769,7 @@ function IORNN:backpropagate_outside(tree, grad)
 						local sister = tree[DIR_R].children[{k,i}]
 						local col_s = {{},{sister}}
 						grad[DIR_R].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+						grad[DIR_R].Wos[tree.deprel[sister]]:addmm(t, gz, tree.flat_emb:t())
 						tree.gradi[col_s]					:addmm(t, self[DIR_R].Wo[tree.deprel[sister]]:t(), gz)
 					end
 				end
@@ -741,6 +782,7 @@ function IORNN:backpropagate_outside(tree, grad)
 						local sister = tree[DIR_L].children[{k,i}]
 						local col_s = {{},{sister}}
 						grad[DIR_L].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+						grad[DIR_L].Wos[tree.deprel[sister]]:addmm(t, gz, tree.flat_emb:t())
 						tree.gradi[col_s]					:addmm(t, self[DIR_L].Wo[tree.deprel[sister]]:t(), gz)
 					end
 			
@@ -758,7 +800,9 @@ function IORNN:backpropagate_outside(tree, grad)
 			local gz = tree.grado[col_i]:cmul(self.funcPrime(tree.outer[col_i]))
 
 			grad[dir].Woh:addmm(gz, tree.inner[col_p]:t())	
+			grad[dir].Wohs:addmm(gz, tree.flat_emb:t())
 			grad[dir].Wop:addmm(gz, tree.outer[col_p]:t())
+			grad[dir].Wops:addmm(gz, tree.flat_emb:t())
 			grad[dir].bo :add(gz)
 
 			tree.gradi[col_p]:addmm(self[dir].Woh:t(), gz)
@@ -775,6 +819,7 @@ function IORNN:backpropagate_outside(tree, grad)
 						if sister ~= i then
 							local col_s = {{},{sister}}
 							grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+							grad[c_dir].Wos[tree.deprel[sister]]:addmm(t, gz, tree.flat_emb:t())
 							tree.gradi[col_s]					:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
 						end
 					end
@@ -825,6 +870,7 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 	local cost = 0
 	local nSample = 0
 	local tword = {}
+	local tpath = {}
 
 	--p:start('process dsbank')
 	for i, ds in ipairs(dsbank) do
@@ -835,15 +881,19 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 		self:backpropagate_inside(tree, grad)
 
 		nSample = nSample + tree.n_nodes
-		for i=2,tree.wnode:numel() do -- do not take the root into account
-			tword[tree.word[tree.wnode[i]]] = 1
+		for k=2,tree.wnode:numel() do -- do not take the root into account
+			local word = tree.word[tree.wnode[k]]
+			tword[word] = 1
+			for j=1,self.voca_dic.code_len[word] do
+				tpath[self.voca_dic.path[{word,j}]] = 1
+			end
 		end
 	end
 	--p:lap('process dsbank') 
 
 	--p:start('compute grad')
-	local wparams = self.params[{{1,-1-self.wdim*self.voca_dic.size}}]
-	local grad_wparams = grad.params[{{1,-1-self.wdim*self.voca_dic.size}}]
+	local wparams = self.params[{{1,-1-self.dim*self.voca_dic.size-self.wdim*self.voca_dic.size}}]
+	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca_dic.size-self.wdim*self.voca_dic.size}}]
 	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
 	grad_wparams:div(nSample):add(wparams * config.lambda)
 	
@@ -851,12 +901,18 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 		cost = cost + torch.pow(self.L[{{},{wid}}],2):sum() * config.lambda_L/2
 		grad.L[{{},{wid}}]:div(nSample):add(config.lambda_L, self.L[{{},{wid}}])
 	end 
+
+	for wid,_ in pairs(tpath) do
+		cost = cost + torch.pow(self.Wword[{{wid},{}}],2):sum() * config.lambda/2
+		grad.Wword[{{wid},{}}]:div(nSample):add(config.lambda, self.Wword[{{wid},{}}])
+	end 
+
 	--p:lap('compute grad')
 
 	--p:lap('compute cost and grad') 
 	--p:printAll()
 
-	return cost, grad, dsbank, tword
+	return cost, grad, dsbank, tword, tpath
 end
 
 -- make sure gradients are computed correctly
@@ -916,7 +972,7 @@ function IORNN:adagrad(func, config, state)
 	local nevals = state.evalCounter
 
 	-- (1) evaluate f(x) and df/dx
-	local cost, grad, _, tword = func()
+	local cost, grad, _, tword, tpath = func()
 
 	-- (3) learning rate decay (annealing)
 	local weight_clr	= weight_lr / (1 + nevals*lrd)
@@ -929,7 +985,7 @@ function IORNN:adagrad(func, config, state)
 	end
 
 	-- for weights
-	local wparamindex = {{1,-1-self.wdim*self.voca_dic.size}}
+	local wparamindex = {{1,-1-self.dim*self.voca_dic.size-self.wdim*self.voca_dic.size}}
 	state.paramVariance.params[wparamindex]:addcmul(1,grad.params[wparamindex],grad.params[wparamindex])
 	torch.sqrt(state.paramStd.params[wparamindex],state.paramVariance.params[wparamindex])
 	self.params[wparamindex]:addcdiv(-weight_clr, grad.params[wparamindex],state.paramStd.params[wparamindex]:add(1e-10))
@@ -940,6 +996,13 @@ function IORNN:adagrad(func, config, state)
 		state.paramVariance.L[col_i]:addcmul(1,grad.L[col_i],grad.L[col_i])
 		torch.sqrt(state.paramStd.L[col_i],state.paramVariance.L[col_i])
 		self.L[col_i]:addcdiv(-voca_dic_clr, grad.L[col_i],state.paramStd.L[col_i]:add(1e-10))
+	end
+
+	for wid,_ in pairs(tpath) do
+		local row_i = {{wid},{}}
+		state.paramVariance.Wword[row_i]:addcmul(1,grad.Wword[row_i],grad.Wword[row_i])
+		torch.sqrt(state.paramStd.Wword[row_i],state.paramVariance.Wword[row_i])
+		self.Wword[row_i]:addcdiv(-weight_clr, grad.Wword[row_i],state.paramStd.Wword[row_i]:add(1e-10))
 	end
 
 	-- (5) update evaluation counter
@@ -984,11 +1047,11 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 		end
 	
 		local function func()
-			cost, grad, subdsbank, tword  = self:computeCostAndGrad(subdsbank, 
+			cost, grad, subdsbank, tword, tpath  = self:computeCostAndGrad(subdsbank, 
 							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad)
 
 			print('batch ' .. j .. ': ' .. cost) io.flush()		
-			return cost, grad, subdsbank, tword
+			return cost, grad, subdsbank, tword, tpath
 		end
 
 		--p:start("optim")

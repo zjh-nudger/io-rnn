@@ -54,10 +54,11 @@ if #arg == 5 then
 	local L = nil
 
 	if init_wemb_type == nil then
+		local subdir = 'collobert/'
 		voca_dic = Dict:new(collobert_template)
-		voca_dic:load(dic_dir_path .. WORD_FILENAME)
-		L = uniform(dim, voca_dic:size(), -0.1, 0.1)
-		load_huff_code(voca_dic, dic_dir_path..WCODE_FILENAME)
+		voca_dic:load(dic_dir_path .. subdir .. WORD_FILENAME)
+		L = uniform(dim, voca_dic.size, -0.1, 0.1)
+		load_huff_code(voca_dic, dic_dir_path..subdir..WCODE_FILENAME)
 
 
 	else
@@ -66,8 +67,11 @@ if #arg == 5 then
 		if init_wemb_type == 'collobert' then
 			dic_func = collobert_template
 			subdir = 'collobert/' 
+		elseif init_wemb_type == 'mikolov' then
+			dic_func = collobert_template
+			subdir = 'mikolov/' 
 		end
-		
+	
 		-- load dics
 		voca_dic = Dict:new(dic_func)
 		voca_dic:load(dic_dir_path..subdir..WORD_FILENAME)
@@ -105,19 +109,20 @@ if #arg == 5 then
 
 	model_dir = arg[4]
 	dim = tonumber(arg[5])
+	sdim = 50
 
-	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
+	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, sdim = sdim,
 							lookup = L, func = tanh, funcPrime = tanhPrime }) 
 
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
---	parser.mail_subject = model_dir
---	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
+	parser.mail_subject = model_dir
+	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
 
 -- for checking gradient
-	config = {lambda = 1e-4, lambda_L = 1e-7}
-	net.update_L = true
-	local traindsbank,_ = parser:load_dsbank(traindsbank_path)
-	net:checkGradient(traindsbank, config)
+--	config = {lambda = 1e-4, lambda_L = 1e-7}
+--	net.update_L = true
+--	local traindsbank,_ = parser:load_dsbank(traindsbank_path, traindsbank_path..'.sentembs')
+--	net:checkGradient(traindsbank, config)
 
 else
 	print("[dictionary-dir] [treebank-dir] [emb-model] [model-dir] [dim]")
