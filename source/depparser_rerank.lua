@@ -43,20 +43,22 @@ function Depparser:new(voca_dic, pos_dic, deprel_dic)
 	return parser
 end
 
-function Depparser:load_dsbank(path, sentembs_path)
+function Depparser:load_dsbank(path, grouping_path)
 	local dsbank = {}
 	local raw = {}
 
-	local L = nil
+	local doc_id = nil
 
-	if sentembs_path ~= nil then
-		local f = torch.DiskFile(sentembs_path, 'r')
-		local info = f:readInt(2)
-		local nsent = info[1]	
-		local embdim = info[2]	
-		L = torch.Tensor(f:readDouble(nsent*embdim))
-						:resize(nsent, embdim):t()
-		f:close()
+	if grouping_path ~= nil then
+		doc_id = {}
+		local cur_id = 0
+		for line in io.lines(grouping_path) do
+			local num = tonumber(line)
+			cur_id = cur_id + 1
+			for i = 1,num do
+				doc_id[#doc_id+1] = cur_id
+			end
+		end
 	end
 
 	tokens = {}
@@ -87,6 +89,7 @@ function Depparser:load_dsbank(path, sentembs_path)
 		end
 	end
 	dsbank.raw = raw
+	dsbank.doc_id = doc_id
 
 	return dsbank, raw
 end
@@ -118,27 +121,29 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 			end
 			ds.word = goldds.word:clone() 
 			ds.cap = goldds.cap:clone()
-			ds.flat_emb = goldds.flat_emb
 		end
 	end
+
+	kbestdsbank.doc_id = golddsbank.doc_id
 	
 	return kbestdsbank
 end
 
 function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
 	print('load train dsbank')
-	local traindsbank,_ = self:load_dsbank(traintrebank_path, traintrebank_path..'.sentembs')
+	local traindsbank,_ = self:load_dsbank(traintrebank_path, traintrebank_path..'.grouping')
 	
 	net.update_L = TRAIN_UPDATE_L
 
-	-- shuf the traindsbank
-	print('shufing train dsbank')
+	--[[ shuffle the traindsbank -------- DON'T SHUFFLE to preserve tree order
+	print('shuffling train dsbank')
 	local new_i = torch.randperm(#traindsbank)
 	temp = {}
 	for i = 1,#traindsbank do
-		temp[i] = traindsbank[new_i[i]]
+		temp[i] = traindsbank[new_i[i] ]
 	end
 	traindsbank = temp
+	]]
 
 	-- train
 	local adagrad_config = {	weight_learningRate	= TRAIN_WEIGHT_LEARNING_RATE,
@@ -296,7 +301,7 @@ function Depparser:rerank(net, kbestdsbank, output)
 
 		local best_parse = nil
 		local best_score = nil
-		local log_probs = net:compute_log_prob(parses)
+		local log_probs, trees = net:compute_log_prob(parses)
 
 		if f then f:writeObject(log_probs) end
 

@@ -79,12 +79,13 @@ function IORNN:init_params(input)
 	local pos_dic	 = self.pos_dic
 
 	-- create params
-	local n_params = 	dim * (wdim + 1) + 
+	local n_params = 	dim + dim + N_PREV_TREES*dim*dim + 
+						dim * (wdim + 1) + 
 						2 * dim +
-						--dim * dim + dim + 
+						dim * dim + dim + 
 						2 * ( 	dim + 
-								dim*dim * (2 + deprel_dic.size) + dim + 
-								2 * dim * sdim + deprel_dic.size * dim * sdim ) + 
+								dim*dim * (2 + 2*deprel_dic.size) + dim 
+							) + 
 						(deprel_dic.size + 1) * (dim + 1)  +  
 						pos_dic.size 	* (dim + deprel_dic.size + 1) + 
 						voca_dic.size 	* (dim + deprel_dic.size + pos_dic.size + 1) + 
@@ -100,16 +101,26 @@ function IORNN:init_params(input)
 	local r = 0.1
 	local index = 1
 
+	-- contextual trees
+	self.root_complete_inner, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
+	self.Wctx_trees = {}
+	self.bctx_trees, index = self:create_weight_matrix(self.params, index, dim, 1)
+	for i = 1, N_PREV_TREES do
+		self.Wctx_trees[i], index = self:create_weight_matrix(self.params, index, dim, dim, 1e-3)
+	end
+
 	-- project word embs on to a higher-dim vector space
-	self.Wh, index = self:create_weight_matrix(self.params, index, dim, wdim, 1e-3)	
+	self.Wh, index = self:create_weight_matrix(self.params, index, dim, wdim, 1e-3)
 	self.bh, index = self:create_weight_matrix(self.params, index, dim, 1)
 	
 	-- anonymous outer/inner
 	self.root_inner, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
 	self.anon_outer, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
+	
+	self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, r, 1e-3)
+	self.bi, index = self:create_weight_matrix(self.params, index, dim, 1)
 
-	--self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, r)
-	--self.bi, index = self:create_weight_matrix(self.params, index, dim, 1)
+	print(index)
 
 	for _,d in ipairs({DIR_L, DIR_R}) do
 		self[d] = {}
@@ -118,20 +129,19 @@ function IORNN:init_params(input)
 		dir.anon_inner, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
 
 		-- composition weight matrices
-		dir.Wos = {}
+		dir.Wi = {}
 		dir.Wo = {}
 		for i = 1,deprel_dic.size do
-			--dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, r)
+			dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, r)
 			dir.Wo[i], index = self:create_weight_matrix(self.params, index, dim, dim, r)
-			dir.Wos[i], index = self:create_weight_matrix(self.params, index, dim, sdim)
 		end
 		dir.Woh, index = self:create_weight_matrix(self.params, index, dim, dim, r)
 		dir.Wop, index = self:create_weight_matrix(self.params, index, dim, dim, r)
-		dir.bo, index = self:create_weight_matrix(self.params, index, dim, 1)
+		print(index)
 
-		dir.Wohs, index = self:create_weight_matrix(self.params, index, dim, sdim)
-		dir.Wops, index = self:create_weight_matrix(self.params, index, dim, sdim)
+		dir.bo, index = self:create_weight_matrix(self.params, index, dim, 1)
 	end
+
 
 	-- Pr(deprel | outer, dir)
 	self.Wdr, index = self:create_weight_matrix(self.params, index, deprel_dic.size+1, dim, r) -- +1 for EOC
@@ -194,6 +204,14 @@ function IORNN:create_grad()
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
 	local index = 1
 
+	-- contextual trees
+	grad.root_complete_inner, index = self:create_weight_matrix(grad.params, index, dim, 1, 1e-3) -- anonymous root complete inner
+	grad.Wctx_trees = {}
+	grad.bctx_trees, index = self:create_weight_matrix(grad.params, index, dim, 1)
+	for i = 1, N_PREV_TREES do
+		grad.Wctx_trees[i], index = self:create_weight_matrix(grad.params, index, dim, dim, 1e-3)
+	end
+
 	-- project word embs on to a higher-dim vector space
 	grad.Wh, index = self:create_weight_matrix(grad.params, index, dim, wdim)	
 	grad.bh, index = self:create_weight_matrix(grad.params, index, dim, 1)
@@ -202,8 +220,8 @@ function IORNN:create_grad()
 	grad.root_inner, index = self:create_weight_matrix(grad.params, index, dim, 1)
 	grad.anon_outer, index = self:create_weight_matrix(grad.params, index, dim, 1)
 
-	--grad.Wih, index = self:create_weight_matrix(self.params, index, dim, dim)
-	--grad.bi, index = self:create_weight_matrix(grad.params, index, dim, 1)
+	grad.Wih, index = self:create_weight_matrix(grad.params, index, dim, dim)
+	grad.bi, index = self:create_weight_matrix(grad.params, index, dim, 1)
 
 	for _,d in ipairs({DIR_L, DIR_R}) do
 		grad[d] = {}
@@ -212,19 +230,15 @@ function IORNN:create_grad()
 		dir.anon_inner, index = self:create_weight_matrix(grad.params, index, dim, 1)
 
 		-- composition weight matrices
-		dir.Wos = {}
+		dir.Wi = {}
 		dir.Wo = {}
 		for i = 1,deprel_dic.size do
-			--dir.Wi[i], index = self:create_weight_matrix(grad.params, index, dim, dim)
+			dir.Wi[i], index = self:create_weight_matrix(grad.params, index, dim, dim)
 			dir.Wo[i], index = self:create_weight_matrix(grad.params, index, dim, dim)
-			dir.Wos[i], index = self:create_weight_matrix(grad.params, index, dim, sdim)
 		end
 		dir.Woh, index = self:create_weight_matrix(grad.params, index, dim, dim)
 		dir.Wop, index = self:create_weight_matrix(grad.params, index, dim, dim)
 		dir.bo, index = self:create_weight_matrix(grad.params, index, dim, 1)
-
-		dir.Wohs, index = self:create_weight_matrix(grad.params, index, dim, sdim)
-		dir.Wops, index = self:create_weight_matrix(grad.params, index, dim, sdim)
 	end
 
 	-- Pr(deprel | outer)
@@ -307,13 +321,14 @@ end
 
 
 --************************ forward **********************--
-function IORNN:forward_inside(tree)
+function IORNN:forward_inside(tree, complete)
+
 	if tree.inner == nil then
 		tree.inner = torch.zeros(self.dim, tree.n_nodes)
-		tree.word_inner = torch.zeros(self.dim, tree.n_nodes)
+		tree.complete_inner = torch.zeros(self.dim, tree.n_nodes)
 	else
 		tree.inner:fill(0)
-		tree.word_inner:fill(0)
+		tree.complete_inner:fill(0)
 	end
 
 	-- computing inners for words
@@ -321,39 +336,40 @@ function IORNN:forward_inside(tree)
 					:add(self.Lpos:index(2, tree.pos))
 					:add(self.Lcap:index(2, tree.cap))
 					:add(torch.repeatTensor(self.bh, 1, tree.n_nodes))
---	tree.word_inner:copy(self.func(input))
---	tree.word_inner[{{},{1}}]:copy(self.root_inner)
 
 	tree.inner:copy(self.func(input))
 	tree.inner[{{},{1}}]:copy(self.root_inner)
 
+	-- computing complete inners for 'phrases'
+	if complete == nil or complete == true then 
+		for i = tree.n_nodes,1,-1 do
+			local col_i = {{},{i}}
 
-	--[[ computing inners for 'phrases'
-	for i = tree.n_nodes,1,-1 do
-		local col_i = {{},{i}}
+			local n_children = tree[DIR_L].n_children[i] + tree[DIR_R].n_children[i]
+			-- if this is a leaf
+			if n_children == 0 then
+				tree.complete_inner[col_i]:copy(tree.inner[col_i])
 
-		local n_children = tree[DIR_L].n_children[i] + tree[DIR_R].n_children[i]
-		-- if this is a leaf
-		if n_children == 0 then
-			tree.inner[col_i]:copy(tree.word_inner[col_i])
-
-		-- else, compute [phrase] inner
-		else
-			local input_kids = torch.zeros(self.dim, 1)
+			-- else, compute [phrase] inner
+			else
+				local input_kids = torch.zeros(self.dim, 1)
 			
-			for _,dir in ipairs({DIR_L, DIR_R}) do 
-				for j = 1,tree[dir].n_children[i] do
-					local child = tree[dir].children[{j,i}]
-					input_kids:addmm(self[dir].Wi[tree.deprel[child] ], tree.inner[{{},{child}}])
+				for _,dir in ipairs({DIR_L, DIR_R}) do 
+					for j = 1,tree[dir].n_children[i] do
+						local child = tree[dir].children[{j,i}]
+						input_kids:addmm(self[dir].Wi[tree.deprel[child]], tree.complete_inner[{{},{child}}])
+					end
 				end
+				input_kids:div(n_children)
+				tree.complete_inner[col_i]:copy(self.func((self.Wih * tree.inner[col_i]):add(input_kids):add(self.bi)))
 			end
-			input_kids:div(n_children)
-			tree.inner[col_i]:copy(self.func((self.Wih * tree.word_inner[col_i]):add(input_kids):add(self.bi)))
 		end
-	end]]
+	end
 end
 
-function IORNN:forward_outside(tree)
+function IORNN:forward_outside(tree, ctx_trees)
+	tree.ctx_trees = ctx_trees
+
 	if tree.outer == nil then 
 		tree.outer = torch.zeros(self.dim, tree.n_nodes)
 		tree.cstr_outer = torch.zeros(self.dim, tree.n_nodes) -- outer rep. during construction
@@ -371,15 +387,26 @@ function IORNN:forward_outside(tree)
 
 		-- compute full outer
 		if i == 1 then -- ROOT
-			tree.outer[col_i] = self.anon_outer
+			if #ctx_trees == 0 then 
+				tree.outer[col_i] = self.anon_outer
+			else 
+				local input = torch.zeros(self.dim, 1)
+				for j,ctx_tree in ipairs(ctx_trees) do
+					if ctx_tree == 0 then
+						input:addmm(self.Wctx_trees[j], self.root_complete_inner)
+					else
+						input:addmm(self.Wctx_trees[j], ctx_tree.complete_inner[{{},{1}}])
+					end
+				end
+				input:add(self.bctx_trees)
+				tree.outer[col_i] = self.func(input)
+			end
 
 		else
 			local parent = tree.parent[i]
 			local dir	 = tree.dir[i]
 			local input_parent = 	(self[dir].Woh * tree.inner[{{},{parent}}])
-									:addmm(self[dir].Wohs, tree.flat_emb)
 									:addmm(self[dir].Wop, tree.outer[{{},{parent}}])
-									:addmm(self[dir].Wops, tree.flat_emb)
 									:add(self[dir].bo)
 			local n_sister = tree[DIR_L].n_children[parent] + tree[DIR_R].n_children[parent] - 1
 			if n_sister == 0 then
@@ -391,7 +418,6 @@ function IORNN:forward_outside(tree)
 						local sister = tree[sis_dir].children[{j,parent}]
 						if sister ~= i then
 							input:addmm(self[sis_dir].Wo[tree.deprel[sister]], tree.inner[{{},{sister}}])
-								:addmm(self[sis_dir].Wos[tree.deprel[sister]], tree.flat_emb)
 						end
 					end
 				end
@@ -405,9 +431,7 @@ function IORNN:forward_outside(tree)
 
 			-- left
 			local input_head = 	(self[DIR_L].Woh * tree.inner[col_i])
-								:addmm(self[DIR_L].Wohs, tree.flat_emb)
 								:addmm(self[DIR_L].Wop, tree.outer[col_i])
-								:addmm(self[DIR_L].Wops, tree.flat_emb)
 								:add(self[DIR_L].bo)
 
 			if tree[DIR_L].n_children[i] == 0 then
@@ -425,7 +449,6 @@ function IORNN:forward_outside(tree)
 					-- compute constructed outer
 					if left_sister  then 
 						input:addmm(self[DIR_L].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
-							:addmm(self[DIR_L].Wos[tree.deprel[left_sister]], tree.flat_emb)
 						tree.cstr_outer[col_c] = self.func(torch.div(input, j-1):add(input_head))
 					else 
 						tree.cstr_outer[col_c] = self.func(input_head + self[DIR_L].anon_inner)
@@ -436,7 +459,6 @@ function IORNN:forward_outside(tree)
 				-- compute outer rep. for EOC
 				n_left = tree[DIR_L].n_children[i]
 				input:addmm(self[DIR_L].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
-					:addmm(self[DIR_L].Wos[tree.deprel[left_sister]], tree.flat_emb)
 				tree[DIR_L].EOC_outer[col_i] = self.func(torch.div(input,n_left):add(input_head))
 			end
 	
@@ -444,9 +466,7 @@ function IORNN:forward_outside(tree)
 
 		-- right
 			local input_head = 	(self[DIR_R].Woh * tree.inner[col_i])
-								:addmm(self[DIR_R].Wohs, tree.flat_emb)
 								:addmm(self[DIR_R].Wop, tree.outer[col_i])
-								:addmm(self[DIR_R].Wops, tree.flat_emb)
 								:add(self[DIR_R].bo)
 
 			if tree[DIR_R].n_children[i] == 0 then
@@ -462,7 +482,6 @@ function IORNN:forward_outside(tree)
 					-- compute constructed outer
 					if left_sister then 
 						input:addmm(self[DIR_R].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
-							:addmm(self[DIR_R].Wos[tree.deprel[left_sister]], tree.flat_emb)
 						tree.cstr_outer[col_c] = self.func(torch.div(input, n_left + j-1):add(input_head))
 					else 
 						tree.cstr_outer[col_c] = self.func((self[DIR_R].anon_inner+input):div(n_left+1):add(input_head))
@@ -472,7 +491,6 @@ function IORNN:forward_outside(tree)
 
 				-- compute outer rep. for EOC
 				input:addmm(self[DIR_R].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
-					:addmm(self[DIR_R].Wos[tree.deprel[left_sister]], tree.flat_emb)
 				tree[DIR_R].EOC_outer[col_i] = self.func(torch.div(input,n_left + tree[DIR_R].n_children[i]):add(input_head))
 			end
 
@@ -550,6 +568,8 @@ end
 
 --*********************** backpropagate *********************--
 function IORNN:backpropagate_outside(tree, grad)
+	ctx_trees = tree.ctx_trees
+
 	if tree.gradi == nil then
 		tree.gradi		= torch.zeros(self.dim, tree.n_nodes)
 		tree.grado		= torch.zeros(self.dim, tree.n_nodes)
@@ -652,9 +672,7 @@ function IORNN:backpropagate_outside(tree, grad)
 	for _,dir in ipairs({DIR_L, DIR_R}) do
 		tree[dir].gradZEOCo	= tree[dir].gradEOCo:cmul(self.funcPrime(tree[dir].EOC_outer))
 		grad[dir].Woh	:addmm(tree[dir].gradZEOCo, tree.inner:t())
-		grad[dir].Wohs	:addmm(tree[dir].gradZEOCo, torch.repeatTensor(tree.flat_emb:t(), tree.n_nodes, 1))
 		grad[dir].Wop	:addmm(tree[dir].gradZEOCo, tree.outer:t())
-		grad[dir].Wops	:addmm(tree[dir].gradZEOCo, torch.repeatTensor(tree.flat_emb:t(), tree.n_nodes, 1))
 		grad[dir].bo	:add(tree[dir].gradZEOCo:sum(2))
 
 		tree.gradi	:addmm(self[dir].Woh:t(), tree[dir].gradZEOCo)
@@ -679,7 +697,6 @@ function IORNN:backpropagate_outside(tree, grad)
 					local child = tree[DIR_L].children[{j,i}]
 					local col_c = {{},{child}}
 					grad[DIR_L].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
-					grad[DIR_L].Wos[tree.deprel[child]]	:addmm(t, gz, tree.flat_emb:t())
 					tree.gradi[col_c]					:addmm(t, self[DIR_L].Wo[tree.deprel[child]]:t(), gz)
 				end
 			end
@@ -696,7 +713,6 @@ function IORNN:backpropagate_outside(tree, grad)
 					local child = tree[DIR_R].children[{j,i}]
 					local col_c = {{},{child}}
 					grad[DIR_R].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
-					grad[DIR_R].Wos[tree.deprel[child]]	:addmm(t, gz, tree.flat_emb:t())
 					tree.gradi[col_c]					:addmm(t, self[DIR_R].Wo[tree.deprel[child]]:t(), gz)
 				end
 			end
@@ -709,7 +725,6 @@ function IORNN:backpropagate_outside(tree, grad)
 					local child = tree[DIR_L].children[{j,i}]
 					local col_c = {{},{child}}
 					grad[DIR_L].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
-					grad[DIR_L].Wos[tree.deprel[child]]	:addmm(t, gz, tree.flat_emb:t())
 					tree.gradi[col_c]					:addmm(t, self[DIR_L].Wo[tree.deprel[child]]:t(), gz)
 				end
 			end
@@ -722,9 +737,7 @@ function IORNN:backpropagate_outside(tree, grad)
 				local gz = tree.gradZcstro[col_c]
 
 				grad[DIR_L].Woh:addmm(gz, tree.inner[col_i]:t())
-				grad[DIR_L].Wohs:addmm(gz, tree.flat_emb:t())
 				grad[DIR_L].Wop:addmm(gz, tree.outer[col_i]:t())
-				grad[DIR_L].Wops:addmm(gz, tree.flat_emb:t())
 				grad[DIR_L].bo :add(gz)
 
 				tree.gradi[col_i]:addmm(self[DIR_L].Woh:t(), gz)
@@ -738,7 +751,6 @@ function IORNN:backpropagate_outside(tree, grad)
 						local sister = tree[DIR_L].children[{k,i}]
 						local col_s = {{},{sister}}
 						grad[DIR_L].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-						grad[DIR_L].Wos[tree.deprel[sister]]:addmm(t, gz, tree.flat_emb:t())
 						tree.gradi[col_s]					:addmm(t, self[DIR_L].Wo[tree.deprel[sister]]:t(), gz)
 					end
 				end
@@ -750,9 +762,7 @@ function IORNN:backpropagate_outside(tree, grad)
 				local gz = tree.gradZcstro[col_c]
 
 				grad[DIR_R].Woh:addmm(gz, tree.inner[col_i]:t())
-				grad[DIR_R].Wohs:addmm(gz, tree.flat_emb:t())
 				grad[DIR_R].Wop:addmm(gz, tree.outer[col_i]:t())
-				grad[DIR_R].Wops:addmm(gz, tree.flat_emb:t())
 				grad[DIR_R].bo :add(gz)
 
 				tree.gradi[col_i]:addmm(self[DIR_R].Woh:t(), gz)
@@ -769,7 +779,6 @@ function IORNN:backpropagate_outside(tree, grad)
 						local sister = tree[DIR_R].children[{k,i}]
 						local col_s = {{},{sister}}
 						grad[DIR_R].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-						grad[DIR_R].Wos[tree.deprel[sister]]:addmm(t, gz, tree.flat_emb:t())
 						tree.gradi[col_s]					:addmm(t, self[DIR_R].Wo[tree.deprel[sister]]:t(), gz)
 					end
 				end
@@ -782,7 +791,6 @@ function IORNN:backpropagate_outside(tree, grad)
 						local sister = tree[DIR_L].children[{k,i}]
 						local col_s = {{},{sister}}
 						grad[DIR_L].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-						grad[DIR_L].Wos[tree.deprel[sister]]:addmm(t, gz, tree.flat_emb:t())
 						tree.gradi[col_s]					:addmm(t, self[DIR_L].Wo[tree.deprel[sister]]:t(), gz)
 					end
 			
@@ -790,8 +798,26 @@ function IORNN:backpropagate_outside(tree, grad)
 			end
 
 		-- for full outer
-		if i == 1 then 
-			grad.anon_outer:add(tree.grado[{{},{1}}])
+		if i == 1 then
+			if #ctx_trees == 0 then
+				grad.anon_outer:add(tree.grado[{{},{1}}])
+			else
+				local gradZoroot = tree.grado[{{},{1}}]:cmul(self.funcPrime(tree.outer[{{},{1}}]))
+				grad.bctx_trees:add(gradZoroot)
+				for j,ctx_tree in ipairs(ctx_trees) do
+					if ctx_tree == 0 then
+						grad.Wctx_trees[j]:addmm(gradZoroot, self.root_complete_inner:t())
+						grad.root_complete_inner:addmm(self.Wctx_trees[j]:t(), gradZoroot)
+					else
+						grad.Wctx_trees[j]:addmm(gradZoroot, ctx_tree.complete_inner[{{},{1}}]:t())
+						if ctx_tree.gradiroot == nil then 
+							ctx_tree.gradiroot = self.Wctx_trees[j]:t() * gradZoroot
+						else
+							ctx_tree.gradiroot:addmm(self.Wctx_trees[j]:t(), gradZoroot)
+						end
+					end
+				end
+			end
 
 		else 
 			local parent = tree.parent[i]
@@ -800,9 +826,7 @@ function IORNN:backpropagate_outside(tree, grad)
 			local gz = tree.grado[col_i]:cmul(self.funcPrime(tree.outer[col_i]))
 
 			grad[dir].Woh:addmm(gz, tree.inner[col_p]:t())	
-			grad[dir].Wohs:addmm(gz, tree.flat_emb:t())
 			grad[dir].Wop:addmm(gz, tree.outer[col_p]:t())
-			grad[dir].Wops:addmm(gz, tree.flat_emb:t())
 			grad[dir].bo :add(gz)
 
 			tree.gradi[col_p]:addmm(self[dir].Woh:t(), gz)
@@ -819,7 +843,6 @@ function IORNN:backpropagate_outside(tree, grad)
 						if sister ~= i then
 							local col_s = {{},{sister}}
 							grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-							grad[c_dir].Wos[tree.deprel[sister]]:addmm(t, gz, tree.flat_emb:t())
 							tree.gradi[col_s]					:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
 						end
 					end
@@ -834,8 +857,8 @@ function IORNN:backpropagate_inside(tree, grad)
 	grad.root_inner:add(tree.gradi[{{},{1}}])
 
 	tree.gradZi = tree.gradi:cmul(self.funcPrime(tree.inner))
-	grad.Wh		:addmm(tree.gradZi[{{},{2,-1}}], self.L:index(2, tree.word[{{2,-1}}]):t())
-	grad.bh		:add(tree.gradZi[{{},{2,-1}}]:sum(2))
+	grad.Wh	:addmm(tree.gradZi[{{},{2,-1}}], self.L:index(2, tree.word[{{2,-1}}]):t())
+	grad.bh	:add(tree.gradZi[{{},{2,-1}}]:sum(2))
 
 	for i = 2, tree.n_nodes do
 		local col = {{},{i}}
@@ -846,21 +869,67 @@ function IORNN:backpropagate_inside(tree, grad)
 	end
 end
 
-function IORNN:compute_log_prob(dsbank)
-	local ret = {}
-	for i, ds in ipairs(dsbank) do
-		local tree = ds:to_torch_matrix_tree()
-		self:forward_inside(tree)
-		ret[i] = -self:forward_outside(tree)
-		tree = ds:delete_tree(tree)
-		--if math.mod(i,10) == 0 then	collectgarbage()  end
+-- gradZroot = d_J / d_i_root
+function IORNN:backpropagate_inside_given_gradiroot(tree, grad)
+	if tree.gradcomplete_i == nil then 
+		tree.gradcomplete_i = torch.zeros(self.dim, tree.n_nodes)
+	else 
+		tree.gradcomplete_i:fill(0)
 	end
 
-	--collectgarbage()
-	return ret
+	tree.gradcomplete_i[{{},{1}}]:copy(tree.gradiroot)
+
+	for i = 1, tree.n_nodes do 
+		local n_children = tree[DIR_L].n_children[i] + tree[DIR_R].n_children[i]
+		local gradZi = tree.gradcomplete_i[{{},{i}}]:cmul(self.funcPrime(tree.complete_inner[{{},{i}}]))
+
+		-- for head
+		local gradZhead = gradZi
+		if n_children > 0 then
+			gradZhead = (self.Wih:t() * gradZi):cmul(self.funcPrime(tree.inner[{{},{i}}]))
+			grad.Wih:addmm(gradZi, tree.inner[{{},{i}}]:t())
+		end
+
+		if i == 1 then
+			grad.root_inner:addmm(self.Wih:t(), gradZi)
+		else
+			grad.Wh	:addmm(gradZhead, self.L[{{},{tree.word[i]}}]:t())
+			grad.bh	:add(gradZhead)
+			grad.L[{{},{tree.word[i]}}]:addmm(self.Wh:t(), gradZhead)
+			grad.Lpos[{{},{tree.pos[i]}}]:add(gradZhead)
+			grad.Lcap[{{},{tree.cap[i]}}]:add(gradZhead)
+		end
+
+		-- for children
+		if n_children > 0 then
+			grad.bi:add(gradZi)
+			gradZi:div(n_children)
+
+			for _,dir in ipairs({DIR_L,DIR_R}) do
+				for j = 1, tree[dir].n_children[i] do
+					local child = tree[dir].children[{j,i}]
+					grad[dir].Wi[tree.deprel[child]]:addmm(gradZi, tree.complete_inner[{{},{child}}]:t())
+					tree.gradcomplete_i[{{},{child}}]:addmm(self[dir].Wi[tree.deprel[child]]:t(), gradZi)
+				end
+			end
+		end
+	end
 end
 
-function IORNN:computeCostAndGrad(dsbank, config, grad)
+function IORNN:compute_log_prob(dsbank, ctx_trees)
+	local ret = {}
+	local trees = {}
+	for i, ds in ipairs(dsbank) do
+		local tree = ds:to_torch_matrix_tree()
+		self:forward_inside(tree, false)
+		ret[i] = -self:forward_outside(tree, ctx_trees)
+		trees[i] = tree
+	end
+
+	return ret, trees
+end
+
+function IORNN:computeCostAndGrad(treebank, start_id, end_id, config, grad)
 	local parse = config.parse or false
 
 	--p:start('compute cost and grad')	
@@ -871,17 +940,33 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 	local nSample = 0
 	local tword = {}
 	local tpath = {}
+	
+	local total_ctx_trees_id = {}
 
 	--p:start('process dsbank')
-	for i, ds in ipairs(dsbank) do
-		local tree = ds:to_torch_matrix_tree()
-		self:forward_inside(tree)
-		cost = cost + self:forward_outside(tree)
+	for i = start_id,end_id do
+		tree = treebank[i]
+
+		-- extract contextual trees
+		local ctx_trees = {}
+		for t = 1, N_PREV_TREES do
+			local j = i -1 - N_PREV_TREES + t
+			if j < 1 or treebank.doc_id[j] ~= treebank.doc_id[i] then
+				ctx_trees[t] = 0
+			else
+				ctx_trees[t] = treebank[j]
+				total_ctx_trees_id[j] = 1
+			end
+		end
+
+		self:forward_inside(tree, true)
+
+		cost = cost + self:forward_outside(tree, ctx_trees)
 		self:backpropagate_outside(tree, grad)
 		self:backpropagate_inside(tree, grad)
 
-		nSample = nSample + tree.n_nodes
-		for k=2,tree.wnode:numel() do -- do not take the root into account
+		nSample = nSample + 1
+		for k = 2,tree.wnode:numel() do -- do not take the root into account
 			local word = tree.word[tree.wnode[k]]
 			tword[word] = 1
 			for j=1,self.voca_dic.code_len[word] do
@@ -889,6 +974,12 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 			end
 		end
 	end
+
+	for tree_id,_ in pairs(total_ctx_trees_id) do
+		local tree = treebank[tree_id]
+		self:backpropagate_inside_given_gradiroot(tree, grad)
+	end
+
 	--p:lap('process dsbank') 
 
 	--p:start('compute grad')
@@ -912,11 +1003,17 @@ function IORNN:computeCostAndGrad(dsbank, config, grad)
 	--p:lap('compute cost and grad') 
 	--p:printAll()
 
-	return cost, grad, dsbank, tword, tpath
+	return cost, grad, tword, tpath
 end
 
 -- make sure gradients are computed correctly
 function IORNN:checkGradient(dsbank, config)
+	local treebank = {}
+	for i,ds in ipairs(dsbank) do
+		treebank[i] = ds:to_torch_matrix_tree()
+	end
+	treebank.doc_id = dsbank.doc_id
+
 	local epsilon = 1e-4
 
 	local dim = self.dim
@@ -925,7 +1022,7 @@ function IORNN:checkGradient(dsbank, config)
 
 	local Theta = self.params
 	local grad = self:create_grad()
-	local _, gradTheta = self:computeCostAndGrad(dsbank, config, grad)
+	local _, gradTheta = self:computeCostAndGrad(treebank, 1, #treebank, config, grad)
 	gradTheta = gradTheta.params
 	
 	local n = Theta:nElement()
@@ -935,16 +1032,17 @@ function IORNN:checkGradient(dsbank, config)
 		local index = {{i}}
 		Theta[index]:add(epsilon)
 		local grad = self:create_grad()
-		local costPlus,_ = self:computeCostAndGrad(dsbank, config, grad)
+		local costPlus,_ = self:computeCostAndGrad(treebank, 1, #treebank, config, grad)
 		
 		Theta[index]:add(-2*epsilon)
-		local costMinus,_ = self:computeCostAndGrad(dsbank, config, grad)
+		local costMinus,_ = self:computeCostAndGrad(treebank, 1, #treebank, config, grad)
 		Theta[index]:add(epsilon)
 
 		numGradTheta[i] = (costPlus - costMinus) / (2*epsilon) 
 
 		local diff = math.abs(numGradTheta[i] - gradTheta[i])
-		print('diff ' .. i .. ' ' .. diff)
+		print('diff ' .. i .. ' ' .. diff .. ' : ' .. numGradTheta[i] .. ' ' .. gradTheta[i])
+		if diff > 5e-8  then print('errrrrrrrrrr : ' .. numGradTheta[i] .. ' ' .. gradTheta[i]) end
 	end
 
 	local diff = torch.norm(gradTheta - numGradTheta) 
@@ -972,7 +1070,7 @@ function IORNN:adagrad(func, config, state)
 	local nevals = state.evalCounter
 
 	-- (1) evaluate f(x) and df/dx
-	local cost, grad, _, tword, tpath = func()
+	local cost, grad, tword, tpath = func()
 
 	-- (3) learning rate decay (annealing)
 	local weight_clr	= weight_lr / (1 + nevals*lrd)
@@ -1014,26 +1112,36 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 									adagrad_config, adagrad_state, 
 									devdsbank_path, kbestdevdsbank_path)
 	local nSample = #traindsbank
+	local traintreebank = {}
+	for i,ds in ipairs(traindsbank) do
+		traintreebank[i] = ds:to_torch_matrix_tree()
+	end
+	traintreebank.doc_id = traindsbank.doc_id
+
 	local grad = self:create_grad()
 	
 	local epoch = 0
 	local j = 0
 	local percent = 0
 	local percent_stick = 0
-	--os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..'&')
-
 
 	epoch = epoch + 1
 	print('===== epoch ' .. epoch .. '=====')
 	print(get_current_time())
-
+	
 	while true do
 		j = j + 1
-		if j > nSample/batchSize then 
+		local start_id = (j-1)*batchSize + 1
+		local end_id = math.min(nSample, j*batchSize)
+
+		if start_id > nSample then 
 			self:save(prefix .. '_' .. epoch)
 			os.execute('th eval_depparser_rerank.lua '..prefix..'_'..epoch..' '..devdsbank_path..' '..kbestdevdsbank_path..' /tmp/dev &')
 
 			j = 1 
+			start_id = (j-1)*batchSize + 1
+			end_id = math.min(nSample, j*batchSize)
+
 			epoch = epoch + 1
 			percent_stick = 0
 			if epoch > maxepoch then break end
@@ -1041,17 +1149,13 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 			print(get_current_time())
 		end
 
-		local subdsbank = {}
-		for k = 1,batchSize do
-			subdsbank[k] = traindsbank[k+(j-1)*batchSize]
-		end
 	
 		local function func()
-			cost, grad, subdsbank, tword, tpath  = self:computeCostAndGrad(subdsbank, 
+			cost, grad, tword, tpath  = self:computeCostAndGrad(traintreebank, start_id, end_id,  
 							{lambda = lambda.lambda, lambda_L=lambda.lambda_L}, grad)
 
 			print('batch ' .. j .. ': ' .. cost) io.flush()		
-			return cost, grad, subdsbank, tword, tpath
+			return cost, grad, tword, tpath
 		end
 
 		--p:start("optim")
@@ -1060,7 +1164,7 @@ function IORNN:train_with_adagrad(traindsbank, batchSize,
 		--p:lap("optim")
 		--p:printAll()
 
-		percent = math.min(j*batchSize * 100 / nSample,100)
+		percent = end_id * 100 / nSample
 		if percent >= percent_stick then 
 			print(get_current_time() .. '      ' .. string.format('%.1f%%',percent))
 			percent_stick = percent_stick + 5

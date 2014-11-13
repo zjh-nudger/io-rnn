@@ -115,14 +115,14 @@ if #arg == 5 then
 							lookup = L, func = tanh, funcPrime = tanhPrime }) 
 
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
-	parser.mail_subject = model_dir
-	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
+--	parser.mail_subject = model_dir
+--	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
 
 -- for checking gradient
---	config = {lambda = 1e-4, lambda_L = 1e-7}
---	net.update_L = true
---	local traindsbank,_ = parser:load_dsbank(traindsbank_path, traindsbank_path..'.sentembs')
---	net:checkGradient(traindsbank, config)
+	config = {lambda = 1e-4, lambda_L = 1e-7}
+	net.update_L = true
+	local traindsbank,_ = parser:load_dsbank(traindsbank_path, traindsbank_path..'.grouping')
+	net:checkGradient(traindsbank, config)
 
 else
 	print("[dictionary-dir] [treebank-dir] [emb-model] [model-dir] [dim]")
