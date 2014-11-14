@@ -72,9 +72,6 @@ function Depparser:load_dsbank(path, grouping_path)
 						self.voca_dic, self.pos_dic, self.deprel_dic) 
 				end ) 
 			if status then
-				if L then
-					ds.flat_emb = L[{{}, {#dsbank+1}}]
-				end
 				dsbank[#dsbank+1] = ds
 				raw[#raw+1] = sent
 			else 
@@ -82,8 +79,10 @@ function Depparser:load_dsbank(path, grouping_path)
 			end
 			tokens = {}
 
-			if math.mod(i,100) == 0 then io.write(i..' trees \r'); io.flush() end
+			if i % 100 == 0 then io.write(i..' trees \r'); io.flush() end
 			i = i + 1
+		
+			--if i > 1000 then break end
 		else 
 			tokens[#tokens+1] = line
 		end
@@ -91,11 +90,21 @@ function Depparser:load_dsbank(path, grouping_path)
 	dsbank.raw = raw
 	dsbank.doc_id = doc_id
 
-	return dsbank, raw
+	return dsbank
+end
+
+function Depparser:dsbank_to_treebank(dsbank)
+	local treebank = {}
+	for i,ds in ipairs(dsbank) do
+		treebank[i] = ds:to_torch_matrix_tree()
+	end
+	treebank.doc_id = dsbank.doc_id
+	return treebank
 end
 
 function Depparser:load_kbestdsbank(path, golddsbank)
-	local dsbank, raw = self:load_dsbank(path)
+	local dsbank = self:load_dsbank(path)
+	local raw = dsbank.raw
 	local kbestdsbank = {}
 
 	local group = nil
@@ -130,12 +139,12 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 end
 
 function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
-	print('load train dsbank')
-	local traindsbank,_ = self:load_dsbank(traintrebank_path, traintrebank_path..'.grouping')
+	print('load train treebank')
+	local traintreebank = self:dsbank_to_treebank(self:load_dsbank(traintrebank_path, traintrebank_path..'.grouping'))
 	
 	net.update_L = TRAIN_UPDATE_L
 
-	--[[ shuffle the traindsbank -------- DON'T SHUFFLE to preserve tree order
+	--[[ shuffle the traindsbank -------- DON'T SHUFFLE the treebank to preserve tree order
 	print('shuffling train dsbank')
 	local new_i = torch.randperm(#traindsbank)
 	temp = {}
@@ -150,11 +159,11 @@ function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_
 								voca_learningRate	= TRAIN_VOCA_LEARNING_RATE	}
 	local adagrad_state = {}
 
-	net:save(model_dir .. '/model_0')
+	--net:save(model_dir .. '/model_0')
 	local prefix = model_dir..'/model'
 
 	print('train net')
-	adagrad_config, adagrad_state = net:train_with_adagrad(traindsbank, TRAIN_BATCHSIZE,
+	adagrad_config, adagrad_state = net:train_with_adagrad(traintreebank, TRAIN_BATCHSIZE,
 										TRAIN_MAX_N_EPOCHS, {lambda = TRAIN_LAMBDA, lambda_L = TRAIN_LAMBDA_L}, 
 										prefix, adagrad_config, adagrad_state, 
 										devdsbank_path, kbestdevdsbank_path)
@@ -228,7 +237,7 @@ function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ)
 	return ret
 end
 
-function Depparser:rerank_scorefile(netscorefile, mstscorefile, kbestdsbank, kbestdsscore, alpha, K)
+function Depparser:rerank_scorefile(netscorefile, mstscorefile, kbestdsbank, alpha, K)
 	local K = K or 10
 	local ret = { raw = {} }
 	local sum_sen_log_p = 0
@@ -292,28 +301,51 @@ function Depparser:rerank(net, kbestdsbank, output)
 		f:writeInt(#kbestdsbank)
 	end
 
+	local rettreebank = {}
+	rettreebank.doc_id = kbestdsbank.doc_id
+
 	for i,org_parses in ipairs(kbestdsbank) do
-		if math.mod(i, 10) == 0 then io.write(i..'\r'); io.flush() end
+		if i % 10 == 0 then io.write(i..'\r'); io.flush() end
 		local parses = {}
 		for k = 1, math.min(K, #org_parses) do
 			parses[k] = org_parses[k]
 		end
 
+		-- extract context trees
+		local ctx_trees = {}
+		for t = 1, N_PREV_TREES do
+			local j = i -1 - N_PREV_TREES + t
+			if j < 1 or rettreebank.doc_id[j] ~= rettreebank.doc_id[i] then
+				ctx_trees[t] = 0
+			else
+				ctx_trees[t] = rettreebank[j]
+			end
+		end
+
+		-- compute scores and trees 
+		local log_probs, trees = net:compute_log_prob(parses, ctx_trees)
+		
+		if f then f:writeObject(log_probs) end
+
 		local best_parse = nil
 		local best_score = nil
-		local log_probs, trees = net:compute_log_prob(parses)
-
-		if f then f:writeObject(log_probs) end
+		local best_tree = nil
 
 		for j,parse in ipairs(parses) do
 			if best_score == nil or log_probs[j] > best_score then
 				best_parse = parse
 				best_score = log_probs[j]
+				best_tree = trees[j]
 			end
 		end
+
 		ret[i] = best_parse
 		sum_sen_log_p = sum_sen_log_p + log_sum_of_exp(torch.Tensor(log_probs))
-		sum_n_words = sum_n_words + parses[1].n_words - 1
+		sum_n_words = sum_n_words + parses[1].n_words - 1 -- don't count ROOT
+
+		-- update list of best trees
+		net:forward_inside(best_tree, true)
+		rettreebank[i] = best_tree
 	end
 	local ppl = math.pow(2, -sum_sen_log_p / math.log(2) / sum_n_words)
 
@@ -372,10 +404,10 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 	local str = ''
 
 	print('load ' .. goldpath)
-	local golddsbank, raw = self:load_dsbank(goldpath, goldpath..'.sentembs')
+	local golddsbank = self:load_dsbank(goldpath, goldpath..'.grouping')
 
 	print('load ' .. kbestpath)
-	local kbestdsbank, kbestdsscore  = self:load_kbestdsbank(kbestpath, golddsbank)
+	local kbestdsbank  = self:load_kbestdsbank(kbestpath, golddsbank)
 
 	print('reranking...')
 
@@ -391,14 +423,11 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 		if typ == 'best' or typ == 'worst' or typ == 'first' then 
 			parses = self:rerank_oracle(kbestdsbank, golddsbank, typ)
 			LAS, UAS = self:computeAScores(parses, golddsbank, punc, output) --'/tmp/univ-test-result.conll.'..typ)
-			str = 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
-			print(str)
+			str = str .. 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
 		else 
-			self.mail_subject = nil
-
 			if K_range == nil then K_range = {K,K} end
 			if alpha_range == nil then alpha_range = {alpha,alpha} end
-			print('k\talpha\tUAS\tLAS')
+			str = str .. 'k\talpha\tUAS\tLAS\n'
 
 			-- search for best K and alpha
 			for k = K_range[1],K_range[2] do
@@ -406,7 +435,7 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 				best_UAS = 0
 				best_LAS = 0
 				for a = alpha_range[1],alpha_range[2],0.005 do
-					parses = self:rerank_scorefile(typ, kbestpath..'.mstscores', kbestdsbank, kbestdsscore, a, k)
+					parses = self:rerank_scorefile(typ, kbestpath..'.mstscores', kbestdsbank, a, k)
 					LAS, UAS = self:computeAScores(parses, golddsbank, punc, output) 
 					if UAS > best_UAS then 
 						best_UAS = UAS
@@ -414,23 +443,24 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 						best_LAS = LAS
 					end
 				end
-				print(k .. '\t' .. best_alpha .. '\t' .. string.format('%.2f',best_UAS) .. '\t' .. string.format('%.2f',best_LAS))
+				str = str .. k .. '\t' .. best_alpha .. '\t' .. string.format('%.2f',best_UAS) .. '\t' .. string.format('%.2f',best_LAS) .. '\n'
 			end
 		end
 	else 
 		local net = typ
 		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores')
 		LAS, UAS = self:computeAScores(parses, golddsbank, punc)
-		str = 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS)
-		print(str)
+		str = str .. 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS) .. '\n'
+		str = str .. 'sen-ppl ' .. ppl
+	end
 
-		-- mail
-		if EVAL_EMAIL_ADDR and self.mail_subject then
-			os.execute('echo "'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
-		end 
-		print('sen-ppl ' .. ppl ..'\n')
-		
-	end	
+	print(str)
+
+	-- mail
+	if EVAL_EMAIL_ADDR and self.mail_subject then
+		os.execute('echo "'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
+	end 
+
 end
 
 --[[ for testing
