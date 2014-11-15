@@ -47,13 +47,25 @@ function identityPrime(X)
 	return torch.ones(X.size)
 end
 
+-- soft sign
+function softsign(X)
+	return torch.cdiv(X, torch.abs(X):add(1))
+end
+
+function softsignPrime(softsignX)
+	return torch.abs(softsignX):mul(-1):add(1):pow(2)
+end
+
+IORNN.default_func = softsign
+IORNN.default_funcPrime = softsignPrime
+
 --************************* construction ********************--
 
 function IORNN:new(input)
 	local net = {	dim = input.dim, wdim = input.lookup:size(1), sdim = input.sdim,
 					voca_dic = input.voca_dic, pos_dic = input.pos_dic, deprel_dic = input.deprel_dic }
-	net.func = input.func or tanh
-	net.funcPrime = input.funcPrime or tanhPrime
+	net.func = input.func or IORNN.default_func
+	net.funcPrime = input.funcPrime or IORNN.default_funcPrime
 	setmetatable(net, IORNN_mt)
 
 	net:init_params(input)
@@ -99,26 +111,30 @@ function IORNN:init_params(input)
 
 	--%%%%%%%%%%%%% assign ref %%%%%%%%%%%%%
 	local r = 0.1
+	local r_small = 1e-3
+	local r_tiny = 1e-5
+
 	local index = 1
 
 	-- contextual trees
-	self.root_complete_inner, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
+	self.root_complete_inner, index = self:create_weight_matrix(self.params, index, dim, 1, r)
 	self.Wctx_trees = {}
 	self.bctx_trees, index = self:create_weight_matrix(self.params, index, dim, 1)
 	for i = 1, N_PREV_TREES do
-		self.Wctx_trees[i], index = self:create_weight_matrix(self.params, index, dim, dim, 1e-3)
+		self.Wctx_trees[i], index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim)))
 	end
 
 --	print(index)
 	-- project word embs on to a higher-dim vector space
-	self.Wh, index = self:create_weight_matrix(self.params, index, dim, wdim, 1e-3)
+	self.Wh, index = self:create_weight_matrix(self.params, index, dim, wdim, math.sqrt(6/(wdim+dim)))
 	self.bh, index = self:create_weight_matrix(self.params, index, dim, 1)
 	
 	-- anonymous outer/inner
-	self.root_inner, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
-	self.anon_outer, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
-	
-	self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, r)
+	self.root_inner, index = self:create_weight_matrix(self.params, index, dim, 1, r)
+	self.anon_outer, index = self:create_weight_matrix(self.params, index, dim, 1, r)
+
+	-- weights for combining head	
+	self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim)))
 	self.bi, index = self:create_weight_matrix(self.params, index, dim, 1)
 
 --	print(index)
@@ -127,29 +143,29 @@ function IORNN:init_params(input)
 		self[d] = {}
 		local dir = self[d]
 
-		dir.anon_inner, index = self:create_weight_matrix(self.params, index, dim, 1, 1e-3)
+		dir.anon_inner, index = self:create_weight_matrix(self.params, index, dim, 1, r)
 
 		-- composition weight matrices
 		dir.Wi = {}
 		dir.Wo = {}
 		for i = 1,deprel_dic.size do
 --			print(index .. ' ' .. deprel_dic.id2word[i] .. ' ' .. d)
-			dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, r)
-			dir.Wo[i], index = self:create_weight_matrix(self.params, index, dim, dim, r)
+			dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim)))
+			dir.Wo[i], index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim+pos_dic.size+N_CAP_FEAT+deprel_dic.size)))
 		end
-		dir.Woh, index = self:create_weight_matrix(self.params, index, dim, dim, r)
-		dir.Wop, index = self:create_weight_matrix(self.params, index, dim, dim, r)
+		dir.Woh, index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim+pos_dic.size+N_CAP_FEAT+deprel_dic.size)))
+		dir.Wop, index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim+pos_dic.size+N_CAP_FEAT+deprel_dic.size)))
 
 		dir.bo, index = self:create_weight_matrix(self.params, index, dim, 1)
 	end
 
 
 	-- Pr(deprel | outer, dir)
-	self.Wdr, index = self:create_weight_matrix(self.params, index, deprel_dic.size+1, dim, r) -- +1 for EOC
+	self.Wdr, index = self:create_weight_matrix(self.params, index, deprel_dic.size+1, dim, math.sqrt(1/dim)) -- +1 for EOC
 	self.bdr, index = self:create_weight_matrix(self.params, index, deprel_dic.size+1, 1)
 
 	-- Pr(POS | deprel, outer, dir)
-	self.Wpos, index	= self:create_weight_matrix(self.params, index, pos_dic.size, dim, r)
+	self.Wpos, index	= self:create_weight_matrix(self.params, index, pos_dic.size, dim, math.sqrt(1/dim))
 	self.Ldrpos, index	= self:create_weight_matrix(self.params, index, pos_dic.size, deprel_dic.size, r)
 	self.bpos, index	= self:create_weight_matrix(self.params, index, pos_dic.size, 1)
 
@@ -161,7 +177,7 @@ function IORNN:init_params(input)
 	self.bword, index		= self:create_weight_matrix(self.params, index, voca_dic.size, 1)
 
 	-- Pr(cap | word, POS, deprel, outer, dir)
-	self.Wcap, index		= self:create_weight_matrix(self.params, index, N_CAP_FEAT, dim, r)
+	self.Wcap, index		= self:create_weight_matrix(self.params, index, N_CAP_FEAT, dim, math.sqrt(1/dim))
 	self.Ldrcap, index		= self:create_weight_matrix(self.params, index, N_CAP_FEAT, deprel_dic.size, r)
 	self.Lposcap, index		= self:create_weight_matrix(self.params, index, N_CAP_FEAT, pos_dic.size, r)
 	self.Lwordcap, index 	= self:create_weight_matrix(self.params, index, N_CAP_FEAT, voca_dic.size, r)
@@ -182,7 +198,7 @@ function IORNN:init_params(input)
 	self.Lcap, index = self:create_weight_matrix(self.params, index, dim, N_CAP_FEAT, r)
 
 	-- for hierarchical softmax
-	self.Wword, index = self:create_weight_matrix(self.params, index, voca_dic.size, dim, r)
+	self.Wword, index = self:create_weight_matrix(self.params, index, voca_dic.size, dim, math.sqrt(6/(dim+dim)))
 
 	--  word embeddings (always always always at the end of the array of params)
 	self.L = self.params[{{index,index+voca_dic.size*wdim-1}}]:resize(wdim,voca_dic.size):copy(input.lookup)	-- word embeddings 
@@ -297,7 +313,6 @@ end
 -- save net into a file
 function IORNN:save( filename , binary )
 	local file = torch.DiskFile(filename, 'w')
-	--if binary == nil or binary then file:binary() end
 	if binary == true then file:binary() end
 
 	file:writeObject(self)
@@ -307,7 +322,6 @@ end
 -- create net from file
 function IORNN:load( filename , binary, func, funcPrime )
 	local file = torch.DiskFile(filename, 'r')
-	--if binary == nil or binary then file:binary() end
 	if binary == true then file:binary() end
 
 	local net = file:readObject()
@@ -939,7 +953,7 @@ function IORNN:compute_log_prob(dsbank, ctx_trees)
 	local trees = {}
 	for i, ds in ipairs(dsbank) do
 		local tree = ds:to_torch_matrix_tree()
-		self:forward_inside(tree, false)
+		self:forward_inside(tree)
 		scores[i] = -self:forward_outside(tree, ctx_trees)
 		trees[i] = tree
 	end
@@ -948,7 +962,6 @@ function IORNN:compute_log_prob(dsbank, ctx_trees)
 end
 
 function IORNN:computeCostAndGrad(treebank, start_id, end_id, config, grad)
-	local parse = config.parse or false
 
 	--p:start('compute cost and grad')	
 
@@ -1004,7 +1017,7 @@ function IORNN:computeCostAndGrad(treebank, start_id, end_id, config, grad)
 
 	--p:lap('process dsbank') 
 
-	--p:start('compute grad')
+	--[[p:start('compute grad')
 	local wparams = self.params[{{1,-1-self.dim*self.voca_dic.size-self.wdim*self.voca_dic.size}}]
 	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca_dic.size-self.wdim*self.voca_dic.size}}]
 	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
@@ -1019,7 +1032,7 @@ function IORNN:computeCostAndGrad(treebank, start_id, end_id, config, grad)
 		cost = cost + torch.pow(self.Wword[{{wid},{}}],2):sum() * config.lambda/2
 		grad.Wword[{{wid},{}}]:div(nSample):add(config.lambda, self.Wword[{{wid},{}}])
 	end 
-
+]]
 	--p:lap('compute grad')
 
 	--p:lap('compute cost and grad') 
@@ -1061,8 +1074,7 @@ function IORNN:checkGradient(treebank, config)
 			print('diff ' .. i .. ' ' .. diff .. ' : ' .. numGradTheta[i] .. ' ' .. gradTheta[i])
 		end
 		if diff > 5e-9  then 
-			print('diff ' .. i .. ' ' .. diff .. ' : ' .. numGradTheta[i] .. ' ' .. gradTheta[i])
-			print('errrrrrrrrrr : ' .. numGradTheta[i] .. ' ' .. gradTheta[i]) 
+			print('diff ' .. i .. ' ' .. diff .. ' : ' .. numGradTheta[i] .. ' ' .. gradTheta[i] .. ' errrrrrrrrrrrrrr')
 		end
 	end
 
@@ -1095,7 +1107,7 @@ function IORNN:adagrad(func, config, state)
 
 	-- (3) learning rate decay (annealing)
 	local weight_clr	= weight_lr / (1 + nevals*lrd)
-	local voca_dic_clr		= voca_dic_lr / (1 + nevals*lrd)
+	local voca_dic_clr	= voca_dic_lr / (1 + nevals*lrd)
 
 	-- (4) parameter update with single or individual learning rates
 	if not state.paramVariance then
@@ -1210,7 +1222,7 @@ L = torch.rand(2, voca_dic.size)
 
 print('training...')
 local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic,
-						lookup = L, func = tanh, funcPrime = tanhPrime })
+						lookup = L, func = IORNN.default_func, funcPrime = IORNN.default_funcPrime })
 
 local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
 local dsbank,_ = parser:load_dsbank('../data/wsj-dep/toy/data/train.conll')

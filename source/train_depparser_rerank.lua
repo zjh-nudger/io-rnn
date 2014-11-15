@@ -6,6 +6,7 @@ require 'dpiornn_gen'
 require 'dp_spec'
 
 torch.setnumthreads(NUM_THREADS)
+torch.setdefaulttensortype('torch.DoubleTensor')
 
 function load_huff_code(voca_dic, filename)
 	voca_dic.code_len = torch.IntTensor(voca_dic.size)
@@ -80,8 +81,13 @@ if #arg == 5 then
 		local info = f:readInt(2)
 		local nword = info[1]	
 		local embdim = info[2]	
-		L = torch.Tensor(f:readDouble(nword*embdim))
-						:resize(nword, embdim):t()
+		if torch.getdefaulttensortype() == 'torch.DoubleTensor' then
+			L = torch.Tensor(f:readDouble(nword*embdim))
+							:resize(nword, embdim):t()
+		elseif torch.getdefaulttensortype() == 'torch.FloatTensor' then
+			L = torch.Tensor(f:readFloat(nword*embdim))
+							:resize(nword, embdim):t()
+		end
 		dim = embdim
 		f:close()
 		if nword ~= voca_dic.size then
@@ -110,19 +116,22 @@ if #arg == 5 then
 	model_dir = arg[4]
 	dim = tonumber(arg[5])
 	sdim = 50
-
+	
 	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, sdim = sdim,
-							lookup = L, func = tanh, funcPrime = tanhPrime }) 
+							lookup = L, func = softsign, funcPrime = softsignPrime }) 
 
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
-	parser.mail_subject = model_dir
-	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
+--	parser.mail_subject = model_dir
+--	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
+
+--	local dsbank = parser:load_dsbank(traindsbank_path, traindsbank_path..'.grouping')
+--	parser:output_raw(dsbank, '/tmp/raw')
 
 -- for checking gradient
---	config = {lambda = 1e-4, lambda_L = 1e-7}
---	net.update_L = true
---	local traintreebank = parser:dsbank_to_treebank(parser:load_dsbank(traindsbank_path, traindsbank_path..'.grouping'))
---	net:checkGradient(traintreebank, config)
+	config = {lambda = 1e-4, lambda_L = 1e-7}
+	net.update_L = true
+	local traintreebank = parser:dsbank_to_treebank(parser:load_dsbank(traindsbank_path, traindsbank_path..'.grouping'))
+	net:checkGradient(traintreebank, config)
 
 else
 	print("[dictionary-dir] [treebank-dir] [emb-model] [model-dir] [dim]")

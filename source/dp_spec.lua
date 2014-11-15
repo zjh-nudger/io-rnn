@@ -1,3 +1,5 @@
+torch.setdefaulttensortype('torch.FloatTensor')
+
 -- ********** filenames ********* --
 TRAIN_FILENAME = 'train.conll'
 DEV_FILENAME = 'dev.conll'

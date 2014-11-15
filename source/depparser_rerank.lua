@@ -93,6 +93,23 @@ function Depparser:load_dsbank(path, grouping_path)
 	return dsbank
 end
 
+function Depparser:output_raw(dsbank, fname)
+	local f = io.open(fname, 'w')
+	for i = 1,#dsbank do
+		local str = ''
+		for j = 2,#dsbank.raw[i] do
+			str = str .. dsbank.raw[i][j] .. ' '
+		end
+
+		local doc_id = dsbank.doc_id[i]
+		if i > 1 and dsbank.doc_id[i] ~= dsbank.doc_id[i-1] then
+			f:write('-----------------------------------\n')
+		end
+		f:write(str..'\n')
+	end
+	f:close()
+end
+
 function Depparser:dsbank_to_treebank(dsbank)
 	local treebank = {}
 	for i,ds in ipairs(dsbank) do

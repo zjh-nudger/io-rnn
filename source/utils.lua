@@ -40,6 +40,4 @@ function get_current_time()
 	return time.day.."/"..time.month.."/"..time.year.." "..time.hour .. ":" .. time.min .. ":" .. time.sec
 end
 
-function math.mod(x, y)
-	return x % y
-end
+
