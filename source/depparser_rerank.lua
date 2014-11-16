@@ -130,8 +130,10 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 			group = { ds , raw = {raw[i]} }
 			kbestdsbank[#kbestdsbank+1] = group
 		else
-			group[#group+1] = ds
-			group.raw[#group] = raw[i]
+			if #group < K then
+				group[#group+1] = ds
+				group.raw[#group] = raw[i]
+			end
 		end
 	end
 

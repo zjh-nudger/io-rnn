@@ -60,5 +60,9 @@ alpha	= 0
 
 K_range	= {2,10} -- to choose K [for development], set nil when testing
 alpha_range = {0,1} -- to choose alpha (alpha * mstscore + (1-alpha) * iornnscore) [for development] set nil when testing
+
+--K_range	= {9,9} -- to choose K [for development], set nil when testing
+--alpha_range = {0.67,0.67} -- to choose alpha (alpha * mstscore + (1-alpha) * iornnscore) [for development] set nil when testing
+
 punc = true -- taking punc into account for evaluation 
 
