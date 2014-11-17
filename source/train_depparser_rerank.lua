@@ -6,7 +6,6 @@ require 'dpiornn_gen'
 require 'dp_spec'
 
 torch.setnumthreads(NUM_THREADS)
-torch.setdefaulttensortype('torch.DoubleTensor')
 
 function load_huff_code(voca_dic, filename)
 	voca_dic.code_len = torch.IntTensor(voca_dic.size)
@@ -121,17 +120,17 @@ if #arg == 5 then
 							lookup = L, func = softsign, funcPrime = softsignPrime }) 
 
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
---	parser.mail_subject = model_dir
---	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
+	parser.mail_subject = model_dir
+	parser:train(net, traindsbank_path, devdsbank_path, kbestdevdsbank_path, model_dir)
 
 --	local dsbank = parser:load_dsbank(traindsbank_path, traindsbank_path..'.grouping')
 --	parser:output_raw(dsbank, '/tmp/raw')
 
 -- for checking gradient
-	config = {lambda = 1e-4, lambda_L = 1e-7}
-	net.update_L = true
-	local traintreebank = parser:dsbank_to_treebank(parser:load_dsbank(traindsbank_path, traindsbank_path..'.grouping'))
-	net:checkGradient(traintreebank, config)
+--	config = {lambda = 1e-4, lambda_L = 1e-7}
+--	net.update_L = true
+--	local traintreebank = parser:dsbank_to_treebank(parser:load_dsbank(traindsbank_path, traindsbank_path..'.grouping'))
+--	net:checkGradient(traintreebank, config)
 
 else
 	print("[dictionary-dir] [treebank-dir] [emb-model] [model-dir] [dim]")

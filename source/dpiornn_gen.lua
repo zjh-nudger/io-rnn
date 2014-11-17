@@ -1017,7 +1017,7 @@ function IORNN:computeCostAndGrad(treebank, start_id, end_id, config, grad)
 
 	--p:lap('process dsbank') 
 
-	--[[p:start('compute grad')
+	--p:start('compute grad')
 	local wparams = self.params[{{1,-1-self.dim*self.voca_dic.size-self.wdim*self.voca_dic.size}}]
 	local grad_wparams = grad.params[{{1,-1-self.dim*self.voca_dic.size-self.wdim*self.voca_dic.size}}]
 	cost = cost / nSample + config.lambda/2 * torch.pow(wparams,2):sum()
@@ -1032,7 +1032,7 @@ function IORNN:computeCostAndGrad(treebank, start_id, end_id, config, grad)
 		cost = cost + torch.pow(self.Wword[{{wid},{}}],2):sum() * config.lambda/2
 		grad.Wword[{{wid},{}}]:div(nSample):add(config.lambda, self.Wword[{{wid},{}}])
 	end 
-]]
+
 	--p:lap('compute grad')
 
 	--p:lap('compute cost and grad') 
