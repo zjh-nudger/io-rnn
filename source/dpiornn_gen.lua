@@ -63,6 +63,7 @@ IORNN.default_funcPrime = softsignPrime
 
 function IORNN:new(input)
 	local net = {	dim = input.dim, wdim = input.lookup:size(1), sdim = input.sdim,
+					n_prevtrees = input.n_prevtrees,
 					voca_dic = input.voca_dic, pos_dic = input.pos_dic, deprel_dic = input.deprel_dic }
 	net.func = input.func or IORNN.default_func
 	net.funcPrime = input.funcPrime or IORNN.default_funcPrime
@@ -91,7 +92,7 @@ function IORNN:init_params(input)
 	local pos_dic	 = self.pos_dic
 
 	-- create params
-	local n_params = 	dim + dim + N_PREV_TREES*dim*dim + 
+	local n_params = 	dim + dim + self.n_prevtrees*dim*dim + 
 						dim * (wdim + 1) + 
 						2 * dim +
 						dim * dim + dim + 
@@ -120,7 +121,7 @@ function IORNN:init_params(input)
 	self.root_complete_inner, index = self:create_weight_matrix(self.params, index, dim, 1, r)
 	self.Wctx_trees = {}
 	self.bctx_trees, index = self:create_weight_matrix(self.params, index, dim, 1)
-	for i = 1, N_PREV_TREES do
+	for i = 1, self.n_prevtrees do
 		self.Wctx_trees[i], index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim)))
 	end
 
@@ -225,7 +226,7 @@ function IORNN:create_grad()
 	grad.root_complete_inner, index = self:create_weight_matrix(grad.params, index, dim, 1) -- anonymous root complete inner
 	grad.Wctx_trees = {}
 	grad.bctx_trees, index = self:create_weight_matrix(grad.params, index, dim, 1)
-	for i = 1, N_PREV_TREES do
+	for i = 1, self.n_prevtrees do
 		grad.Wctx_trees[i], index = self:create_weight_matrix(grad.params, index, dim, dim)
 	end
 
@@ -331,7 +332,11 @@ function IORNN:load( filename , binary, func, funcPrime )
 	setmetatable(net.voca_dic, Dict_mt)
 	setmetatable(net.pos_dic, Dict_mt)
 	setmetatable(net.deprel_dic, Dict_mt)
-
+	if net.n_prevtrees == nil then 
+		net.n_prevtrees = #net.Wctx_trees
+	elseif net.n_prevtrees ~= #net.Wctx_trees then
+		error('not match #prev-trees')
+	end
 	return net
 end
 
@@ -981,8 +986,8 @@ function IORNN:computeCostAndGrad(treebank, start_id, end_id, config, grad)
 
 		-- extract contextual trees
 		local ctx_trees = {}
-		for t = 1, N_PREV_TREES do
-			local j = i -1 - N_PREV_TREES + t
+		for t = 1, self.n_prevtrees do
+			local j = i -1 - self.n_prevtrees + t
 			if j < 1 or treebank.doc_id[j] ~= treebank.doc_id[i] then
 				ctx_trees[t] = 0
 			else

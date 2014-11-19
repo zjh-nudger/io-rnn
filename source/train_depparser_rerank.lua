@@ -117,6 +117,7 @@ if #arg == 5 then
 	sdim = 50
 	
 	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, sdim = sdim,
+							n_prevtrees = N_PREV_TREES, 
 							lookup = L, func = softsign, funcPrime = softsignPrime }) 
 
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)

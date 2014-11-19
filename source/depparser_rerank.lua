@@ -150,6 +150,7 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 			ds.word = goldds.word:clone() 
 			ds.cap = goldds.cap:clone()
 		end
+		group.goldds = goldds
 	end
 
 	kbestdsbank.doc_id = golddsbank.doc_id
@@ -308,7 +309,7 @@ function Depparser:rerank_scorefile(netscorefile, mstscorefile, kbestdsbank, alp
 
 end
 
-function Depparser:rerank(net, kbestdsbank, output)
+function Depparser:rerank(net, kbestdsbank, output, usegoldctxtrees)
 	local K = K or 10000
 	local ret = {}
 	local sum_sen_log_p = 0
@@ -332,8 +333,8 @@ function Depparser:rerank(net, kbestdsbank, output)
 
 		-- extract context trees
 		local ctx_trees = {}
-		for t = 1, N_PREV_TREES do
-			local j = i -1 - N_PREV_TREES + t
+		for t = 1, net.n_prevtrees do
+			local j = i -1 - net.n_prevtrees + t
 			if j < 1 or rettreebank.doc_id[j] ~= rettreebank.doc_id[i] then
 				ctx_trees[t] = 0
 			else
@@ -363,8 +364,14 @@ function Depparser:rerank(net, kbestdsbank, output)
 		sum_n_words = sum_n_words + parses[1].n_words - 1 -- don't count ROOT
 
 		-- update list of best trees
-		net:forward_inside(best_tree, true)
-		rettreebank[i] = best_tree
+		if usegoldctxtrees == nil or usegoldctxtrees == false then
+			net:forward_inside(best_tree)
+			rettreebank[i] = best_tree
+		else 
+			local goldt = org_parses.goldds:to_torch_matrix_tree()
+			net:forward_inside(goldt)
+			rettreebank[i] = goldt
+		end
 	end
 	local ppl = math.pow(2, -sum_sen_log_p / math.log(2) / sum_n_words)
 
@@ -467,7 +474,7 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 		end
 	else 
 		local net = typ
-		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores')
+		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores', true)
 		LAS, UAS = self:computeAScores(parses, golddsbank, punc)
 		str = str .. 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS) .. '\n'
 		str = str .. 'sen-ppl ' .. ppl
