@@ -24,9 +24,9 @@ if #arg >= 3 then
 	else parser.mail_subject = arg[1]:sub(1,u-1) end
 
 	--print(parser.mail_subject)
---[[
+--
 	print('eval')
-
+--[[
 	print('\n\n--- oracle-best ---')
 	parser:eval('best', kbesttreebank_path, treebank_path, output..'.oracle-best')
 
@@ -36,10 +36,10 @@ if #arg >= 3 then
 	print('\n\n--- first ---')
 	parser:eval('first', kbesttreebank_path, treebank_path, output..'.first')
 ]]
-	print('\n\n--- rescore ---')
-	parser:eval(net, kbesttreebank_path, treebank_path, kbesttreebank_path..'.iornnscores')
+--	print('\n\n--- rescore ---')
+--	parser:eval(net, kbesttreebank_path, treebank_path, kbesttreebank_path..'.iornnscores')
 
---	print('\n\n--- mix. reranking ---')
+	print('\n\n--- mix. reranking ---')
 	parser:eval(kbesttreebank_path..'.iornnscores', kbesttreebank_path, treebank_path, output..'.reranked')
 
 else

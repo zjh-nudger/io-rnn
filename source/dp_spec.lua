@@ -16,7 +16,7 @@ DEPREL_FILENAME = 'deprel.lst'
 ROOT_LABEL	= 'ROOT'
 NUM_THREADS	= 1
 
-N_PREV_TREES = 5
+N_PREV_TREES = 0
 
 -- capital feature
 ALL_LOWER = 1

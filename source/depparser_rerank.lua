@@ -257,28 +257,22 @@ function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ)
 	return ret
 end
 
-function Depparser:rerank_scorefile(netscorefile, mstscorefile, kbestdsbank, alpha, K)
+function Depparser:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, alpha, K)
 	local K = K or 10
 	local ret = { raw = {} }
 	local sum_sen_log_p = 0
 	local sum_n_words = 0
 
-	local f = torch.DiskFile(netscorefile, 'r')
-	if f:readInt() ~= #kbestdsbank then 
-		error('not match')
-	end
 
 	local i = 1
-	for line in io.lines(mstscorefile) do
+	for i,mstscores in ipairs(listmstscores) do
 		local org_parses = kbestdsbank[i]
 		local parses = { raw = {} }
 
 		local best_parse = nil
 		local best_score = nil
 		local best_raw = nil
-		local log_probs = f:readObject()
-
-		local mstscores = split_string(line)
+		local log_probs = listnetscores[i]
 
 		for k = 1, math.min(#log_probs, math.min(K, #org_parses)) do
 			parses[k] = org_parses[k]
@@ -296,16 +290,11 @@ function Depparser:rerank_scorefile(netscorefile, mstscorefile, kbestdsbank, alp
 		ret[i] = best_parse
 		ret.raw[i] = best_raw
 
-		sum_sen_log_p = sum_sen_log_p + log_sum_of_exp(torch.Tensor(log_probs))
-		sum_n_words = sum_n_words + parses[1].n_words - 1
 
 		i = i + 1
 	end
-	local ppl = math.pow(2, -sum_sen_log_p / math.log(2) / sum_n_words)
-
-	f:close()
 	
-	return ret, ppl
+	return ret 
 
 end
 
@@ -411,11 +400,14 @@ function Depparser:computeAScores(parses, golddsbank, punc, output)
 	local unlabel = 0
 
 	for i,parse in ipairs(parses) do
-		local gold = golddsbank[i]
-		local ret = self:compute_scores(parse, gold, punc)
-		total 	= total + ret.n
-		label 	= label + ret.label
-		unlabel = unlabel + ret.unlabel
+		if parse.score == nil then
+			local gold = golddsbank[i]
+			parse.score = self:compute_scores(parse, gold, punc)
+		end
+			
+		total 	= total + parse.score.n
+		label 	= label + parse.score.label
+		unlabel = unlabel + parse.score.unlabel
 	end
 
 	--print(total)
@@ -455,14 +447,38 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 			if alpha_range == nil then alpha_range = {alpha,alpha} end
 			str = str .. 'k\talpha\tUAS\tLAS\n'
 
+			-- read score
+			local listmstscores = {}
+			for line in io.lines(kbestpath..'.mstscores') do
+				local mstscores = {}
+				for u,s in ipairs(split_string(line)) do	
+					mstscores[u] = tonumber(s)
+				end
+				listmstscores[#listmstscores+1] = mstscores
+			end
+
+			local listnetscores = {}
+			local f = torch.DiskFile(typ, 'r')
+	        if f:readInt() ~= #kbestdsbank then 
+    	           error('not match')
+        	end
+			for i = 1,#listmstscores do
+				listnetscores[i] = f:readObject()
+			end
+			f:close()
+
 			-- search for best K and alpha
+			local bbalpha = 0
+			local bbk = 0
+			local bbUAS = -1
+
 			for k = K_range[1],K_range[2] do
 				best_alpha = 0
 				best_UAS = 0
 				best_LAS = 0
 				for a = alpha_range[1],alpha_range[2],0.005 do
-					parses = self:rerank_scorefile(typ, kbestpath..'.mstscores', kbestdsbank, a, k)
-					LAS, UAS = self:computeAScores(parses, golddsbank, punc, output) 
+					parses = self:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, a, k)
+					LAS, UAS = self:computeAScores(parses, golddsbank, punc) 
 					if UAS > best_UAS then 
 						best_UAS = UAS
 						best_alpha = a
@@ -470,11 +486,23 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 					end
 				end
 				str = str .. k .. '\t' .. best_alpha .. '\t' .. string.format('%.2f',best_UAS) .. '\t' .. string.format('%.2f',best_LAS) .. '\n'
+
+				if bbUAS < best_UAS then
+					bbUAS = best_UAS
+					bbk = k
+					bbalpha = best_alpha
+				end
 			end
+
+			if output then
+				local parses = self:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, bbalpha, bbk)
+				LAS, UAS = self:computeAScores(parses, golddsbank, punc, output) 
+			end
+
 		end
 	else 
 		local net = typ
-		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores', true)
+		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores')
 		LAS, UAS = self:computeAScores(parses, golddsbank, punc)
 		str = str .. 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS) .. '\n'
 		str = str .. 'sen-ppl ' .. ppl
