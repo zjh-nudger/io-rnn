@@ -1,9 +1,9 @@
 torch.setdefaulttensortype('torch.FloatTensor')
 
 -- ********** filenames ********* --
-TRAIN_FILENAME = 'train.conll'
+TRAIN_FILENAME = 'train.conll.mst'
 DEV_FILENAME = 'dev.conll'
-KBEST_DEV_FILENAME = 'dev-10-best-mst2ndorder.conll'
+KBEST_DEV_FILENAME = 'dev-50-best-mst2ndorder.conll'
 
 WORD_FILENAME = 'words.lst'
 WEMB_FILENAME = 'embeddings.txt'
@@ -38,7 +38,7 @@ N_DIST_FEAT	= 4
 
 
 -- depstruct settings
-DEPSTRUCT_N_DEPS = 50
+DEPSTRUCT_N_DEPS = 80
 
 -- for training
 MIN_OCCURS_THRESHOLD	= 3
@@ -55,10 +55,12 @@ TRAIN_VOCA_LEARNING_RATE	= 0.1
 EVAL_TOOL_PATH	= '../tools/eval-dep.pl'
 EVAL_EMAIL_ADDR	= 'lephong.xyz@gmail.com'
 
-K		= 10
+USE_GOLD_PREV_TREES = false
+
+K		= 30
 alpha	= 0
 
-K_range	= {2,10} -- to choose K [for development], set nil when testing
+K_range	= {2,30} -- to choose K [for development], set nil when testing
 alpha_range = {0,1} -- to choose alpha (alpha * mstscore + (1-alpha) * iornnscore) [for development] set nil when testing
 
 --K_range	= {9,9} -- to choose K [for development], set nil when testing

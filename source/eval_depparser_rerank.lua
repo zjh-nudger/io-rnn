@@ -26,16 +26,16 @@ if #arg >= 3 then
 	--print(parser.mail_subject)
 --
 	print('eval')
---[[
+
 	print('\n\n--- oracle-best ---')
-	parser:eval('best', kbesttreebank_path, treebank_path, output..'.oracle-best')
+--	parser:eval('best', kbesttreebank_path, treebank_path, output..'.oracle-best')
 
 	print('\n\n--- oracle-worst ---')
-	parser:eval('worst', kbesttreebank_path, treebank_path, output..'.oracle-worst')
+--	parser:eval('worst', kbesttreebank_path, treebank_path, output..'.oracle-worst')
 
 	print('\n\n--- first ---')
-	parser:eval('first', kbesttreebank_path, treebank_path, output..'.first')
-]]
+--	parser:eval('first', kbesttreebank_path, treebank_path, output..'.first')
+
 	print('\n\n--- rescore ---')
 	parser:eval(net, kbesttreebank_path, treebank_path, kbesttreebank_path..'.iornnscores')
 

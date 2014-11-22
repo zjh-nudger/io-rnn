@@ -119,17 +119,26 @@ function Depparser:dsbank_to_treebank(dsbank)
 	return treebank
 end
 
-function Depparser:load_kbestdsbank(path, golddsbank)
+function Depparser:load_kbestdsbank(path, golddsbank, kbestscorespath)
+	local kbestscorespath = kbestscorespath or path..'.mstscores'
+	local ncands = {}
+	for line in io.lines(kbestscorespath) do
+		ncands[#ncands+1] = #split_string(line)
+	end
+
 	local dsbank = self:load_dsbank(path)
 	local raw = dsbank.raw
 	local kbestdsbank = {}
 
 	local group = nil
+	local count = 0
 	for i,ds in ipairs(dsbank) do
-		if group == nil or group[1].n_words ~= ds.n_words or (group[1].word - ds.word):abs():sum() > 0 then
+		if group == nil or count >= ncands[#kbestdsbank] then
 			group = { ds , raw = {raw[i]} }
 			kbestdsbank[#kbestdsbank+1] = group
+			count = 1
 		else
+			count = count + 1
 			if #group < K then
 				group[#group+1] = ds
 				group.raw[#group] = raw[i]
@@ -141,6 +150,7 @@ function Depparser:load_kbestdsbank(path, golddsbank)
 		local goldds = golddsbank[i]
 		for _,ds in ipairs(group) do
 			if ds.n_words ~= goldds.n_words then 
+				print(i)
 				print(#group)
 				print(#kbestdsbank)
 				print(ds.n_words)
@@ -226,6 +236,8 @@ function Depparser:rerank_oracle(kbestdsbank, golddsbank, typ)
 	local K = 100000
 
 	if #kbestdsbank ~= #golddsbank then 
+		print(#kbestdsbank)
+		print(#golddsbank)
 		error('size not match')
 	end
 
@@ -260,11 +272,8 @@ end
 function Depparser:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, alpha, K)
 	local K = K or 10
 	local ret = { raw = {} }
-	local sum_sen_log_p = 0
-	local sum_n_words = 0
+	local sum_lp = 0
 
-
-	local i = 1
 	for i,mstscores in ipairs(listmstscores) do
 		local org_parses = kbestdsbank[i]
 		local parses = { raw = {} }
@@ -272,6 +281,7 @@ function Depparser:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, a
 		local best_parse = nil
 		local best_score = nil
 		local best_raw = nil
+		local best_lp = nil
 		local log_probs = listnetscores[i]
 
 		for k = 1, math.min(#log_probs, math.min(K, #org_parses)) do
@@ -285,16 +295,15 @@ function Depparser:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, a
 				best_parse = parse
 				best_score = score
 				best_raw = parses.raw[j]
+				best_lp = log_probs[j]
 			end
 		end
 		ret[i] = best_parse
 		ret.raw[i] = best_raw
-
-
-		i = i + 1
+		sum_lp = sum_lp + best_lp
 	end
 	
-	return ret 
+	return ret, sum_lp
 
 end
 
@@ -445,7 +454,7 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 		else 
 			if K_range == nil then K_range = {K,K} end
 			if alpha_range == nil then alpha_range = {alpha,alpha} end
-			str = str .. 'k\talpha\tUAS\tLAS\n'
+			str = str .. 'k\tUAS(0)\tLAS(0)\tlogprob\talpha\tUAS\tLAS\n'
 
 			-- read score
 			local listmstscores = {}
@@ -485,7 +494,11 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 						best_LAS = LAS
 					end
 				end
-				str = str .. k .. '\t' .. best_alpha .. '\t' .. string.format('%.2f',best_UAS) .. '\t' .. string.format('%.2f',best_LAS) .. '\n'
+				parses,sum_lp = self:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, 0, k)
+				LAS, UAS = self:computeAScores(parses, golddsbank, punc) 
+
+				str = str .. k .. '\t' .. string.format('%.2f',UAS) .. '\t' .. string.format('%.2f',LAS) .. '\t' .. string.format('%.2f',sum_lp) ..
+						'\t' .. best_alpha .. '\t' .. string.format('%.2f',best_UAS) .. '\t' .. string.format('%.2f',best_LAS) .. '\n'
 
 				if bbUAS < best_UAS then
 					bbUAS = best_UAS
@@ -495,14 +508,22 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 			end
 
 			if output then
-				local parses = self:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, bbalpha, bbk)
-				LAS, UAS = self:computeAScores(parses, golddsbank, punc, output) 
+				local parses,sum_lp = self:rerank_scorefile(listnetscores, listmstscores, kbestdsbank, bbalpha, bbk)
+				LAS, UAS = self:computeAScores(parses, golddsbank, punc, output)
+				print(sum_lp)
 			end
 
 		end
 	else 
 		local net = typ
-		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores')
+		--[[local log_probs = net:compute_log_prob(golddsbank, {})
+		local sum = 0
+		for i,lp in ipairs(log_probs) do
+			sum = sum + lp
+		end
+		print(sum) ]]
+
+		parses,ppl = self:rerank(net, kbestdsbank, kbestpath..'.iornnscores', USE_GOLD_PREV_TREES)
 		LAS, UAS = self:computeAScores(parses, golddsbank, punc)
 		str = str .. 'LAS = ' .. string.format("%.2f",LAS)..'\nUAS = ' ..string.format("%.2f",UAS) .. '\n'
 		str = str .. 'sen-ppl ' .. ppl
