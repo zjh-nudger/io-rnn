@@ -14,6 +14,7 @@ if #arg >= 3 then
 
 	print('load net')
 	local net = IORNN:load(arg[1])
+	print(net.complete_inside)
 --	print(net.Wh:size())
 
 	print('create parser')

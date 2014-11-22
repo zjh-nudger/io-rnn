@@ -10,13 +10,13 @@ function Depstruct:new( input )
 	local len = #input
 	local ds = {
 		n_words	= len,
-		word	= torch.zeros(len),
-		pos		= torch.zeros(len),
-		cap		= torch.zeros(len),
-		head	= torch.zeros(len),
-		deprel	= torch.zeros(len),
-		n_deps	= torch.zeros(len),
-		dep		= torch.zeros(DEPSTRUCT_N_DEPS, len),
+		word	= torch.zeros(len):int(),
+		pos		= torch.zeros(len):short(),
+		cap		= torch.zeros(len):short(),
+		head	= torch.zeros(len):short(),
+		deprel	= torch.zeros(len):short(),
+		n_deps	= torch.zeros(len):short(),
+		dep		= torch.zeros(DEPSTRUCT_N_DEPS, len):short(),
 	}
 
 	setmetatable(ds, Depstruct_mt)
@@ -83,18 +83,18 @@ end
 -- because the first word is ROOT
 function Depstruct:create_empty_tree(n_nodes)
 	return {	n_nodes		= n_nodes,
-				word		= torch.zeros(n_nodes):long(),
-				pos			= torch.zeros(n_nodes):long(),
-				cap			= torch.zeros(n_nodes):long(),
-				parent		= torch.zeros(n_nodes):long(),
-				dist	= torch.zeros(n_nodes):long(),	-- distance to parent
-				dir	= torch.zeros(n_nodes):long(),	-- which parent side the node is on
-				[DIR_L]	= {	n_children	= torch.zeros(n_nodes):long(),	-- 1: left, 2: right
-								children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):long() },
-				[DIR_R]	= {	n_children	= torch.zeros(n_nodes):long(),
-								children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):long() },
-				wnode		= torch.zeros(n_nodes):long(),
-				deprel		= torch.zeros(n_nodes):long() }
+				word		= torch.zeros(n_nodes):int(),
+				pos			= torch.zeros(n_nodes):short(),
+				cap			= torch.zeros(n_nodes):short(),
+				parent		= torch.zeros(n_nodes):short(),
+				dist		= torch.zeros(n_nodes):byte(),	-- distance to parent
+				dir			= torch.zeros(n_nodes):byte(),	-- which parent side the node is on
+				[DIR_L]	= {	n_children	= torch.zeros(n_nodes):short(),	-- 1: left, 2: right
+							children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):short() },
+				[DIR_R]	= {	n_children	= torch.zeros(n_nodes):short(),
+							children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):short() },
+				wnode		= torch.zeros(n_nodes):short(),
+				deprel		= torch.zeros(n_nodes):short() }
 end
 
 function Depstruct:delete_tree(tree)

@@ -1,7 +1,7 @@
 torch.setdefaulttensortype('torch.FloatTensor')
 
 -- ********** filenames ********* --
-TRAIN_FILENAME = 'train.conll.mst'
+TRAIN_FILENAME = 'train.conll'
 DEV_FILENAME = 'dev.conll'
 KBEST_DEV_FILENAME = 'dev-50-best-mst2ndorder.conll'
 
@@ -25,6 +25,14 @@ FIRST_UPPER = 3
 NOT_FIRST_UPPER = 4
 N_CAP_FEAT = 4
 
+-- complete inside
+CMPL_INSIDE_NONE = 0
+CMPL_INSIDE_LEFT2RIGHT = 1
+CMPL_INSIDE_RIGHT2LEFT = 2
+CMPL_INSIDE_2WAY = 3
+
+CMPL_INSIDE = CMPL_INSIDE_LEFT2RIGHT
+
 -- direction
 DIR_L 	= 1
 DIR_R 	= 2
@@ -38,7 +46,7 @@ N_DIST_FEAT	= 4
 
 
 -- depstruct settings
-DEPSTRUCT_N_DEPS = 80
+DEPSTRUCT_N_DEPS = 50
 
 -- for training
 MIN_OCCURS_THRESHOLD	= 3

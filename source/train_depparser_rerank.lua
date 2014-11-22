@@ -10,7 +10,7 @@ torch.setnumthreads(NUM_THREADS)
 function load_huff_code(voca_dic, filename)
 	voca_dic.code_len = torch.IntTensor(voca_dic.size)
 	voca_dic.code = torch.Tensor(voca_dic.size, 50)
-	voca_dic.path = torch.LongTensor(voca_dic.size, 50)
+	voca_dic.path = torch.IntTensor(voca_dic.size, 50)
 
 	for line in io.lines(filename) do
 		local comps = split_string(line)
@@ -118,7 +118,8 @@ if #arg == 5 then
 	
 	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, sdim = sdim,
 							n_prevtrees = N_PREV_TREES, 
-							lookup = L, func = softsign, funcPrime = softsignPrime }) 
+							lookup = L, func = softsign, funcPrime = softsignPrime, 
+							complete_inside = CMP_INSIDE  }) 
 
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
 	parser.mail_subject = model_dir
