@@ -10,13 +10,13 @@ function Depstruct:new( input )
 	local len = #input
 	local ds = {
 		n_words	= len,
-		word	= torch.zeros(len):int(),
-		pos		= torch.zeros(len):short(),
-		cap		= torch.zeros(len):short(),
-		head	= torch.zeros(len):short(),
-		deprel	= torch.zeros(len):short(),
-		n_deps	= torch.zeros(len):short(),
-		dep		= torch.zeros(DEPSTRUCT_N_DEPS, len):short(),
+		word	= torch.IntTensor(len):fill(0),
+		pos		= torch.ByteTensor(len):fill(0),
+		cap		= torch.ByteTensor(len):fill(0),
+		head	= torch.ByteTensor(len):fill(0),
+		deprel	= torch.ByteTensor(len):fill(0),
+		n_deps	= torch.ByteTensor(len):fill(0),
+		dep		= torch.ByteTensor(DEPSTRUCT_N_DEPS, len):fill(0)
 	}
 
 	setmetatable(ds, Depstruct_mt)
@@ -83,18 +83,18 @@ end
 -- because the first word is ROOT
 function Depstruct:create_empty_tree(n_nodes)
 	return {	n_nodes		= n_nodes,
-				word		= torch.zeros(n_nodes):int(),
-				pos			= torch.zeros(n_nodes):short(),
-				cap			= torch.zeros(n_nodes):short(),
-				parent		= torch.zeros(n_nodes):short(),
-				dist		= torch.zeros(n_nodes):byte(),	-- distance to parent
-				dir			= torch.zeros(n_nodes):byte(),	-- which parent side the node is on
-				[DIR_L]	= {	n_children	= torch.zeros(n_nodes):short(),	-- 1: left, 2: right
-							children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):short() },
-				[DIR_R]	= {	n_children	= torch.zeros(n_nodes):short(),
-							children	= torch.zeros(DEPSTRUCT_N_DEPS, n_nodes):short() },
-				wnode		= torch.zeros(n_nodes):short(),
-				deprel		= torch.zeros(n_nodes):short() }
+				word		= torch.IntTensor(n_nodes):fill(0),
+				pos			= torch.ByteTensor(n_nodes):fill(0),
+				cap			= torch.ByteTensor(n_nodes):fill(0),
+				parent		= torch.ByteTensor(n_nodes):fill(0),
+				dist		= torch.ByteTensor(n_nodes):fill(0),	-- distance to parent
+				dir			= torch.ByteTensor(n_nodes):fill(0),	-- which parent side the node is on
+				[DIR_L]	= {	n_children	= torch.ByteTensor(n_nodes):fill(0),	-- 1: left, 2: right
+							children	= torch.ByteTensor(DEPSTRUCT_N_DEPS, n_nodes):fill(0) },
+				[DIR_R]	= {	n_children	= torch.ByteTensor(n_nodes):fill(0),
+							children	= torch.ByteTensor(DEPSTRUCT_N_DEPS, n_nodes):fill(0) },
+				wnode		= torch.ByteTensor(n_nodes):fill(0),
+				deprel		= torch.ByteTensor(n_nodes):fill(0) }
 end
 
 function Depstruct:delete_tree(tree)

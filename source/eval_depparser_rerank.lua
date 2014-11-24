@@ -6,11 +6,23 @@ require 'dpiornn_gen'
 require 'dp_spec'
 
 torch.setnumthreads(1)
+marked_file = '/tmp/eval_is_open'
+
+posix = require('posix')
 
 if #arg >= 3 then
 	treebank_path = arg[2]
 	kbesttreebank_path = arg[3]
 	output = arg[4]
+
+	if marked_file ~= nil then
+		while check_file_exist(marked_file) == true do
+			print('is busy, wait...')
+			posix.sleep(10)
+		end
+	end
+
+	local f = io.open(marked_file, 'w')
 
 	print('load net')
 	local net = IORNN:load(arg[1])
@@ -43,6 +55,8 @@ if #arg >= 3 then
 	print('\n\n--- mix. reranking ---')
 	parser:eval(kbesttreebank_path..'.iornnscores', kbesttreebank_path, treebank_path, output..'.reranked')
 
+	f:close()
+	os.remove(marked_file)
 else
 	print("[net] [gold/input] [kbest] [output]")
 end

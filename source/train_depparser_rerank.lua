@@ -115,11 +115,15 @@ if #arg == 5 then
 	model_dir = arg[4]
 	dim = tonumber(arg[5])
 	sdim = 50
+
+	for line in io.lines('dp_spec.lua') do
+		print(line)
+	end
 	
 	local net = IORNN:new({ dim = dim, voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic, sdim = sdim,
 							n_prevtrees = N_PREV_TREES, 
 							lookup = L, func = softsign, funcPrime = softsignPrime, 
-							complete_inside = CMP_INSIDE  }) 
+							complete_inside = CMPL_INSIDE  }) 
 
 	local parser = Depparser:new(voca_dic, pos_dic, deprel_dic)
 	parser.mail_subject = model_dir

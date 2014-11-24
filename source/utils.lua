@@ -40,4 +40,12 @@ function get_current_time()
 	return time.day.."/"..time.month.."/"..time.year.." "..time.hour .. ":" .. time.min .. ":" .. time.sec
 end
 
-
+function check_file_exist(path)
+	local file = io.open(path)
+	local found = false
+	if file ~= nil then
+		io.close(file)
+		found = true
+	end
+	return found
+end

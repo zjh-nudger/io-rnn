@@ -68,6 +68,11 @@ function IORNN:new(input)
 					complete_inside = input.complete_inside }
 	net.func = input.func or IORNN.default_func
 	net.funcPrime = input.funcPrime or IORNN.default_funcPrime
+
+	print('----------------- NET INFO -------------------')
+	print(net)
+	print('----------------------------------------------')
+
 	setmetatable(net, IORNN_mt)
 
 	net:init_params(input)
@@ -136,7 +141,7 @@ function IORNN:init_params(input)
 	self.anon_outer, index = self:create_weight_matrix(self.params, index, dim, 1, r)
 
 	-- weights for combining head	
-	self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim)))
+	self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, r_small); self.Wih:add(torch.eye(dim))
 	self.bi, index = self:create_weight_matrix(self.params, index, dim, 1)
 
 	for _,d in ipairs({DIR_L, DIR_R}) do
@@ -151,7 +156,7 @@ function IORNN:init_params(input)
 		dir.Wo = {}
 		for i = 1,deprel_dic.size do
 --			print(index .. ' ' .. deprel_dic.id2word[i] .. ' ' .. d)
-			dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim)))
+			dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, r_small)
 			dir.Wo[i], index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim+pos_dic.size+N_CAP_FEAT+deprel_dic.size)))
 		end
 		dir.Woh, index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim+pos_dic.size+N_CAP_FEAT+deprel_dic.size)))
@@ -923,7 +928,7 @@ function IORNN:backpropagate_inside(tree, grad, complete_inside)
 		tree.gradi = nil
 	end
 
-	if complete_inside == true and (tree.gradcomplete_i ~= nil or tree.gradiroot ~= nil) then
+	if complete_inside ~= CMPL_INSIDE_NONE and (tree.gradcomplete_i ~= nil or tree.gradiroot ~= nil) then
 		if tree.gradcomplete_i == nil then
 			tree.gradcomplete_i = torch.zeros(self.dim, tree.n_nodes)
 		end
@@ -978,7 +983,12 @@ function IORNN:compute_log_prob(dsbank, ctx_trees)
 	for i, ds in ipairs(dsbank) do
 		local tree = ds:to_torch_matrix_tree()
 		self:forward_inside(tree)
-		scores[i] = -self:forward_outside(tree, ctx_trees)
+		if self.complete_inside == CMPL_INSIDE_2WAY then
+			scores[i] = - (self:forward_outside(tree, ctx_trees, CMPL_INSIDE_LEFT2RIGHT) 
+						+ self:forward_outside(tree, ctx_trees, CMPL_INSIDE_RIGHT2LEFT)) / 2
+		else
+			scores[i] = -self:forward_outside(tree, ctx_trees, self.complete_inside) 
+		end
 		trees[i] = tree
 	end
 
@@ -1042,7 +1052,7 @@ function IORNN:computeCostAndGrad(treebank, start_id, end_id, config, grad)
 
 	for tree_id,_ in pairs(total_trees_id) do
 		local tree = treebank[tree_id]
-		self:backpropagate_inside(tree, grad)
+		self:backpropagate_inside(tree, grad, self.complete_inside)
 		clean_tree(tree)
 	end
 
