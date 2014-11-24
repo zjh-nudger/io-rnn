@@ -141,7 +141,7 @@ function IORNN:init_params(input)
 	self.anon_outer, index = self:create_weight_matrix(self.params, index, dim, 1, r)
 
 	-- weights for combining head	
-	self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, r_small); self.Wih:add(torch.eye(dim))
+	self.Wih, index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim)))
 	self.bi, index = self:create_weight_matrix(self.params, index, dim, 1)
 
 	for _,d in ipairs({DIR_L, DIR_R}) do
