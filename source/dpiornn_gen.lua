@@ -156,7 +156,7 @@ function IORNN:init_params(input)
 		dir.Wo = {}
 		for i = 1,deprel_dic.size do
 --			print(index .. ' ' .. deprel_dic.id2word[i] .. ' ' .. d)
-			dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, r_small)
+			dir.Wi[i], index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim)))
 			dir.Wo[i], index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim+pos_dic.size+N_CAP_FEAT+deprel_dic.size)))
 		end
 		dir.Woh, index = self:create_weight_matrix(self.params, index, dim, dim, math.sqrt(6/(dim+dim+pos_dic.size+N_CAP_FEAT+deprel_dic.size)))
