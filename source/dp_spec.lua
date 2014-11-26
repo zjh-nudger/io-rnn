@@ -31,7 +31,7 @@ CMPL_INSIDE_LEFT2RIGHT = 1
 CMPL_INSIDE_RIGHT2LEFT = 2
 CMPL_INSIDE_2WAY = 3
 
-CMPL_INSIDE = CMPL_INSIDE_NONE
+CMPL_INSIDE = CMPL_INSIDE_LEFT2RIGHT
 
 -- direction
 DIR_L 	= 1
@@ -74,5 +74,5 @@ alpha_range = {0,1} -- to choose alpha (alpha * mstscore + (1-alpha) * iornnscor
 --K_range	= {9,9} -- to choose K [for development], set nil when testing
 --alpha_range = {0.67,0.67} -- to choose alpha (alpha * mstscore + (1-alpha) * iornnscore) [for development] set nil when testing
 
-punc = true -- taking punc into account for evaluation 
+punc = false -- taking punc into account for evaluation 
 

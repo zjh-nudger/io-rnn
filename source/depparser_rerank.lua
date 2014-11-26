@@ -12,32 +12,32 @@ Depparser_mt = { __index = Depparser }
 function Depparser:new(voca_dic, pos_dic, deprel_dic)
 	local parser = { voca_dic = voca_dic, pos_dic = pos_dic, deprel_dic = deprel_dic}
 
---	parser.punc_list = {
---		--[voca_dic.word2id['=']] = 1,
---		[voca_dic.word2id['-']] = 1,
---		[voca_dic.word2id['--']] = 1,
---		[voca_dic.word2id[',']] = 1,
---		[voca_dic.word2id[';']] = 1,
---		[voca_dic.word2id[':']] = 1,
---		[voca_dic.word2id['!']] = 1,
---		[voca_dic.word2id['?']] = 1,
---		--[voca_dic.word2id['/']] = 1,
---		[voca_dic.word2id['.']] = 1,
---		[voca_dic.word2id['...']] = 1,
---		[voca_dic.word2id["'"]] = 1,
---		[voca_dic.word2id["''"]] = 1,
---		[voca_dic.word2id['(']] = 1,
---		[voca_dic.word2id[')']] = 1,
---		[voca_dic.word2id['{']] = 1,
---		[voca_dic.word2id['}']] = 1,
---		--[voca_dic.word2id['@']] = 1,
---		[voca_dic.word2id['*']] = 1,
---		--[voca_dic.word2id['\\*']] = 1,
---		--[voca_dic.word2id['\\*\\*']] = 1,
---		[voca_dic.word2id['&']] = 1,
---		[voca_dic.word2id['#']] = 1,
---		[voca_dic.word2id['%']] = 1,
---	}
+	parser.punc_list = {
+		--[voca_dic.word2id['=']] = 1,
+		[voca_dic.word2id['-']] = 1,
+		[voca_dic.word2id['--']] = 1,
+		[voca_dic.word2id[',']] = 1,
+		[voca_dic.word2id[';']] = 1,
+		[voca_dic.word2id[':']] = 1,
+		[voca_dic.word2id['!']] = 1,
+		[voca_dic.word2id['?']] = 1,
+		--[voca_dic.word2id['/']] = 1,
+		[voca_dic.word2id['.']] = 1,
+		[voca_dic.word2id['...']] = 1,
+		[voca_dic.word2id["'"]] = 1,
+		[voca_dic.word2id["''"]] = 1,
+		[voca_dic.word2id['(']] = 1,
+		[voca_dic.word2id[')']] = 1,
+		[voca_dic.word2id['{']] = 1,
+		[voca_dic.word2id['}']] = 1,
+		--[voca_dic.word2id['@']] = 1,
+		[voca_dic.word2id['*']] = 1,
+		--[voca_dic.word2id['\\*']] = 1,
+		--[voca_dic.word2id['\\*\\*']] = 1,
+		[voca_dic.word2id['&']] = 1,
+		[voca_dic.word2id['#']] = 1,
+		[voca_dic.word2id['%']] = 1,
+	}
 	
 	setmetatable(parser, Depparser_mt)
 	return parser
