@@ -75,7 +75,11 @@ function Depparser:load_dsbank(path, grouping_path)
 				dsbank[#dsbank+1] = ds
 				raw[#raw+1] = sent
 			else 
-				print(err)
+				print(err)  -- just copy the previous ds
+				ds = dsbank[#dsbank]
+				sent = raw[#raw]
+				dsbank[#dsbank+1] = ds
+				raw[#raw+1] = sent
 			end
 			tokens = {}
 
@@ -174,15 +178,17 @@ function Depparser:train(net, traintrebank_path, devdsbank_path, kbestdevdsbank_
 	
 	net.update_L = TRAIN_UPDATE_L
 
-	--[[ shuffle the traindsbank -------- DON'T SHUFFLE the treebank to preserve tree order
-	print('shuffling train dsbank')
-	local new_i = torch.randperm(#traindsbank)
-	temp = {}
-	for i = 1,#traindsbank do
-		temp[i] = traindsbank[new_i[i] ]
+	-- shuffle the traindsbank -------- DON'T SHUFFLE the treebank to preserve tree order
+	if N_PREV_TREES == 0 then
+		print('shuffling train dsbank')
+		local new_i = torch.randperm(#traintreebank)
+		temp = {}
+		for i = 1,#traintreebank do
+			temp[i] = traintreebank[new_i[i] ]
+		end
+		traintreebank = temp
 	end
-	traindsbank = temp
-	]]
+	
 
 	-- train
 	local adagrad_config = {	weight_learningRate	= TRAIN_WEIGHT_LEARNING_RATE,
