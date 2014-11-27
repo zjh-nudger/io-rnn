@@ -539,7 +539,8 @@ function Depparser:eval(typ, kbestpath, goldpath, output)
 
 	-- mail
 	if EVAL_EMAIL_ADDR and self.mail_subject then
-		os.execute('echo "'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
+		local str_for_mail = str_for_mail or ''
+		os.execute('echo "'..str_for_mail..'\n'..str..'" | mail -s '..self.mail_subject..' '..EVAL_EMAIL_ADDR)
 	end 
 
 end

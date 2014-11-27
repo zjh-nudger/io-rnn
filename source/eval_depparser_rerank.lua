@@ -7,6 +7,7 @@ require 'dp_spec'
 
 torch.setnumthreads(1)
 marked_file = '/tmp/eval_is_open'
+str_for_mail = arg[1]
 
 posix = require('posix')
 
