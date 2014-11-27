@@ -419,6 +419,19 @@ function IORNN:forward_outside(tree, ctx_trees, complete_inside)
 		tree[DIR_R].EOC_outer:fill(0)
 	end
 
+	-- pre-compute 
+	local ci_prods = torch.zeros(self.dim, tree.n_nodes)
+	local prods = torch.zeros(self.dim, tree.n_nodes)
+	for i = 2,tree.n_nodes do
+		local col_i = {{},{i}}
+		local dir = tree.dir[i]
+		local deprel = tree.deprel[i]
+		prods[col_i]:copy(torch.mm(self[dir].Wo[deprel], tree.inner[col_i]))
+		if complete_inside ~= CMPL_INSIDE_NONE then
+			ci_prods[col_i]:copy(torch.mm(self[dir].Wo[deprel], tree.complete_inner[col_i]))
+		end
+	end
+
 	for i = 1,tree.n_nodes do
 		local col_i = {{},{i}}
 
@@ -453,17 +466,17 @@ function IORNN:forward_outside(tree, ctx_trees, complete_inside)
 				for _,sis_dir in ipairs({DIR_L, DIR_R}) do
 					for j = 1, tree[sis_dir].n_children[parent] do
 						local sister = tree[sis_dir].children[{j,parent}]
-						if sister < i then -- the fragment rooted at this sister node is complete
+						if sister < i then 
 							if complete_inside == CMPL_INSIDE_LEFT2RIGHT then
-								input:addmm(self[sis_dir].Wo[tree.deprel[sister]], tree.complete_inner[{{},{sister}}])
+								input:add(ci_prods[{{},{sister}}])
 							else
-								input:addmm(self[sis_dir].Wo[tree.deprel[sister]], tree.inner[{{},{sister}}])
+								input:add(prods[{{},{sister}}])
 							end
-						elseif sister > i then -- this fragement rooted at this sister node is not complete
+						elseif sister > i then 
 							if complete_inside == CMPL_INSIDE_RIGHT2LEFT then
-								input:addmm(self[sis_dir].Wo[tree.deprel[sister]], tree.complete_inner[{{},{sister}}])
+								input:add(ci_prods[{{},{sister}}])
 							else
-								input:addmm(self[sis_dir].Wo[tree.deprel[sister]], tree.inner[{{},{sister}}])
+								input:add(prods[{{},{sister}}])
 							end
 						end
 					end
@@ -495,7 +508,7 @@ function IORNN:forward_outside(tree, ctx_trees, complete_inside)
 
 					-- compute constructed outer
 					if left_sister  then 
-						input:addmm(self[DIR_L].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+						input:add(prods[{{},{left_sister}}])
 						tree.cstr_outer[col_c] = self.func(torch.div(input, j-1):add(input_head))
 					else 
 						tree.cstr_outer[col_c] = self.func(input_head + self[DIR_L].anon_inner)
@@ -505,7 +518,7 @@ function IORNN:forward_outside(tree, ctx_trees, complete_inside)
 
 				-- compute outer rep. for EOC
 				n_left = tree[DIR_L].n_children[i]
-				input:addmm(self[DIR_L].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+				input:add(prods[{{},{left_sister}}])  
 				tree[DIR_L].EOC_outer[col_i] = self.func(torch.div(input,n_left):add(input_head))
 			end
 
@@ -526,7 +539,7 @@ function IORNN:forward_outside(tree, ctx_trees, complete_inside)
 
 					-- compute constructed outer
 					if left_sister then 
-						input:addmm(self[DIR_R].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+						input:add(prods[{{},{left_sister}}]) 
 						tree.cstr_outer[col_c] = self.func(torch.div(input, n_left + j-1):add(input_head))
 					else 
 						tree.cstr_outer[col_c] = self.func((self[DIR_R].anon_inner+input):div(n_left+1):add(input_head))
@@ -535,7 +548,7 @@ function IORNN:forward_outside(tree, ctx_trees, complete_inside)
 				end
 
 				-- compute outer rep. for EOC
-				input:addmm(self[DIR_R].Wo[tree.deprel[left_sister]], tree.inner[{{},{left_sister}}])
+				input:add(prods[{{},{left_sister}}]) 
 				tree[DIR_R].EOC_outer[col_i] = self.func(torch.div(input,n_left + tree[DIR_R].n_children[i]):add(input_head))
 			end
 
@@ -722,6 +735,11 @@ function IORNN:backpropagate_outside(tree, grad, complete_inside)
 		grado		:addmm(self[dir].Wop:t(), gradZEOCo[dir])
 	end
 
+	local ci_sums_for_Wo = torch.zeros(self.dim, tree.n_nodes)
+	local sums_for_Wo = torch.zeros(self.dim, tree.n_nodes)
+	local ci_sums_for_i = torch.zeros(self.dim, tree.n_nodes)
+	local sums_for_i = torch.zeros(self.dim, tree.n_nodes)
+
 	-- for cstr outer
 	for i = tree.n_nodes, 1, -1 do
 		local col_i = {{},{i}}
@@ -739,8 +757,10 @@ function IORNN:backpropagate_outside(tree, grad, complete_inside)
 				for j = 1,tree[DIR_L].n_children[i] do
 					local child = tree[DIR_L].children[{j,i}]
 					local col_c = {{},{child}}
-					grad[DIR_L].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
-					tree.gradi[col_c]					:addmm(t, self[DIR_L].Wo[tree.deprel[child]]:t(), gz)
+					--grad[DIR_L].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
+					--tree.gradi[col_c]					:addmm(t, self[DIR_L].Wo[tree.deprel[child]]:t(), gz)
+					sums_for_Wo[col_c]:add(t, gz)
+					sums_for_i[col_c]:add(t, gz)
 				end
 			end
 		-- right
@@ -755,8 +775,10 @@ function IORNN:backpropagate_outside(tree, grad, complete_inside)
 				for j = 1,tree[DIR_R].n_children[i] do
 					local child = tree[DIR_R].children[{j,i}]
 					local col_c = {{},{child}}
-					grad[DIR_R].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
-					tree.gradi[col_c]					:addmm(t, self[DIR_R].Wo[tree.deprel[child]]:t(), gz)
+					--grad[DIR_R].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
+					--tree.gradi[col_c]					:addmm(t, self[DIR_R].Wo[tree.deprel[child]]:t(), gz)
+					sums_for_Wo[col_c]:add(t, gz)
+					sums_for_i[col_c]:add(t, gz)
 				end
 			end
 
@@ -767,8 +789,10 @@ function IORNN:backpropagate_outside(tree, grad, complete_inside)
 				for j = 1,tree[DIR_L].n_children[i] do
 					local child = tree[DIR_L].children[{j,i}]
 					local col_c = {{},{child}}
-					grad[DIR_L].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
-					tree.gradi[col_c]					:addmm(t, self[DIR_L].Wo[tree.deprel[child]]:t(), gz)
+					--grad[DIR_L].Wo[tree.deprel[child]]	:addmm(t, gz, tree.inner[col_c]:t())
+					--tree.gradi[col_c]					:addmm(t, self[DIR_L].Wo[tree.deprel[child]]:t(), gz)
+					sums_for_Wo[col_c]:add(t, gz)
+					sums_for_i[col_c]:add(t, gz)
 				end
 			end
 
@@ -793,8 +817,10 @@ function IORNN:backpropagate_outside(tree, grad, complete_inside)
 					for k = 1,j-1 do
 						local sister = tree[DIR_L].children[{k,i}]
 						local col_s = {{},{sister}}
-						grad[DIR_L].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-						tree.gradi[col_s]					:addmm(t, self[DIR_L].Wo[tree.deprel[sister]]:t(), gz)
+						-- grad[DIR_L].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+						-- tree.gradi[col_s]					:addmm(t, self[DIR_L].Wo[tree.deprel[sister]]:t(), gz)
+						sums_for_Wo[col_s]:add(t, gz)
+						sums_for_i[col_s]:add(t, gz)
 					end
 				end
 			end
@@ -821,8 +847,10 @@ function IORNN:backpropagate_outside(tree, grad, complete_inside)
 					for k = 1,j-1 do
 						local sister = tree[DIR_R].children[{k,i}]
 						local col_s = {{},{sister}}
-						grad[DIR_R].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-						tree.gradi[col_s]					:addmm(t, self[DIR_R].Wo[tree.deprel[sister]]:t(), gz)
+						-- grad[DIR_R].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+						-- tree.gradi[col_s]					:addmm(t, self[DIR_R].Wo[tree.deprel[sister]]:t(), gz)
+						sums_for_Wo[col_s]:add(t, gz)
+						sums_for_i[col_s]:add(t, gz)
 					end
 				end
 
@@ -833,8 +861,10 @@ function IORNN:backpropagate_outside(tree, grad, complete_inside)
 					for k = 1,tree[DIR_L].n_children[i] do
 						local sister = tree[DIR_L].children[{k,i}]
 						local col_s = {{},{sister}}
-						grad[DIR_L].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-						tree.gradi[col_s]					:addmm(t, self[DIR_L].Wo[tree.deprel[sister]]:t(), gz)
+						--grad[DIR_L].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+						--tree.gradi[col_s]					:addmm(t, self[DIR_L].Wo[tree.deprel[sister]]:t(), gz)
+						sums_for_Wo[col_s]:add(t, gz)
+						sums_for_i[col_s]:add(t, gz)
 					end
 			
 				end
@@ -886,27 +916,45 @@ function IORNN:backpropagate_outside(tree, grad, complete_inside)
 						if sister < i then
 							local col_s = {{},{sister}}
 							if complete_inside == CMPL_INSIDE_LEFT2RIGHT then 
-								grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.complete_inner[col_s]:t())
-								tree.gradcomplete_i[col_s]			:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
+								-- grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.complete_inner[col_s]:t())
+								-- tree.gradcomplete_i[col_s]			:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
+								ci_sums_for_Wo[col_s]:add(t, gz)
+								ci_sums_for_i[col_s]:add(t, gz)
 							else
-								grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-								tree.gradi[col_s]					:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
+								--grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+								--tree.gradi[col_s]					:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
+								sums_for_Wo[col_s]:add(t, gz)
+								sums_for_i[col_s]:add(t, gz)
 							end
 
 						elseif sister > i then
 							local col_s = {{},{sister}}
 							if complete_inside == CMPL_INSIDE_RIGHT2LEFT then
-								grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.complete_inner[col_s]:t())
-								tree.gradcomplete_i[col_s]			:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)					
+								--grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.complete_inner[col_s]:t())
+								--tree.gradcomplete_i[col_s]			:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
+								ci_sums_for_Wo[col_s]:add(t, gz)
+								ci_sums_for_i[col_s]:add(t, gz)
 							else
-								grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
-								tree.gradi[col_s]					:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
+								--grad[c_dir].Wo[tree.deprel[sister]]	:addmm(t, gz, tree.inner[col_s]:t())
+								--tree.gradi[col_s]					:addmm(t, self[c_dir].Wo[tree.deprel[sister]]:t(), gz)
+								sums_for_Wo[col_s]:add(t, gz)
+								sums_for_i[col_s]:add(t, gz)
 							end
 						end
 					end
 				end
 			end	
 		end
+	end
+
+	for i = 2, tree.n_nodes do
+		local dir = tree.dir[i]
+		local deprel = tree.deprel[i]
+		local col_i = {{},{i}}
+		grad[dir].Wo[deprel]:addmm(ci_sums_for_Wo[col_i], tree.complete_inner[col_i]:t())
+		grad[dir].Wo[deprel]:addmm(sums_for_Wo[col_i], tree.inner[col_i]:t())
+		tree.gradi[col_i]:addmm(self[dir].Wo[deprel]:t(), sums_for_i[col_i])
+		tree.gradcomplete_i[col_i]:addmm(self[dir].Wo[deprel]:t(), ci_sums_for_i[col_i])
 	end
 end
 
