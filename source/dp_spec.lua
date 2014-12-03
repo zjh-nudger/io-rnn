@@ -1,4 +1,4 @@
-torch.setdefaulttensortype('torch.FloatTensor')
+--torch.setdefaulttensortype('torch.FloatTensor')
 
 -- ********** filenames ********* --
 TRAIN_FILENAME = 'train.conll'
@@ -65,10 +65,10 @@ EVAL_EMAIL_ADDR	= 'lephong.xyz@gmail.com'
 
 USE_GOLD_PREV_TREES = false
 
-K		= 30
+K		= 50
 alpha	= 0
 
-K_range	= {2,30} -- to choose K [for development], set nil when testing
+K_range	= {2,50} -- to choose K [for development], set nil when testing
 alpha_range = {0,1} -- to choose alpha (alpha * mstscore + (1-alpha) * iornnscore) [for development] set nil when testing
 
 --K_range	= {9,9} -- to choose K [for development], set nil when testing
